@@ -1,6 +1,7 @@
 package site.overwrite.encryptedfilesapp
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -34,7 +35,19 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ListFiles({ server.listFiles() })
+//                    ListFiles({
+//                        server.listFiles(
+//                            "",
+//                            { response -> Log.d("STATE", "Response is: $response") },
+//                            { error -> Log.d("ERROR", "Error: $error") })
+//                    })
+                    ListFiles({
+                        server.getFile(
+                            "file1.txt",
+                            { response -> Log.d("STATE", "Response is: $response") },
+                            { error -> Log.d("ERROR", "Error: $error") }
+                        )
+                    })
                 }
             }
         }
@@ -43,17 +56,19 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun ListFiles(onClick: () -> Unit) {
-    var text by remember { mutableStateOf("") }
-
-    Column {
-//        Row {
-            OutlinedTextField(value = text, onValueChange = {text = it}, label= { Text("Server Address") })
+//    var text by remember { mutableStateOf("") }
+//
+//    Column {
+//        OutlinedTextField(
+//            value = text,
+//            onValueChange = { text = it },
+//            label = { Text("Server Address") })
+//        Button(onClick = onClick) {
+//            Text("List Files")
 //        }
-//        Row {
-            Button(onClick = onClick) {
-                Text("List Files")
-//            }
-        }
+//    }
+    Button(onClick = onClick) {
+        Text("Get File")
     }
 }
 

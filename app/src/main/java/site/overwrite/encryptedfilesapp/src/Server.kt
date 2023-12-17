@@ -28,25 +28,67 @@ import com.android.volley.toolbox.Volley
  * site.overwrite.encryptedfilesapp.src was created by Guest1 on 17/12/23,19:44 in Encrypted Files App. Read the
 copyright above to avoid consequences.
  */
-class Server(private val appContext: Context, serverAddress: String) {
+class Server(appContext: Context, serverAddress: String) {
+    // Constants
+    private val LIST_DIR_PAGE = "list-dir"
+    private val GET_FILE_PAGE = "get-file"
+
+    // Properties
     private val serverURL = "http://$serverAddress"
+    private val queue = Volley.newRequestQueue(appContext)
 
-    fun listFiles() {
-        // Instantiate the RequestQueue
-        val queue = Volley.newRequestQueue(appContext)
-
+    // Helper methods
+    /**
+     * Helper method that sends a request to the specified page on the server.
+     *
+     * @param method Request method.
+     * @param page   Page (and URL parameters) to send the request to.
+     * @param listener Listener for a successful page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    private fun sendRequest(
+        method: Int,
+        page: String,
+        listener: Response.Listener<String>,
+        errorListener: Response.ErrorListener
+    ) {
         // Form the full URL
-        val url = "$serverURL/list-dir"
-        Log.d("STATE", url)
+        val url = "$serverURL/$page"
 
-        // Request a string response from the provided URL.
-        val stringRequest = StringRequest(
-            Request.Method.GET,
-            url,
-            { response -> Log.d("STATE", "Response is: $response") },
-            { error -> Log.d("ERROR", "Error: $error") })
+        // Request a string response from the provided URL
+        val stringRequest = StringRequest(method, url, listener, errorListener)
 
-        // Add the request to the RequestQueue.
+        // Add the request to the RequestQueue
         queue.add(stringRequest)
+    }
+
+    // Main methods
+    /**
+     * Gets the list of files in the path.
+     *
+     * @param path Path to the directory.
+     * @param listener Listener for a successful page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun listFiles(
+        path: String,
+        listener: Response.Listener<String>,
+        errorListener: Response.ErrorListener
+    ) {
+        sendRequest(Request.Method.GET, "$LIST_DIR_PAGE/$path", listener, errorListener)
+    }
+
+    /**
+     * Gets the contents of a file.
+     *
+     * @param path Path to the file.
+     * @param listener Listener for a successful page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun getFile(
+        path: String, listener: Response.Listener<String>,
+        errorListener: Response.ErrorListener
+    ) {
+        sendRequest(Request.Method.GET, "$GET_FILE_PAGE/$path", listener, errorListener)
     }
 }
