@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -35,6 +36,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,6 +91,7 @@ class MainActivity : ComponentActivity() {
     }
 
     // Composables
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     @Preview
     fun ListFiles() {
@@ -97,6 +101,17 @@ class MainActivity : ComponentActivity() {
         var filePath by remember { mutableStateOf("") }
 
         Scaffold(
+            topBar = {
+                TopAppBar(
+                    colors = topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    title = {
+                        Text("Files")
+                    }
+                )
+            },
             snackbarHost = {
                 SnackbarHost(hostState = snackbarHostState)
             }
@@ -107,21 +122,22 @@ class MainActivity : ComponentActivity() {
                 OutlinedTextField(
                     value = filePath,
                     onValueChange = { filePath = it },
+                    singleLine = true,
                     label = { Text("File Path") })
                 Button(
                     onClick = {
                         server.getFile(
                             filePath,
-                            { content -> Log.d("CONTENT", content.toString()) },
+                            { content -> Log.d("MAIN", "Response content: $content") },
                             { status ->
                                 run {
-                                    Log.d("FAILED REQUEST", status)
+                                    Log.d("MAIN", "Failed request: $status")
                                     scope.launch { snackbarHostState.showSnackbar(status) }
                                 }
                             },
                             { error ->
                                 run {
-                                    Log.d("ERROR", error.toString())
+                                    Log.d("MAIN", "Request had error: $error")
                                     scope.launch { snackbarHostState.showSnackbar(error.toString()) }
                                 }
                             }

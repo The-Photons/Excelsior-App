@@ -110,31 +110,6 @@ class LoginActivity : ComponentActivity() {
 
         var isLoading by remember { mutableStateOf(false) }
 
-        fun checkParameters() {
-            Log.d("LOGIN", "Login button clicked")
-            isLoading = true
-            Server.isValidURL(serverURL, queue) { isValid ->
-                run {
-                    if (!isValid) {
-                        isErrorServerURL = true
-                        Log.d("LOGIN", "Invalid server URL: $serverURL")
-                    }
-                    Log.d("LOGIN", "Good URL: $serverURL")
-
-                    // Update the saved URL
-                    runBlocking {
-                        dataStoreManager.setServerURL(serverURL)
-                    }
-
-                    // Return needed things
-                    val resultIntent = Intent()
-                    resultIntent.putExtra("server_url", serverURL)
-                    setResult(RESULT_OK, resultIntent)
-                    finish()
-                }
-            }
-        }
-
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -196,7 +171,31 @@ class LoginActivity : ComponentActivity() {
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     Button(
-                        onClick = { checkParameters() }
+                        onClick = {
+                            Log.d("LOGIN", "Login button clicked")
+                            isLoading = true
+                            Server.isValidURL(serverURL, queue) { isValid ->
+                                run {
+                                    if (!isValid) {
+                                        isErrorServerURL = true
+                                        Log.d("LOGIN", "Invalid server URL: $serverURL")
+                                    }
+                                    Log.d("LOGIN", "Good URL: $serverURL")
+
+                                    // Update the saved URL
+                                    runBlocking {
+                                        dataStoreManager.setServerURL(serverURL)
+                                    }
+
+                                    // Return needed things
+                                    val resultIntent = Intent()
+                                    resultIntent.putExtra("server_url", serverURL)
+                                    setResult(RESULT_OK, resultIntent)
+                                    isLoading = false
+                                    finish()
+                                }
+                            }
+                        }
                     ) {
                         Text("Login")
                     }

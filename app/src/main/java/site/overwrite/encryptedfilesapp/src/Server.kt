@@ -131,6 +131,7 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
 
             // Add the request to the RequestQueue
             queue.add(stringRequest)
+            Log.d("SERVER", "Sent request to $url")
         }
 
         /**
