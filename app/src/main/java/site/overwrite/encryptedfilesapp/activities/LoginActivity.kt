@@ -17,7 +17,7 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
-import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.webkit.URLUtil
@@ -57,16 +57,34 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.asLiveData
 import com.android.volley.RequestQueue
 import com.android.volley.toolbox.Volley
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import site.overwrite.encryptedfilesapp.src.DataStoreManager
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class LoginActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        val queue = Volley.newRequestQueue(applicationContext)
+    // Properties
+    private var serverURL by mutableStateOf("http://127.0.0.1:5000")
+    private lateinit var queue: RequestQueue
 
+    private lateinit var dataStoreManager: DataStoreManager
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("LOGIN", "Login activity onCreate")
         super.onCreate(savedInstanceState)
+
+        // Update properties
+        queue = Volley.newRequestQueue(applicationContext)
+
+        // Get things from the data store
+        dataStoreManager = DataStoreManager(applicationContext)
+        dataStoreManager.getServerURL().asLiveData(Dispatchers.Main)
+            .observe(this) { url -> serverURL = url }
+
         setContent {
             EncryptedFilesAppTheme {
                 // A surface container using the 'background' color from the theme
@@ -74,123 +92,124 @@ class LoginActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ServerAddress(queue)
+                    ServerAddress()
                 }
             }
         }
     }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ServerAddress(queue: RequestQueue?) {
-    var serverURL by remember { mutableStateOf("http://192.168.80.142:5000") }
-    var isErrorServerURL by remember { mutableStateOf(false) }
+    // Composables
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Preview
+    @Composable
+    fun ServerAddress() {
+        var isErrorServerURL by remember { mutableStateOf(false) }
 
-    var userPassword by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
+        var userPassword by remember { mutableStateOf("") }
+        var isPasswordVisible by remember { mutableStateOf(false) }
 
-    var isLoading by remember { mutableStateOf(false) }
+        var isLoading by remember { mutableStateOf(false) }
 
-    fun checkParameters() {
-        Log.d("LOGIN", "Login button clicked")
-        isLoading = true
-        if (queue != null) {
+        fun checkParameters() {
+            Log.d("LOGIN", "Login button clicked")
+            isLoading = true
             Server.isValidURL(serverURL, queue) { isValid ->
                 run {
                     if (!isValid) {
                         isErrorServerURL = true
-                        Log.d("LOGIN", "Invalid server URL")
+                        Log.d("LOGIN", "Invalid server URL: $serverURL")
+                    }
+                    Log.d("LOGIN", "Good URL: $serverURL")
+
+                    // Update the saved URL
+                    runBlocking {
+                        dataStoreManager.setServerURL(serverURL)
                     }
 
-                    // TODO: Continue
-                    isLoading = false
+                    // Return needed things
+                    val resultIntent = Intent()
+                    resultIntent.putExtra("server_url", serverURL)
+                    setResult(RESULT_OK, resultIntent)
+                    finish()
                 }
             }
         }
-    }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                colors = topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
-                ),
-                title = {
-                    Text("Login")
-                }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier.padding(innerPadding),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            OutlinedTextField(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                value = serverURL,
-                singleLine = true,
-                onValueChange = {
-                    serverURL = it
-                    isErrorServerURL = !URLUtil.isValidUrl(serverURL)
-                },
-                isError = isErrorServerURL,
-                supportingText = {
-                    if (isErrorServerURL) {
-                        Text(
-                            modifier = Modifier.fillMaxWidth(),
-                            text = "Invalid URL",
-                            color = MaterialTheme.colorScheme.error
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    colors = topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    title = {
+                        Text("Login")
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier.padding(innerPadding),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                OutlinedTextField(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    value = serverURL,
+                    singleLine = true,
+                    onValueChange = {
+                        serverURL = it
+                        isErrorServerURL = !URLUtil.isValidUrl(serverURL)
+                    },
+                    isError = isErrorServerURL,
+                    supportingText = {
+                        if (isErrorServerURL) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = "Invalid URL",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    label = { Text("Server Address") }
+                )
+                OutlinedTextField(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    value = userPassword,
+                    singleLine = true,
+                    placeholder = { Text("Password") },
+                    onValueChange = { userPassword = it },
+                    label = { Text("Encryption Key") },
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        val image =
+                            if (isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        val description =
+                            if (isPasswordVisible) "Hide Password" else "Show Password"
+
+                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                            Icon(imageVector = image, description)
+                        }
+                    }
+                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                ) {
+                    Button(
+                        onClick = { checkParameters() }
+                    ) {
+                        Text("Login")
+                    }
+
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.width(32.dp),
+                            color = MaterialTheme.colorScheme.secondary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
                         )
                     }
-                },
-                label = { Text("Server Address") }
-            )
-            OutlinedTextField(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                value = userPassword,
-                singleLine = true,
-                placeholder = { Text("Password") },
-                onValueChange = { userPassword = it },
-                label = { Text("Encryption Key") },
-                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                trailingIcon = {
-                    val image =
-                        if (isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                    val description = if (isPasswordVisible) "Hide Password" else "Show Password"
-
-                    IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                        Icon(imageVector = image, description)
-                    }
-                }
-            )
-            Row(
-                modifier = Modifier.padding(horizontal = 8.dp)
-            ) {
-                Button(
-                    onClick = { checkParameters() }
-                ) {
-                    Text("Login")
-                }
-
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.width(32.dp),
-                        color = MaterialTheme.colorScheme.secondary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    )
                 }
             }
         }
-    }
-}
-
-@Preview
-@Composable
-fun ServerAddressPreview() {
-    EncryptedFilesAppTheme {
-        ServerAddress(null)
     }
 }

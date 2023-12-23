@@ -17,23 +17,26 @@
 
 package site.overwrite.encryptedfilesapp.src
 
-import android.content.Context
 import android.util.Log
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
 import com.android.volley.RequestQueue
 import org.json.JSONObject
 
+// CONSTANTS
 const val PING_PAGE = "ping"
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
 
-class Server(appContext: Context, private val serverURL: String) {
-    // Properties
-    private val queue = Volley.newRequestQueue(appContext)
-
+// CLASSES
+/**
+ * Class that handles the communication with the encrypted files server.
+ *
+ * @property queue Volley RequestQueue for processing HTTP requests.
+ * @property serverURL URL to the server. **Assumed to be valid**.
+ */
+class Server(private val queue: RequestQueue, private val serverURL: String) {
     // Main methods
     /**
      * Gets the list of files in the path.
@@ -138,6 +141,7 @@ class Server(appContext: Context, private val serverURL: String) {
          * @param listener Listener to process the result.
          */
         fun isValidURL(serverURL: String, queue: RequestQueue, listener: (Boolean) -> Unit) {
+            Log.d("SERVER", "Checking if '$serverURL' is valid")
             sendRequest(
                 serverURL,
                 Request.Method.GET,
@@ -146,14 +150,16 @@ class Server(appContext: Context, private val serverURL: String) {
                 { response ->
                     run {
                         if (response == "pong") {
+                            Log.d("SERVER", "'$serverURL' is valid")
                             listener(true)
                         } else {
+                            Log.d("SERVER", "'$serverURL' is not valid")
                             listener(false)
                         }
                     }
                 },
-                { _ -> listener(false) },
-                { _ -> listener(false) }
+                { _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) },
+                { _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) }
             )
         }
     }

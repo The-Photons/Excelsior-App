@@ -17,10 +17,13 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -40,16 +43,37 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewParameter
+import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        val server = Server(applicationContext, "192.168.80.142:5000")
+    // Properties
+    private lateinit var server: Server
+    private lateinit var loginIntent: Intent;
 
+    // Overridden functions
+    override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("MAIN", "Main activity onCreate")
         super.onCreate(savedInstanceState)
+
+        // We first need to ask for the login details, especially the encryption key
+        loginIntent = Intent(this, LoginActivity::class.java);
+        val getLoginCredentials =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val resultIntent: Intent? = result.data
+                    val serverURL: String = resultIntent?.getStringExtra("server_url") ?: ""
+                    Log.d("MAIN", "Got server URL: $serverURL")
+
+                    // Now initialize the things needed
+                    val queue = Volley.newRequestQueue(applicationContext)
+                    server = Server(queue, serverURL)
+                }
+            }
+        getLoginCredentials.launch(loginIntent)
+
         setContent {
             EncryptedFilesAppTheme {
                 // A surface container using the 'background' color from the theme
@@ -57,69 +81,54 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ListFiles(server)
+                    ListFiles()
                 }
             }
         }
     }
-}
 
-@Composable
-fun ListFiles(server: Server?) {
-    val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
+    // Composables
+    @Composable
+    @Preview
+    fun ListFiles() {
+        val scope = rememberCoroutineScope()
+        val snackbarHostState = remember { SnackbarHostState() }
 
-    var filePath by remember { mutableStateOf("") }
+        var filePath by remember { mutableStateOf("") }
 
-//    Column {
-//        OutlinedTextField(
-//            value = text,
-//            onValueChange = { text = it },
-//            label = { Text("Server Address") })
-//        Button(onClick = onClick) {
-//            Text("List Files")
-//        }
-//    }
-    Scaffold(
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState)
-        }
-    ) { innerPadding ->
-        Row(
-            modifier = Modifier.padding(innerPadding),
-        ) {
-            OutlinedTextField(
-                value = filePath,
-                onValueChange = { filePath = it },
-                label = { Text("File Path") })
-            Button(onClick = {
-                server?.getFile(
-                    filePath,
-                    { content -> Log.d("CONTENT", content.toString()) },
-                    { status ->
-                        run {
-                            Log.d("FAILED REQUEST", status)
-                            scope.launch { snackbarHostState.showSnackbar(status) }
+        Scaffold(
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState)
+            }
+        ) { innerPadding ->
+            Row(
+                modifier = Modifier.padding(innerPadding),
+            ) {
+                OutlinedTextField(
+                    value = filePath,
+                    onValueChange = { filePath = it },
+                    label = { Text("File Path") })
+                Button(onClick = {
+                    server.getFile(
+                        filePath,
+                        { content -> Log.d("CONTENT", content.toString()) },
+                        { status ->
+                            run {
+                                Log.d("FAILED REQUEST", status)
+                                scope.launch { snackbarHostState.showSnackbar(status) }
+                            }
+                        },
+                        { error ->
+                            run {
+                                Log.d("ERROR", error.toString())
+                                scope.launch { snackbarHostState.showSnackbar(error.toString()) }
+                            }
                         }
-                    },
-                    { error ->
-                        run {
-                            Log.d("ERROR", error.toString())
-                            scope.launch { snackbarHostState.showSnackbar(error.toString()) }
-                        }
-                    }
-                )
-            }) {
-                Text("Get File")
+                    )
+                }) {
+                    Text("Get File")
+                }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    EncryptedFilesAppTheme {
-        ListFiles(null)
     }
 }
