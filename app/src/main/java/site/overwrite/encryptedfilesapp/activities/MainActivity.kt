@@ -108,24 +108,26 @@ class MainActivity : ComponentActivity() {
                     value = filePath,
                     onValueChange = { filePath = it },
                     label = { Text("File Path") })
-                Button(onClick = {
-                    server.getFile(
-                        filePath,
-                        { content -> Log.d("CONTENT", content.toString()) },
-                        { status ->
-                            run {
-                                Log.d("FAILED REQUEST", status)
-                                scope.launch { snackbarHostState.showSnackbar(status) }
+                Button(
+                    onClick = {
+                        server.getFile(
+                            filePath,
+                            { content -> Log.d("CONTENT", content.toString()) },
+                            { status ->
+                                run {
+                                    Log.d("FAILED REQUEST", status)
+                                    scope.launch { snackbarHostState.showSnackbar(status) }
+                                }
+                            },
+                            { error ->
+                                run {
+                                    Log.d("ERROR", error.toString())
+                                    scope.launch { snackbarHostState.showSnackbar(error.toString()) }
+                                }
                             }
-                        },
-                        { error ->
-                            run {
-                                Log.d("ERROR", error.toString())
-                                scope.launch { snackbarHostState.showSnackbar(error.toString()) }
-                            }
-                        }
-                    )
-                }) {
+                        )
+                    }
+                ) {
                     Text("Get File")
                 }
             }
