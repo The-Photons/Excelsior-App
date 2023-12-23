@@ -17,6 +17,7 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.webkit.URLUtil
@@ -53,6 +54,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.volley.toolbox.Volley
+import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class LoginActivity : ComponentActivity() {
@@ -65,7 +68,7 @@ class LoginActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ServerAddress()
+                    ServerAddress(applicationContext)
                 }
             }
         }
@@ -73,14 +76,28 @@ class LoginActivity : ComponentActivity() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview
 @Composable
-fun ServerAddress() {
+fun ServerAddress(appContext: Context?) {
+    val queue = Volley.newRequestQueue(appContext)
+
     var serverURL by remember { mutableStateOf("http://192.168.80.142:5000") }
     var isErrorServerURL by remember { mutableStateOf(false) }
 
     var userPassword by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
+
+    fun checkParameters() {
+        Log.d("CLICK", "Button clicked")
+        Server.isValidURL(serverURL, queue) { isValid ->
+            run {
+                if (!isValid) {
+                    isErrorServerURL = true
+                }
+
+                // TODO: Continue
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -129,7 +146,8 @@ fun ServerAddress() {
                 visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 trailingIcon = {
-                    val image = if (isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    val image =
+                        if (isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     val description = if (isPasswordVisible) "Hide Password" else "Show Password"
 
                     IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
@@ -139,12 +157,18 @@ fun ServerAddress() {
             )
             Button(
                 modifier = Modifier.padding(horizontal = 8.dp),
-                onClick = {
-                    Log.d("CLICK", "Button clicked")
-                }
+                onClick = { checkParameters() }
             ) {
                 Text("Login")
             }
         }
+    }
+}
+
+@Preview
+@Composable
+fun ServerAddressPreview() {
+    EncryptedFilesAppTheme {
+        ServerAddress(null)
     }
 }
