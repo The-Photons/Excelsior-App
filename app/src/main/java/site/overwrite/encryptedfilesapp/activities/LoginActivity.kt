@@ -25,14 +25,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,12 +57,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.volley.RequestQueue
 import com.android.volley.toolbox.Volley
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val queue = Volley.newRequestQueue(applicationContext)
+
         super.onCreate(savedInstanceState)
         setContent {
             EncryptedFilesAppTheme {
@@ -68,7 +74,7 @@ class LoginActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ServerAddress(applicationContext)
+                    ServerAddress(queue)
                 }
             }
         }
@@ -77,24 +83,29 @@ class LoginActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ServerAddress(appContext: Context?) {
-    val queue = Volley.newRequestQueue(appContext)
-
+fun ServerAddress(queue: RequestQueue?) {
     var serverURL by remember { mutableStateOf("http://192.168.80.142:5000") }
     var isErrorServerURL by remember { mutableStateOf(false) }
 
     var userPassword by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
-    fun checkParameters() {
-        Log.d("CLICK", "Button clicked")
-        Server.isValidURL(serverURL, queue) { isValid ->
-            run {
-                if (!isValid) {
-                    isErrorServerURL = true
-                }
+    var isLoading by remember { mutableStateOf(false) }
 
-                // TODO: Continue
+    fun checkParameters() {
+        Log.d("LOGIN", "Login button clicked")
+        isLoading = true
+        if (queue != null) {
+            Server.isValidURL(serverURL, queue) { isValid ->
+                run {
+                    if (!isValid) {
+                        isErrorServerURL = true
+                        Log.d("LOGIN", "Invalid server URL")
+                    }
+
+                    // TODO: Continue
+                    isLoading = false
+                }
             }
         }
     }
@@ -155,11 +166,22 @@ fun ServerAddress(appContext: Context?) {
                     }
                 }
             )
-            Button(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                onClick = { checkParameters() }
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp)
             ) {
-                Text("Login")
+                Button(
+                    onClick = { checkParameters() }
+                ) {
+                    Text("Login")
+                }
+
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.width(32.dp),
+                        color = MaterialTheme.colorScheme.secondary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                }
             }
         }
     }
