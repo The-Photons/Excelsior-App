@@ -27,13 +27,8 @@ import org.json.JSONObject
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
 
-/**
- * site.overwrite.encryptedfilesapp.src was created by Guest1 on 17/12/23,19:44 in Encrypted Files App. Read the
-copyright above to avoid consequences.
- */
-class Server(appContext: Context, serverAddress: String) {
+class Server(appContext: Context, private val serverURL: String) {
     // Properties
-    private val serverURL = "http://$serverAddress"
     private val queue = Volley.newRequestQueue(appContext)
 
     // Helper methods
