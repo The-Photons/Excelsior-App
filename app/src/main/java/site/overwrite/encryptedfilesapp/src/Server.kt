@@ -18,21 +18,20 @@
 package site.overwrite.encryptedfilesapp.src
 
 import android.content.Context
-import android.util.Log
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
+import org.json.JSONObject
+
+const val LIST_DIR_PAGE = "list-dir"
+const val GET_FILE_PAGE = "get-file"
 
 /**
  * site.overwrite.encryptedfilesapp.src was created by Guest1 on 17/12/23,19:44 in Encrypted Files App. Read the
 copyright above to avoid consequences.
  */
 class Server(appContext: Context, serverAddress: String) {
-    // Constants
-    private val LIST_DIR_PAGE = "list-dir"
-    private val GET_FILE_PAGE = "get-file"
-
     // Properties
     private val serverURL = "http://$serverAddress"
     private val queue = Volley.newRequestQueue(appContext)
@@ -43,20 +42,37 @@ class Server(appContext: Context, serverAddress: String) {
      *
      * @param method Request method.
      * @param page   Page (and URL parameters) to send the request to.
-     * @param listener Listener for a successful page request.
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
      * @param errorListener Listener for an page request that results in an error.
      */
     private fun sendRequest(
         method: Int,
         page: String,
-        listener: Response.Listener<String>,
+        processResponse: (Any) -> Any,
+        failedResponse: (String) -> Any,
         errorListener: Response.ErrorListener
     ) {
         // Form the full URL
         val url = "$serverURL/$page"
 
         // Request a string response from the provided URL
-        val stringRequest = StringRequest(method, url, listener, errorListener)
+        val stringRequest = StringRequest(
+            method,
+            url,
+            { response ->
+                run {
+                    val json = JSONObject(response)
+                    val status = json.getString("status")
+                    if (status == "ok") {
+                        processResponse(json.get("content"))
+                    } else {
+                        failedResponse(status)
+                    }
+                }
+            },
+            errorListener
+        )
 
         // Add the request to the RequestQueue
         queue.add(stringRequest)
@@ -67,28 +83,45 @@ class Server(appContext: Context, serverAddress: String) {
      * Gets the list of files in the path.
      *
      * @param path Path to the directory.
-     * @param listener Listener for a successful page request.
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
      * @param errorListener Listener for an page request that results in an error.
      */
     fun listFiles(
         path: String,
-        listener: Response.Listener<String>,
+        processResponse: (Any) -> Any,
+        failedResponse: (String) -> Any,
         errorListener: Response.ErrorListener
     ) {
-        sendRequest(Request.Method.GET, "$LIST_DIR_PAGE/$path", listener, errorListener)
+        sendRequest(
+            Request.Method.GET,
+            "$LIST_DIR_PAGE/$path",
+            processResponse,
+            failedResponse,
+            errorListener
+        )
     }
 
     /**
      * Gets the contents of a file.
      *
      * @param path Path to the file.
-     * @param listener Listener for a successful page request.
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
      * @param errorListener Listener for an page request that results in an error.
      */
     fun getFile(
-        path: String, listener: Response.Listener<String>,
+        path: String,
+        processResponse: (Any) -> Any,
+        failedResponse: (String) -> Any,
         errorListener: Response.ErrorListener
     ) {
-        sendRequest(Request.Method.GET, "$GET_FILE_PAGE/$path", listener, errorListener)
+        sendRequest(
+            Request.Method.GET,
+            "$GET_FILE_PAGE/$path",
+            processResponse,
+            failedResponse,
+            errorListener
+        )
     }
 }
