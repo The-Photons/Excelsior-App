@@ -30,6 +30,15 @@ const val PING_PAGE = "ping"
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
 
+// HELPER FUNCTIONS
+fun String.decodeHex(): ByteArray {
+    check(length % 2 == 0) { "Must have an even length" }
+
+    return chunked(2)
+        .map { it.toInt(16).toByte() }
+        .toByteArray()
+}
+
 // CLASSES
 /**
  * Class that handles the communication with the encrypted files server.
@@ -178,7 +187,7 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
             serverURL: String,
             password: String,
             queue: RequestQueue,
-            listener: (Boolean) -> Unit
+            listener: (Boolean, ByteArray?) -> Unit
         ) {
             sendRequest(
                 serverURL,
@@ -191,11 +200,11 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
                         val iv = json.getString("iv")
                         val salt = json.getString("salt")
                         val encryptedTestString = json.getString("test_str")
-                        val encryptedKey = json.getString("encrypted_key")
+                        val encryptedEncryptionKey = json.getString("encrypted_key")
                         Log.d("SERVER", "IV: $iv")
                         Log.d("SERVER", "Salt: $salt")
                         Log.d("SERVER", "Encrypted test string: $encryptedTestString")
-                        Log.d("SERVER", "Encrypted key: $encryptedKey")
+                        Log.d("SERVER", "Encrypted encryption key: $encryptedEncryptionKey")
 
                         // Convert the given password into the AES
                         val userAESKey = Cryptography.genAESKey(password, salt)
@@ -207,28 +216,35 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
                             for (element in attemptedDecrypt) {
                                 if (!element.isUpperCase()) {
                                     Log.d("SERVER", "Decryption of test text failed")
-                                    listener(false)
+                                    listener(false, null)
                                 }
                             }
-
                             Log.d("SERVER", "Decryption of test text successful")
-                            listener(true)
+
+                            // Since successful, decrypt the actual key that is used to encrypt all
+                            // the data
+                            val strEncryptionKey =
+                                Cryptography.decryptAES(encryptedEncryptionKey, userAESKey, iv)
+                            val encryptionKey = strEncryptionKey.decodeHex()
+                            Log.d("SERVER", "Retrieved file encryption key")
+
+                            listener(true, encryptionKey)
                         } catch (e: InvalidDecryptionException) {
                             Log.d("SERVER", "Decryption failed: $e")
-                            listener(false)
+                            listener(false, null)
                         }
                     }
                 },
                 { _, _ ->
                     run {
                         Log.d("SERVER", "Invalid encryption password response")
-                        listener(false)
+                        listener(false, null)
                     }
                 },
                 { _ ->
                     run {
                         Log.d("SERVER", "Error in encryption password response")
-                        listener(false)
+                        listener(false, null)
                     }
                 }
             )

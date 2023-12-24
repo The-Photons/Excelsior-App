@@ -204,7 +204,7 @@ class LoginActivity : ComponentActivity() {
                                             serverURL,
                                             userPassword,
                                             queue
-                                        ) { isValid ->
+                                        ) { isValid, encryptionKey ->
                                             run {
                                                 if (!isValid) {
                                                     Log.d("LOGIN", "Password is invalid")
@@ -215,10 +215,9 @@ class LoginActivity : ComponentActivity() {
 
                                                     // Return needed things
                                                     val resultIntent = Intent()
-                                                    resultIntent.putExtra(
-                                                        "server_url",
-                                                        serverURL
-                                                    )
+                                                    resultIntent.putExtra("server_url", serverURL)
+                                                    resultIntent.putExtra("encryption_key", encryptionKey)
+
                                                     setResult(RESULT_OK, resultIntent)
                                                     isLoading = false
                                                     finish()

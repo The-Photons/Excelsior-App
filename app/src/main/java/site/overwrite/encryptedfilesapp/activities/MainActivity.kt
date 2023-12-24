@@ -50,13 +50,17 @@ import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
+import java.nio.charset.Charset
 
 class MainActivity : ComponentActivity() {
     // Properties
     private lateinit var server: Server
-    private lateinit var loginIntent: Intent;
+    private lateinit var loginIntent: Intent
+
+    private lateinit var encryptionKey: ByteArray
 
     // Overridden functions
+    @OptIn(ExperimentalStdlibApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("MAIN", "Main activity onCreate")
         super.onCreate(savedInstanceState)
@@ -68,7 +72,9 @@ class MainActivity : ComponentActivity() {
                 if (result.resultCode == Activity.RESULT_OK) {
                     val resultIntent: Intent? = result.data
                     val serverURL: String = resultIntent?.getStringExtra("server_url") ?: ""
+                    encryptionKey = resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
                     Log.d("MAIN", "Got server URL: $serverURL")
+                    Log.d("MAIN", "Got encryption key (as hex string): ${encryptionKey.toHexString()}")
 
                     // Now initialize the things needed
                     val queue = Volley.newRequestQueue(applicationContext)
