@@ -62,10 +62,19 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
         failedResponse: (String, JSONObject) -> Any,
         errorListener: Response.ErrorListener
     ) {
+        // Properly set the page
+        var page: String
+        if (path != "") {
+            page = "$LIST_DIR_PAGE?path=$path"
+        } else {
+            page = LIST_DIR_PAGE
+        }
+
+        // Now we can send the request
         sendRequest(
             serverURL,
             Request.Method.GET,
-            "$LIST_DIR_PAGE/$path",
+            page,
             queue,
             processResponse,
             failedResponse,

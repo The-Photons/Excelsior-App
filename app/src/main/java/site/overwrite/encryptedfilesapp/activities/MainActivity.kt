@@ -25,6 +25,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -46,14 +47,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
-import org.json.JSONObject
+import org.json.JSONArray
 import site.overwrite.encryptedfilesapp.src.Cryptography
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
-import java.nio.charset.Charset
 
 class MainActivity : ComponentActivity() {
     // Properties
@@ -102,7 +103,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ListFiles()
+                    FilesList()
                 }
             }
         }
@@ -112,11 +113,14 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     @Preview
-    fun ListFiles() {
+    fun FilesList() {
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
         var filePath by remember { mutableStateOf("file1.txt") }  // FIXME: REMOVE!!!
+        var dirPath by remember { mutableStateOf("") }
+
+        var dirItems by remember { mutableStateOf(JSONArray()) }
 
         // Helper functions
         fun processSuccessfulResponse(encryptedFileContent: String) {
@@ -156,6 +160,31 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        fun getItemsInDir(dir: String) {
+            server.listFiles(
+                dir,
+                {json -> run {
+                    val itemsInDirStr = json.getString("content")
+
+                    // If the items is null, then the directory does not exist
+                    if (itemsInDirStr == "null") {
+                        dirItems = JSONArray()
+                    } else {
+                        dirItems = JSONArray(itemsInDirStr)
+                        Log.d("MAIN", "Num items in dir: ${dirItems.length()}")
+
+                        // TODO: Continue
+                    }
+                }},
+                {status, json -> run {
+                    Log.d("MAIN", "Failed to list items in directory")
+                }},
+                {error -> run {
+                    Log.d("MAIN", "Error when getting items in directory: $error")
+                }}
+            )
+        }
+
         // Main UI
         Scaffold(
             topBar = {
@@ -173,18 +202,43 @@ class MainActivity : ComponentActivity() {
                 SnackbarHost(hostState = snackbarHostState)
             }
         ) { innerPadding ->
-            Row(
-                modifier = Modifier.padding(innerPadding),
-            ) {
-                OutlinedTextField(
-                    value = filePath,
-                    onValueChange = { filePath = it },
-                    singleLine = true,
-                    label = { Text("File Path") })
-                Button(
-                    onClick = { getFile(filePath) }
-                ) {
-                    Text("Get File")
+            Column(modifier = Modifier.padding(innerPadding)){
+                Row{
+                    OutlinedTextField(
+                        value = filePath,
+                        onValueChange = { filePath = it },
+                        singleLine = true,
+                        label = { Text("File Path") })
+                    Button(
+                        onClick = { getFile(filePath) }
+                    ) {
+                        Text("Get File")
+                    }
+                }
+                Row{
+                    OutlinedTextField(
+                        value = dirPath,
+                        onValueChange = { dirPath = it },
+                        singleLine = true,
+                        label = { Text("Directory") })
+                    Button(
+                        onClick = { getItemsInDir(dirPath)}
+                    ) {
+                        Text("List Files")
+                    }
+                }
+                Column(modifier = Modifier.padding(innerPadding)) {
+                    if (dirPath != "") {
+                        Text("Previous directory")
+                    }
+                    for (i in 0..<dirItems.length()) {
+                        // Get the specific item
+                        val item = dirItems.getJSONArray(i)
+                        val name = item[0]
+                        val type = item[1]
+
+                        Text("$name ($type)")
+                    }
                 }
             }
         }
