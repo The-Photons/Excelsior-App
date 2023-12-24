@@ -106,7 +106,7 @@ class LoginActivity : ComponentActivity() {
     fun ServerAddress() {
         var isErrorServerURL by remember { mutableStateOf(false) }
 
-        var userPassword by remember { mutableStateOf("") }
+        var userPassword by remember { mutableStateOf("password") }  // FIXME: REMOVE!!!
         var isErrorPassword by remember { mutableStateOf(false) }
         var isPasswordVisible by remember { mutableStateOf(false) }
 
@@ -204,9 +204,9 @@ class LoginActivity : ComponentActivity() {
                                             serverURL,
                                             userPassword,
                                             queue
-                                        ) { isValid, encryptionKey ->
+                                        ) { isValid, encryptionParameters ->
                                             run {
-                                                if (!isValid) {
+                                                if (!isValid || encryptionParameters == null) {
                                                     Log.d("LOGIN", "Password is invalid")
                                                     isErrorPassword = true
                                                     isLoading = false
@@ -216,7 +216,18 @@ class LoginActivity : ComponentActivity() {
                                                     // Return needed things
                                                     val resultIntent = Intent()
                                                     resultIntent.putExtra("server_url", serverURL)
-                                                    resultIntent.putExtra("encryption_key", encryptionKey)
+                                                    resultIntent.putExtra(
+                                                        "iv",
+                                                        encryptionParameters.iv
+                                                    )
+                                                    resultIntent.putExtra(
+                                                        "salt",
+                                                        encryptionParameters.salt
+                                                    )
+                                                    resultIntent.putExtra(
+                                                        "encryption_key",
+                                                        encryptionParameters.encryptionKey
+                                                    )
 
                                                     setResult(RESULT_OK, resultIntent)
                                                     isLoading = false

@@ -187,7 +187,7 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
             serverURL: String,
             password: String,
             queue: RequestQueue,
-            listener: (Boolean, ByteArray?) -> Unit
+            listener: (Boolean, EncryptionParameters?) -> Unit
         ) {
             sendRequest(
                 serverURL,
@@ -212,7 +212,7 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
                         // Attempt to decrypt the test string
                         try {
                             val attemptedDecrypt =
-                                Cryptography.decryptAES(encryptedTestString, userAESKey, iv)
+                                String(Cryptography.decryptAES(encryptedTestString, userAESKey, iv))
                             for (element in attemptedDecrypt) {
                                 if (!element.isUpperCase()) {
                                     Log.d("SERVER", "Decryption of test text failed")
@@ -225,10 +225,17 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
                             // the data
                             val strEncryptionKey =
                                 Cryptography.decryptAES(encryptedEncryptionKey, userAESKey, iv)
-                            val encryptionKey = strEncryptionKey.decodeHex()
+                            val encryptionKey = String(strEncryptionKey).decodeHex()
                             Log.d("SERVER", "Retrieved file encryption key")
 
-                            listener(true, encryptionKey)
+                            // Create the encryption parameters object to return
+                            val encryptionParameters = EncryptionParameters(
+                                iv,
+                                salt,
+                                encryptionKey
+                            )
+
+                            listener(true, encryptionParameters)
                         } catch (e: InvalidDecryptionException) {
                             Log.d("SERVER", "Decryption failed: $e")
                             listener(false, null)

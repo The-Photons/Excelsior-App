@@ -48,7 +48,12 @@ class Cryptography {
          */
         fun genAESKey(password: String, salt: String): ByteArray {
             val factory = SecretKeyFactory.getInstance(KEYGEN_ALGORITHM)
-            val spec = PBEKeySpec(password.toCharArray(), salt.toByteArray(), KEYGEN_ITERATIONS, AES_KEY_LENGTH)
+            val spec = PBEKeySpec(
+                password.toCharArray(),
+                salt.toByteArray(),
+                KEYGEN_ITERATIONS,
+                AES_KEY_LENGTH
+            )
             val key = factory.generateSecret(spec)
             return key.encoded
         }
@@ -67,24 +72,39 @@ class Cryptography {
             return iv.toHexString()
         }
 
-        fun encryptAES(plainText: String, key: ByteArray, iv: String): String {
+        /**
+         * Encrypts bytes using AES.
+         *
+         * @param plainText Bytes to encrypt
+         * @param key AES encryption/decryption key.
+         * @param iv Initialization vector used to encrypt the data.
+         * @return Encrypted text. This is a Base64 string.
+         */
+        fun encryptAES(plainText: ByteArray, key: ByteArray, iv: String): String {
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
             val secretKeySpec = SecretKeySpec(key, "AES")
             val ivParameterSpec = IvParameterSpec(iv.toByteArray())
             cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec)
-            val encryptedBytes = cipher.doFinal(plainText.toByteArray())
+            val encryptedBytes = cipher.doFinal(plainText)
             return Base64.encodeToString(encryptedBytes, Base64.DEFAULT)
         }
 
-        fun decryptAES(encryptedText: String, key: ByteArray, iv: String): String {
+        /**
+         * Decrypts encrypted AES text.
+         *
+         * @param encryptedText Text to decrypt. This text should be a Base64 string.
+         * @param key AES encryption/decryption key.
+         * @param iv Initialization vector used to encrypt the data.
+         * @return Original plaintext.
+         */
+        fun decryptAES(encryptedText: String, key: ByteArray, iv: String): ByteArray {
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
             val secretKeySpec = SecretKeySpec(key, "AES")
             val ivParameterSpec = IvParameterSpec(iv.toByteArray())
             cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec)
             try {
                 val encryptedBytes = Base64.decode(encryptedText, Base64.DEFAULT)
-                val decryptedBytes = cipher.doFinal(encryptedBytes)
-                return String(decryptedBytes)
+                return cipher.doFinal(encryptedBytes)
             } catch (e: IllegalArgumentException) {
                 throw InvalidDecryptionException("Invalid decryption of ciphertext")
             } catch (e: BadPaddingException) {
@@ -94,4 +114,14 @@ class Cryptography {
     }
 }
 
-class InvalidDecryptionException(message: String): Exception(message)
+/**
+ * Class that encapsulates the different parameters needed for AES encryption/decryption.
+ *
+ * @property iv Initialization vector.
+ * @property salt Salt for the encryption.
+ * @property encryptionKey Byte array, representing the encryption key.
+ */
+class EncryptionParameters(val iv: String, val salt: String, val encryptionKey: ByteArray)
+
+// EXCEPTIONS
+class InvalidDecryptionException(message: String) : Exception(message)

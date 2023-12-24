@@ -20,6 +20,7 @@ package site.overwrite.encryptedfilesapp.activities
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.util.Base64
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -48,6 +49,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import site.overwrite.encryptedfilesapp.src.Cryptography
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 import java.nio.charset.Charset
@@ -57,6 +60,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var server: Server
     private lateinit var loginIntent: Intent
 
+    private lateinit var encryptionIV: String
+    private lateinit var encryptionSalt: String
     private lateinit var encryptionKey: ByteArray
 
     // Overridden functions
@@ -70,11 +75,18 @@ class MainActivity : ComponentActivity() {
         val getLoginCredentials =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 if (result.resultCode == Activity.RESULT_OK) {
+                    // Retrieve data from the result intent
                     val resultIntent: Intent? = result.data
                     val serverURL: String = resultIntent?.getStringExtra("server_url") ?: ""
-                    encryptionKey = resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
-                    Log.d("MAIN", "Got server URL: $serverURL")
-                    Log.d("MAIN", "Got encryption key (as hex string): ${encryptionKey.toHexString()}")
+                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
+                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
+                    encryptionKey =
+                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
+                    Log.d(
+                        "MAIN",
+                        "Got URL '$serverURL', IV '$encryptionIV', salt '$encryptionSalt', " +
+                                "and encryption key (as hex string) '${encryptionKey.toHexString()}'"
+                    )
 
                     // Now initialize the things needed
                     val queue = Volley.newRequestQueue(applicationContext)
@@ -104,8 +116,47 @@ class MainActivity : ComponentActivity() {
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
-        var filePath by remember { mutableStateOf("") }
+        var filePath by remember { mutableStateOf("file1.txt") }  // FIXME: REMOVE!!!
 
+        // Helper functions
+        fun processSuccessfulResponse(encryptedFileContent: String) {
+            // Decrypt the data
+            val fileData =
+                Cryptography.decryptAES(encryptedFileContent, encryptionKey, encryptionIV)
+
+            // TODO: CONTINUE
+            Log.d("MAIN", "File data: ${String(fileData)}")
+            scope.launch { snackbarHostState.showSnackbar(String(fileData)) }
+        }
+
+        fun getFile(path: String) {
+            Log.d("MAIN", "Getting file: '$path'")
+            server.getFile(
+                path,
+                { json ->
+                    run {
+                        val rawBase64Content = json.getString("content")
+                        val innerContent = String(Base64.decode(rawBase64Content, Base64.DEFAULT))
+                        Log.d("MAIN", "File content: $innerContent")
+                        processSuccessfulResponse(innerContent)
+                    }
+                },
+                { status, _ ->
+                    run {
+                        Log.d("MAIN", "Failed request: $status")
+                        scope.launch { snackbarHostState.showSnackbar(status) }
+                    }
+                },
+                { error ->
+                    run {
+                        Log.d("MAIN", "Request had error: $error")
+                        scope.launch { snackbarHostState.showSnackbar(error.toString()) }
+                    }
+                }
+            )
+        }
+
+        // Main UI
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -131,24 +182,7 @@ class MainActivity : ComponentActivity() {
                     singleLine = true,
                     label = { Text("File Path") })
                 Button(
-                    onClick = {
-                        server.getFile(
-                            filePath,
-                            { content -> Log.d("MAIN", "Response content: $content") },
-                            { status, _ ->
-                                run {
-                                    Log.d("MAIN", "Failed request: $status")
-                                    scope.launch { snackbarHostState.showSnackbar(status) }
-                                }
-                            },
-                            { error ->
-                                run {
-                                    Log.d("MAIN", "Request had error: $error")
-                                    scope.launch { snackbarHostState.showSnackbar(error.toString()) }
-                                }
-                            }
-                        )
-                    }
+                    onClick = { getFile(filePath) }
                 ) {
                     Text("Get File")
                 }
