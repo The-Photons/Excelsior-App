@@ -73,6 +73,7 @@ class LoginActivity : ComponentActivity() {
 
     private lateinit var dataStoreManager: DataStoreManager
 
+    // Overridden methods
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("LOGIN", "Login activity onCreate")
         super.onCreate(savedInstanceState)
@@ -106,6 +107,7 @@ class LoginActivity : ComponentActivity() {
         var isErrorServerURL by remember { mutableStateOf(false) }
 
         var userPassword by remember { mutableStateOf("") }
+        var isErrorPassword by remember { mutableStateOf(false) }
         var isPasswordVisible by remember { mutableStateOf(false) }
 
         var isLoading by remember { mutableStateOf(false) }
@@ -153,6 +155,15 @@ class LoginActivity : ComponentActivity() {
                     singleLine = true,
                     placeholder = { Text("Password") },
                     onValueChange = { userPassword = it },
+                    supportingText = {
+                        if (isErrorPassword) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = "Incorrect Password",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
                     label = { Text("Encryption Key") },
                     visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -179,20 +190,42 @@ class LoginActivity : ComponentActivity() {
                                     if (!isValid) {
                                         isErrorServerURL = true
                                         Log.d("LOGIN", "Invalid server URL: $serverURL")
-                                    }
-                                    Log.d("LOGIN", "Good URL: $serverURL")
+                                        isLoading = false
+                                    } else {
+                                        Log.d("LOGIN", "Good URL: $serverURL")
 
-                                    // Update the saved URL
-                                    runBlocking {
-                                        dataStoreManager.setServerURL(serverURL)
-                                    }
+                                        // Update the saved URL
+                                        runBlocking {
+                                            dataStoreManager.setServerURL(serverURL)
+                                        }
 
-                                    // Return needed things
-                                    val resultIntent = Intent()
-                                    resultIntent.putExtra("server_url", serverURL)
-                                    setResult(RESULT_OK, resultIntent)
-                                    isLoading = false
-                                    finish()
+                                        // Now check the password
+                                        Server.isValidEncryptionPassword(
+                                            serverURL,
+                                            userPassword,
+                                            queue
+                                        ) { isValid ->
+                                            run {
+                                                if (!isValid) {
+                                                    Log.d("LOGIN", "Password is invalid")
+                                                    isErrorPassword = true
+                                                    isLoading = false
+                                                } else {
+                                                    Log.d("LOGIN", "Password is valid")
+
+                                                    // Return needed things
+                                                    val resultIntent = Intent()
+                                                    resultIntent.putExtra(
+                                                        "server_url",
+                                                        serverURL
+                                                    )
+                                                    setResult(RESULT_OK, resultIntent)
+                                                    isLoading = false
+                                                    finish()
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

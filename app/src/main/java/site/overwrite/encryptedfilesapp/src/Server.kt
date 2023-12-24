@@ -25,6 +25,7 @@ import com.android.volley.RequestQueue
 import org.json.JSONObject
 
 // CONSTANTS
+const val GET_ENCRYPTION_PARAMS_PAGE = "get-encryption-params"
 const val PING_PAGE = "ping"
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
@@ -33,7 +34,7 @@ const val GET_FILE_PAGE = "get-file"
 /**
  * Class that handles the communication with the encrypted files server.
  *
- * @property queue Volley RequestQueue for processing HTTP requests.
+ * @property queue Volley `RequestQueue` for processing HTTP requests.
  * @property serverURL URL to the server. **Assumed to be valid**.
  */
 class Server(private val queue: RequestQueue, private val serverURL: String) {
@@ -48,8 +49,8 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
      */
     fun listFiles(
         path: String,
-        processResponse: (Any) -> Any,
-        failedResponse: (String) -> Any,
+        processResponse: (JSONObject) -> Any,
+        failedResponse: (String, JSONObject) -> Any,
         errorListener: Response.ErrorListener
     ) {
         sendRequest(
@@ -73,8 +74,8 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
      */
     fun getFile(
         path: String,
-        processResponse: (Any) -> Any,
-        failedResponse: (String) -> Any,
+        processResponse: (JSONObject) -> Any,
+        failedResponse: (String, JSONObject) -> Any,
         errorListener: Response.ErrorListener
     ) {
         sendRequest(
@@ -104,8 +105,8 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
             method: Int,
             page: String,
             queue: RequestQueue,
-            processResponse: (Any) -> Any,
-            failedResponse: (String) -> Any,
+            processResponse: (JSONObject) -> Any,
+            failedResponse: (String, JSONObject) -> Any,
             errorListener: Response.ErrorListener
         ) {
             // Form the full URL
@@ -120,9 +121,9 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
                         val json = JSONObject(response)
                         val status = json.getString("status")
                         if (status == "ok") {
-                            processResponse(json.get("content"))
+                            processResponse(json)
                         } else {
-                            failedResponse(status)
+                            failedResponse(status, json)
                         }
                     }
                 },
@@ -148,8 +149,9 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
                 Request.Method.GET,
                 PING_PAGE,
                 queue,
-                { response ->
+                { json ->
                     run {
+                        val response = json.get("content")
                         if (response == "pong") {
                             Log.d("SERVER", "'$serverURL' is valid")
                             listener(true)
@@ -159,8 +161,76 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
                         }
                     }
                 },
-                { _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) },
+                { _, _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) },
                 { _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) }
+            )
+        }
+
+        /**
+         * Checks if the provided encryption password is valid.
+         *
+         * @param serverURL **Verified** server URL.
+         * @param password Password to check.
+         * @param queue Request Volley queue.
+         * @param listener Listener to process the result.
+         */
+        fun isValidEncryptionPassword(
+            serverURL: String,
+            password: String,
+            queue: RequestQueue,
+            listener: (Boolean) -> Unit
+        ) {
+            sendRequest(
+                serverURL,
+                Request.Method.GET,
+                GET_ENCRYPTION_PARAMS_PAGE,
+                queue,
+                { json ->
+                    run {
+                        // Split the response into the IV, the test string, and encrypted AES key
+                        val iv = json.getString("iv")
+                        val salt = json.getString("salt")
+                        val encryptedTestString = json.getString("test_str")
+                        val encryptedKey = json.getString("encrypted_key")
+                        Log.d("SERVER", "IV: $iv")
+                        Log.d("SERVER", "Salt: $salt")
+                        Log.d("SERVER", "Encrypted test string: $encryptedTestString")
+                        Log.d("SERVER", "Encrypted key: $encryptedKey")
+
+                        // Convert the given password into the AES
+                        val userAESKey = Cryptography.genAESKey(password, salt)
+
+                        // Attempt to decrypt the test string
+                        try {
+                            val attemptedDecrypt =
+                                Cryptography.decryptAES(encryptedTestString, userAESKey, iv)
+                            for (element in attemptedDecrypt) {
+                                if (!element.isUpperCase()) {
+                                    Log.d("SERVER", "Decryption of test text failed")
+                                    listener(false)
+                                }
+                            }
+
+                            Log.d("SERVER", "Decryption of test text successful")
+                            listener(true)
+                        } catch (e: InvalidDecryptionException) {
+                            Log.d("SERVER", "Decryption failed: $e")
+                            listener(false)
+                        }
+                    }
+                },
+                { _, _ ->
+                    run {
+                        Log.d("SERVER", "Invalid encryption password response")
+                        listener(false)
+                    }
+                },
+                { _ ->
+                    run {
+                        Log.d("SERVER", "Error in encryption password response")
+                        listener(false)
+                    }
+                }
             )
         }
     }

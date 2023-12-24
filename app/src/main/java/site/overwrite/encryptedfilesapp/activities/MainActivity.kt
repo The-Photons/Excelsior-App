@@ -129,7 +129,7 @@ class MainActivity : ComponentActivity() {
                         server.getFile(
                             filePath,
                             { content -> Log.d("MAIN", "Response content: $content") },
-                            { status ->
+                            { status, _ ->
                                 run {
                                     Log.d("MAIN", "Failed request: $status")
                                     scope.launch { snackbarHostState.showSnackbar(status) }
