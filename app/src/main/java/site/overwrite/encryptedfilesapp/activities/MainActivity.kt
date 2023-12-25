@@ -17,27 +17,34 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
@@ -47,15 +54,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.capitalize
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import site.overwrite.encryptedfilesapp.src.Cryptography
 import site.overwrite.encryptedfilesapp.src.Server
+import site.overwrite.encryptedfilesapp.src.decodeHex
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
+// CONSTANTS
+const val PREVIOUS_DIRECTORY_TEXT_LABEL = "Previous Directory"
+const val PREVIOUS_DIRECTORY_TYPE = "prev-dir"
+
+// MAIN ACTIVITY
 class MainActivity : ComponentActivity() {
     // Properties
     private lateinit var server: Server
@@ -71,30 +85,42 @@ class MainActivity : ComponentActivity() {
         Log.d("MAIN", "Main activity onCreate")
         super.onCreate(savedInstanceState)
 
-        // We first need to ask for the login details, especially the encryption key
-        loginIntent = Intent(this, LoginActivity::class.java);
-        val getLoginCredentials =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                if (result.resultCode == Activity.RESULT_OK) {
-                    // Retrieve data from the result intent
-                    val resultIntent: Intent? = result.data
-                    val serverURL: String = resultIntent?.getStringExtra("server_url") ?: ""
-                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
-                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
-                    encryptionKey =
-                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
-                    Log.d(
-                        "MAIN",
-                        "Got URL '$serverURL', IV '$encryptionIV', salt '$encryptionSalt', " +
-                                "and encryption key (as hex string) '${encryptionKey.toHexString()}'"
-                    )
-
-                    // Now initialize the things needed
-                    val queue = Volley.newRequestQueue(applicationContext)
-                    server = Server(queue, serverURL)
-                }
-            }
-        getLoginCredentials.launch(loginIntent)
+        // TODO: Remove and Uncomment Below
+        val queue = Volley.newRequestQueue(applicationContext)
+        server = Server(queue, "http://192.168.80.142:5000")
+        encryptionIV = "encryptionIntVec"
+        encryptionSalt = "someSalt12345678"
+        encryptionKey = String(
+            Cryptography.decryptAES(
+                "UXMMpaGD1SJ3ZATBuJnt7I3MWYHzsVFURgo0tKDg5aOoP16mmDPal/8GmsqvXXkohZkf7SxRorWXe9qcIW+rmAA5niaqZeI2nvAuSrmztRg=",
+                Cryptography.genAESKey("password", encryptionSalt),
+                encryptionIV
+            )
+        ).decodeHex()
+//        // We first need to ask for the login details, especially the encryption key
+//        loginIntent = Intent(this, LoginActivity::class.java);
+//        val getLoginCredentials =
+//            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+//                if (result.resultCode == Activity.RESULT_OK) {
+//                    // Retrieve data from the result intent
+//                    val resultIntent: Intent? = result.data
+//                    val serverURL: String = resultIntent?.getStringExtra("server_url") ?: ""
+//                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
+//                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
+//                    encryptionKey =
+//                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
+//                    Log.d(
+//                        "MAIN",
+//                        "Got URL '$serverURL', IV '$encryptionIV', salt '$encryptionSalt', " +
+//                                "and encryption key (as hex string) '${encryptionKey.toHexString()}'"
+//                    )
+//
+//                    // Now initialize the things needed
+//                    val queue = Volley.newRequestQueue(applicationContext)
+//                    server = Server(queue, serverURL)
+//                }
+//            }
+//        getLoginCredentials.launch(loginIntent)
 
         setContent {
             EncryptedFilesAppTheme {
@@ -110,6 +136,9 @@ class MainActivity : ComponentActivity() {
     }
 
     // Composables
+    /**
+     * List of files.
+     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     @Preview
@@ -117,9 +146,8 @@ class MainActivity : ComponentActivity() {
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
 
-        var filePath by remember { mutableStateOf("file1.txt") }  // FIXME: REMOVE!!!
         var dirPath by remember { mutableStateOf("") }
-
+        var prevDir by remember { mutableStateOf("") }
         var dirItems by remember { mutableStateOf(JSONArray()) }
 
         // Helper functions
@@ -133,7 +161,8 @@ class MainActivity : ComponentActivity() {
             scope.launch { snackbarHostState.showSnackbar(String(fileData)) }
         }
 
-        fun getFile(path: String) {
+        fun getFile(rawPath: String) {
+            val path = rawPath.trimStart('/')
             Log.d("MAIN", "Getting file: '$path'")
             server.getFile(
                 path,
@@ -160,29 +189,107 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        fun getItemsInDir(dir: String) {
+        fun getItemsInDir(rawDir: String) {
+            val dir = rawDir.trimStart('/')
+            Log.d("MAIN", "Getting items in directory: '$dir'")
             server.listFiles(
                 dir,
-                {json -> run {
-                    val itemsInDirStr = json.getString("content")
+                { json ->
+                    run {
+                        val itemsInDirStr = json.getString("content")
 
-                    // If the items is null, then the directory does not exist
-                    if (itemsInDirStr == "null") {
-                        dirItems = JSONArray()
-                    } else {
-                        dirItems = JSONArray(itemsInDirStr)
-                        Log.d("MAIN", "Num items in dir: ${dirItems.length()}")
-
-                        // TODO: Continue
+                        // If the items is null, then the directory does not exist
+                        if (itemsInDirStr == "null") {
+                            dirItems = JSONArray()
+                        } else {
+                            dirItems = JSONArray(itemsInDirStr)
+                            Log.d("MAIN", "Found ${dirItems.length()} items in directory")
+                        }
                     }
-                }},
-                {status, json -> run {
-                    Log.d("MAIN", "Failed to list items in directory")
-                }},
-                {error -> run {
-                    Log.d("MAIN", "Error when getting items in directory: $error")
-                }}
+                },
+                { status, json ->
+                    run {
+                        Log.d("MAIN", "Failed to list items in directory")
+                    }
+                },
+                { error ->
+                    run {
+                        Log.d("MAIN", "Error when getting items in directory: $error")
+                    }
+                }
             )
+        }
+
+        // Helper composables
+        /**
+         * Creates a directory item on the screen.
+         *
+         * @param name Name of the item in the directory.
+         * @param type Type of the item in the directory.
+         * @param sizeString (Nicely processed) size of the item.
+         */
+        @Composable
+        fun DirectoryItem(name: String, type: String, sizeString: String) {
+            TextButton(
+                shape = RoundedCornerShape(0),
+                onClick = {
+                    Log.d("MAIN", "Clicked on $type named '$name'")
+                    if (type == "file") {
+                        getFile("$dirPath/$name")
+                    } else {
+                        if (type == PREVIOUS_DIRECTORY_TYPE) {
+                            dirPath = prevDir
+                            val split = prevDir.split("/")
+                            prevDir = split.subList(0, split.size - 1).joinToString("/")
+                        } else {
+                            prevDir = dirPath
+                            dirPath = "$dirPath/$name"
+                        }
+                        Log.d("MAIN", "Dir path: '$dirPath'; Prev dir: '$prevDir'")
+                        getItemsInDir(dirPath)
+                    }
+                }
+            ) {
+                // Get the correct icon and description to display
+                val icon: ImageVector
+                val description: String
+                when (type) {
+                    "file" -> {
+                        icon = Icons.Filled.InsertDriveFile
+                        description = "File"
+                    }
+
+                    "directory" -> {
+                        icon = Icons.Filled.Folder
+                        description = "Folder"
+                    }
+
+                    PREVIOUS_DIRECTORY_TYPE -> {
+                        icon = Icons.Filled.ArrowBack
+                        description = "Back"
+                    }
+
+                    else -> {
+                        icon = Icons.Filled.QuestionMark
+                        description = "Unknown"
+                    }
+                }
+
+                Row {
+                    if (type != PREVIOUS_DIRECTORY_TYPE) {
+                        // TODO: Implement syncing
+                        Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
+                    } else {
+                        Spacer(Modifier.size(24.dp))
+                    }
+                    Spacer(Modifier.size(10.dp))
+                    Icon(icon, description)
+                    Text(name)
+                    Spacer(Modifier.weight(1f))
+                    Text(sizeString)
+
+                }
+            }
         }
 
         // Main UI
@@ -194,7 +301,7 @@ class MainActivity : ComponentActivity() {
                         titleContentColor = MaterialTheme.colorScheme.primary,
                     ),
                     title = {
-                        Text("Files")
+                        Text("Files (${if (dirPath != "") dirPath else "/"})")
                     }
                 )
             },
@@ -202,45 +309,24 @@ class MainActivity : ComponentActivity() {
                 SnackbarHost(hostState = snackbarHostState)
             }
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding)){
-                Row{
-                    OutlinedTextField(
-                        value = filePath,
-                        onValueChange = { filePath = it },
-                        singleLine = true,
-                        label = { Text("File Path") })
-                    Button(
-                        onClick = { getFile(filePath) }
-                    ) {
-                        Text("Get File")
-                    }
+            Column(modifier = Modifier.padding(innerPadding)) {
+                if (dirPath != "") {
+                    DirectoryItem(PREVIOUS_DIRECTORY_TEXT_LABEL, PREVIOUS_DIRECTORY_TYPE, "")
                 }
-                Row{
-                    OutlinedTextField(
-                        value = dirPath,
-                        onValueChange = { dirPath = it },
-                        singleLine = true,
-                        label = { Text("Directory") })
-                    Button(
-                        onClick = { getItemsInDir(dirPath)}
-                    ) {
-                        Text("List Files")
-                    }
-                }
-                Column(modifier = Modifier.padding(innerPadding)) {
-                    if (dirPath != "") {
-                        Text("Previous directory")
-                    }
-                    for (i in 0..<dirItems.length()) {
-                        // Get the specific item
-                        val item = dirItems.getJSONArray(i)
-                        val name = item[0]
-                        val type = item[1]
+                for (i in 0..<dirItems.length()) {
+                    // Get the specific item
+                    val item = dirItems.getJSONObject(i)
+                    val name = item.getString("name")
+                    val type = item.getString("type")
+                    val size = item.getString("size")
 
-                        Text("$name ($type)")
-                    }
+                    // Create a button with that icon
+                    DirectoryItem(name, type, size)
                 }
             }
         }
+
+        // Now display the main directory
+        getItemsInDir(dirPath)
     }
 }
