@@ -45,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -182,14 +183,15 @@ class MainActivity : ComponentActivity() {
                 },
                 { status, _ ->
                     run {
-                        Log.d("MAIN", "Failed request: $status")
+                        Log.d("MAIN", "Failed file request: $status")
                         scope.launch { snackbarHostState.showSnackbar(status) }
                     }
                 },
                 { error ->
                     run {
-                        Log.d("MAIN", "Request had error: $error")
-                        scope.launch { snackbarHostState.showSnackbar(error.toString()) }
+                        Log.d("MAIN", "File request had error: $error")
+                        // Todo: allow retry
+                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                     }
                 }
             )
@@ -215,15 +217,19 @@ class MainActivity : ComponentActivity() {
                         isLoadingFiles = false
                     }
                 },
-                { status, json ->
+                { status, _ ->
                     run {
                         Log.d("MAIN", "Failed to list items in directory")
+                        scope.launch { snackbarHostState.showSnackbar("Failed to get things in directory: $status") }
                         isLoadingFiles = false
                     }
                 },
                 { error ->
                     run {
                         Log.d("MAIN", "Error when getting items in directory: $error")
+                        dirItems = JSONArray()
+                        // Todo: allow retry
+                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                         isLoadingFiles = false
                     }
                 }
