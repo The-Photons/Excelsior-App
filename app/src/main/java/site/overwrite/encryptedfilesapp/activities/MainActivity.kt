@@ -27,6 +27,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +36,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
@@ -45,6 +47,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +72,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
@@ -258,6 +263,7 @@ class MainActivity : ComponentActivity() {
 
             val context = LocalContext.current
             var expanded by remember { mutableStateOf(false) }
+
             TextButton(
                 shape = RoundedCornerShape(0),
                 onClick = {
@@ -354,6 +360,46 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        /**
+         * Adds the item action button.
+         */
+        @Composable
+        fun AddItemActionButton() {
+            // Attributes
+            val context = LocalContext.current
+            var expanded by remember { mutableStateOf(false) }
+
+            if (!isLoadingFiles) {
+                FloatingActionButton(
+                    modifier = Modifier.padding(all = 16.dp),
+                    onClick = { expanded = !expanded },
+                ) {
+                    Icon(Icons.Filled.Add, "Add File/Folder")
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Add File") },
+                            onClick = {
+                                Toast.makeText(context, "Add File", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Add Folder") },
+                            onClick = {
+                                Toast.makeText(
+                                    context,
+                                    "Add Folder",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         // Main UI
         Scaffold(
             topBar = {
@@ -369,7 +415,9 @@ class MainActivity : ComponentActivity() {
             },
             snackbarHost = {
                 SnackbarHost(hostState = snackbarHostState)
-            }
+            },
+            floatingActionButton = { AddItemActionButton() },
+            floatingActionButtonPosition = FabPosition.End
         ) { innerPadding ->
             if (isLoadingFiles) {
                 Column(
