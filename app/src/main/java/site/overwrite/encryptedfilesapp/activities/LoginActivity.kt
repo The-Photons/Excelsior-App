@@ -93,17 +93,21 @@ class LoginActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ServerAddress()
+                    LoginView()
                 }
             }
         }
     }
 
     // Composables
+    /**
+     * Login view.
+     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Preview
     @Composable
-    fun ServerAddress() {
+    fun LoginView() {
+        // Attributes
         var isErrorServerURL by remember { mutableStateOf(false) }
 
         var userPassword by remember { mutableStateOf("password") }  // FIXME: REMOVE!!!
@@ -112,6 +116,7 @@ class LoginActivity : ComponentActivity() {
 
         var isLoading by remember { mutableStateOf(false) }
 
+        // Main UI
         Scaffold(
             topBar = {
                 TopAppBar(

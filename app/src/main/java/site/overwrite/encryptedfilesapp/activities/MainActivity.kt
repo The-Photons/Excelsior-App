@@ -17,18 +17,18 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.app.Activity
 import android.content.Intent
-import android.graphics.drawable.Icon
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,7 +58,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -79,7 +78,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
@@ -111,7 +109,7 @@ class MainActivity : ComponentActivity() {
 
         // TODO: Remove and Uncomment Below
         val queue = Volley.newRequestQueue(applicationContext)
-        server = Server(queue, "http://192.168.80.142:5000")
+        server = Server(queue, "http://10.0.2.2:5000")  // 10.0.2.2 refers to localhost on PC
         encryptionIV = "encryptionIntVec"
         encryptionSalt = "someSalt12345678"
         encryptionKey = String(
@@ -160,15 +158,29 @@ class MainActivity : ComponentActivity() {
     }
 
     // Composables
+    /**
+     * Creates a new text input dialog.
+     *
+     * @param dialogTitle Title of the dialog.
+     * @param textFieldLabel Label for the text field.
+     * @param textFieldPlaceholder Placeholder for the text field.
+     * @param textFieldErrorText Text to show if the validation fails.
+     * @param onDismissal Function that handles dismissal requests.
+     * @param onConfirmation Function that handles confirmation requests.
+     * @param textFieldValidator Validation function that validates the input for the text field.
+     * @param icon Optional icon to display on the dialog.
+     * @param iconDesc Optional description for the icon. If an icon is provided, must be present.
+     * @param singleLine Whether the text field accepts only one line of text.
+     */
     @Composable
     fun TextInputDialog(
-        onDismissRequest: () -> Unit,
-        onConfirmation: (String) -> Unit,
         dialogTitle: String,
         textFieldLabel: String,
         textFieldPlaceholder: String = "",
-        textFieldValidator: (String) -> Boolean,
         textFieldErrorText: String = "Invalid input",
+        onDismissal: () -> Unit,
+        onConfirmation: (String) -> Unit,
+        textFieldValidator: (String) -> Boolean,
         icon: ImageVector? = null,
         iconDesc: String? = null,
         singleLine: Boolean = true,
@@ -212,7 +224,7 @@ class MainActivity : ComponentActivity() {
                 )
             },
             onDismissRequest = {
-                onDismissRequest()
+                onDismissal()
             },
             confirmButton = {
                 TextButton(
@@ -225,7 +237,7 @@ class MainActivity : ComponentActivity() {
             dismissButton = {
                 TextButton(
                     onClick = {
-                        onDismissRequest()
+                        onDismissal()
                     }
                 ) {
                     Text("Cancel")
@@ -255,7 +267,12 @@ class MainActivity : ComponentActivity() {
         var isLoadingFiles by remember { mutableStateOf(false) }
 
         // Helper functions
-        fun processSuccessfulResponse(encryptedFileContent: String) {
+        /**
+         * Processes a successful file content request.
+         *
+         * @param encryptedFileContent Encrypted content of the file.
+         */
+        fun processFileContent(encryptedFileContent: String) {
             // Decrypt the data
             val fileData =
                 Cryptography.decryptAES(encryptedFileContent, encryptionKey, encryptionIV)
@@ -265,6 +282,11 @@ class MainActivity : ComponentActivity() {
             scope.launch { snackbarHostState.showSnackbar(String(fileData)) }
         }
 
+        /**
+         * Gets the file at the specified path.
+         *
+         * @param rawPath Path to the file.
+         */
         fun getFile(rawPath: String) {
             val path = rawPath.trimStart('/')
             Log.d("MAIN", "Getting file: '$path'")
@@ -275,7 +297,7 @@ class MainActivity : ComponentActivity() {
                         val rawBase64Content = json.getString("content")
                         val innerContent = String(Base64.decode(rawBase64Content, Base64.DEFAULT))
                         Log.d("MAIN", "File content: $innerContent")
-                        processSuccessfulResponse(innerContent)
+                        processFileContent(innerContent)
                     }
                 },
                 { status, _ ->
@@ -294,6 +316,9 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        /**
+         * Gets all the items in the current directory.
+         */
         fun getItemsInDir() {
             isLoadingFiles = true
             val dir = dirPath.trimStart('/')
@@ -481,7 +506,13 @@ class MainActivity : ComponentActivity() {
 
                 if (showFolderNameInputDialog) {
                     TextInputDialog(
-                        onDismissRequest = { showFolderNameInputDialog = false },
+                        dialogTitle = "Enter Folder Name",
+                        textFieldLabel = "Name",
+                        textFieldPlaceholder = "Name of the folder",
+                        textFieldErrorText = "Invalid folder name",
+                        onDismissal = {
+                            showFolderNameInputDialog = false
+                        },
                         onConfirmation = { folderName ->
                             run {
                                 Log.d("MAIN", "Request for new folder: $folderName")
@@ -514,11 +545,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         },
-                        dialogTitle = "Enter Folder Name",
-                        textFieldLabel = "Name",
-                        textFieldValidator = { text -> text.isNotBlank() },  // TODO: Perhaps also filter by specific chars (e.g. [0-9A-z_-])
-                        textFieldErrorText = "Invalid folder name",
-                        textFieldPlaceholder = "Name of the folder"
+                        textFieldValidator = { text -> text.isNotBlank() }  // TODO: Perhaps also filter by specific chars (e.g. [0-9A-z_-])
                     )
                 }
             }
