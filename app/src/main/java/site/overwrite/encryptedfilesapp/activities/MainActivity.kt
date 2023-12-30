@@ -21,9 +21,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,11 +38,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -60,6 +66,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.volley.toolbox.Volley
@@ -246,6 +253,11 @@ class MainActivity : ComponentActivity() {
          */
         @Composable
         fun DirectoryItem(name: String, type: String, sizeString: String) {
+            // Attributes
+            val isPreviousDirectoryItem = type == PREVIOUS_DIRECTORY_TYPE
+
+            val context = LocalContext.current
+            var expanded by remember { mutableStateOf(false) }
             TextButton(
                 shape = RoundedCornerShape(0),
                 onClick = {
@@ -253,7 +265,7 @@ class MainActivity : ComponentActivity() {
                     if (type == "file") {
                         getFile("$dirPath/$name")
                     } else {
-                        if (type == PREVIOUS_DIRECTORY_TYPE) {
+                        if (isPreviousDirectoryItem) {
                             dirPath = prevDir
                             val split = prevDir.split("/")
                             prevDir = split.subList(0, split.size - 1).joinToString("/")
@@ -292,17 +304,52 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Row {
-                    if (type != PREVIOUS_DIRECTORY_TYPE) {
+                    if (isPreviousDirectoryItem) {
+                        Spacer(Modifier.size(24.dp))
+                    } else {
                         // TODO: Implement syncing
                         Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
-                    } else {
-                        Spacer(Modifier.size(24.dp))
                     }
                     Spacer(Modifier.size(10.dp))
                     Icon(icon, description)
+                    Spacer(Modifier.size(4.dp))
                     Text(name)
                     Spacer(Modifier.weight(1f))
                     Text(sizeString)
+                    Spacer(Modifier.size(4.dp))
+                    Box {
+                        if (isPreviousDirectoryItem) {
+                            Spacer(Modifier.size(24.dp))
+                        } else {
+                            IconButton(
+                                modifier = Modifier.size(24.dp),
+                                onClick = { expanded = !expanded }
+                            ) {
+                                Icon(Icons.Filled.MoreVert, "More")
+                            }
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Sync") },
+                                    onClick = {
+                                        Toast.makeText(context, "Sync", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Delete From Server") },
+                                    onClick = {
+                                        Toast.makeText(
+                                            context,
+                                            "Delete From Server",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
