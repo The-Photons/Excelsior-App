@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -166,14 +167,19 @@ class MainActivity : ComponentActivity() {
         dialogTitle: String,
         textFieldLabel: String,
         textFieldPlaceholder: String = "",
+        textFieldValidator: (String) -> Boolean,
+        textFieldErrorText: String = "Invalid input",
         icon: ImageVector? = null,
         iconDesc: String? = null,
         singleLine: Boolean = true,
     ) {
         // Attributes
         var text by remember { mutableStateOf("") }
+        var isInvalidText by remember { mutableStateOf(false) }
+
         val focusRequester = remember { FocusRequester() }
 
+        // Dialog
         AlertDialog(
             icon = {
                 if (icon != null) {
@@ -187,9 +193,21 @@ class MainActivity : ComponentActivity() {
                 TextField(
                     modifier = Modifier.focusRequester(focusRequester),
                     value = text,
-                    onValueChange = { text = it },
+                    onValueChange = {
+                        text = it
+                        isInvalidText = !textFieldValidator(text)
+                    },
                     label = { Text(textFieldLabel) },
                     placeholder = { Text(textFieldPlaceholder) },
+                    supportingText = {
+                        if (isInvalidText) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = textFieldErrorText,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
                     singleLine = singleLine
                 )
             },
@@ -198,9 +216,8 @@ class MainActivity : ComponentActivity() {
             },
             confirmButton = {
                 TextButton(
-                    onClick = {
-                        onConfirmation(text)
-                    }
+                    enabled = !(text.isBlank() || isInvalidText),
+                    onClick = { onConfirmation(text) }
                 ) {
                     Text("Confirm")
                 }
@@ -499,6 +516,8 @@ class MainActivity : ComponentActivity() {
                         },
                         dialogTitle = "Enter Folder Name",
                         textFieldLabel = "Name",
+                        textFieldValidator = { text -> text.isNotBlank() },  // TODO: Perhaps also filter by specific chars (e.g. [0-9A-z_-])
+                        textFieldErrorText = "Invalid folder name",
                         textFieldPlaceholder = "Name of the folder"
                     )
                 }
