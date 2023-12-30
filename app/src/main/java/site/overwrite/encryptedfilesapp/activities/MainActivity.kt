@@ -18,6 +18,7 @@
 package site.overwrite.encryptedfilesapp.activities
 
 import android.content.Intent
+import android.graphics.drawable.Icon
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -59,9 +61,11 @@ import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +73,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -153,6 +159,68 @@ class MainActivity : ComponentActivity() {
     }
 
     // Composables
+    @Composable
+    fun TextInputDialog(
+        onDismissRequest: () -> Unit,
+        onConfirmation: (String) -> Unit,
+        dialogTitle: String,
+        textFieldLabel: String,
+        textFieldPlaceholder: String = "",
+        icon: ImageVector? = null,
+        iconDesc: String? = null,
+        singleLine: Boolean = true,
+    ) {
+        // Attributes
+        var text by remember { mutableStateOf("") }
+        val focusRequester = remember { FocusRequester() }
+
+        AlertDialog(
+            icon = {
+                if (icon != null) {
+                    Icon(icon, iconDesc)
+                }
+            },
+            title = {
+                Text(text = dialogTitle)
+            },
+            text = {
+                TextField(
+                    modifier = Modifier.focusRequester(focusRequester),
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text(textFieldLabel) },
+                    placeholder = { Text(textFieldPlaceholder) },
+                    singleLine = singleLine
+                )
+            },
+            onDismissRequest = {
+                onDismissRequest()
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onConfirmation(text)
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onDismissRequest()
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+    }
+
     /**
      * List of files.
      */
@@ -209,9 +277,9 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        fun getItemsInDir(rawDir: String) {
+        fun getItemsInDir() {
             isLoadingFiles = true
-            val dir = rawDir.trimStart('/')
+            val dir = dirPath.trimStart('/')
             Log.d("MAIN", "Getting items in directory: '$dir'")
             server.listFiles(
                 dir,
@@ -280,7 +348,7 @@ class MainActivity : ComponentActivity() {
                             dirPath = "$dirPath/$name"
                         }
                         Log.d("MAIN", "Dir path: '$dirPath'; Prev dir: '$prevDir'")
-                        getItemsInDir(dirPath)
+                        getItemsInDir()
                     }
                 }
             ) {
@@ -369,6 +437,8 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             var expanded by remember { mutableStateOf(false) }
 
+            var showFolderNameInputDialog by remember { mutableStateOf(false) }
+
             if (!isLoadingFiles) {
                 FloatingActionButton(
                     modifier = Modifier.padding(all = 16.dp),
@@ -387,15 +457,50 @@ class MainActivity : ComponentActivity() {
                         )
                         DropdownMenuItem(
                             text = { Text("Add Folder") },
-                            onClick = {
-                                Toast.makeText(
-                                    context,
-                                    "Add Folder",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
+                            onClick = { showFolderNameInputDialog = true }
                         )
                     }
+                }
+
+                if (showFolderNameInputDialog) {
+                    TextInputDialog(
+                        onDismissRequest = { showFolderNameInputDialog = false },
+                        onConfirmation = { folderName ->
+                            run {
+                                Log.d("MAIN", "Request for new folder: $folderName")
+                                showFolderNameInputDialog = false
+
+                                val fullFolderPath = "$dirPath/$folderName".trimStart('/')
+
+                                server.createFolder(
+                                    fullFolderPath,
+                                    { _ ->
+                                        run {
+                                            Log.d("MAIN", "New folder created: $fullFolderPath")
+                                            scope.launch { snackbarHostState.showSnackbar("Directory created") }
+                                            getItemsInDir()
+                                        }
+                                    },
+                                    { _, json ->
+                                        run {
+                                            Log.d("MAIN", "Failed to create folder")
+                                            val reason = json.getString("message")
+                                            scope.launch { snackbarHostState.showSnackbar("Failed to create folder: $reason") }
+                                        }
+                                    },
+                                    { error ->
+                                        run {
+                                            Log.d("MAIN", "Error when making folder: $error")
+                                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                                        }
+                                    }
+                                )
+                            }
+                        },
+                        dialogTitle = "Enter Folder Name",
+                        textFieldLabel = "Name",
+                        textFieldPlaceholder = "Name of the folder"
+                    )
                 }
             }
         }
@@ -451,6 +556,6 @@ class MainActivity : ComponentActivity() {
         }
 
         // Now display the main directory
-        getItemsInDir(dirPath)
+        getItemsInDir()
     }
 }

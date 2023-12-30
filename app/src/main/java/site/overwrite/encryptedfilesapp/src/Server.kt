@@ -29,6 +29,7 @@ const val GET_ENCRYPTION_PARAMS_PAGE = "get-encryption-params"
 const val PING_PAGE = "ping"
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
+const val CREATE_FOLDER_PAGE = "create-dir"
 
 // HELPER FUNCTIONS
 fun String.decodeHex(): ByteArray {
@@ -63,11 +64,10 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
         errorListener: Response.ErrorListener
     ) {
         // Properly set the page
-        var page: String
-        if (path != "") {
-            page = "$LIST_DIR_PAGE?path=$path"
+        val page: String = if (path != "") {
+            "$LIST_DIR_PAGE?path=$path"
         } else {
-            page = LIST_DIR_PAGE
+            LIST_DIR_PAGE
         }
 
         // Now we can send the request
@@ -100,6 +100,31 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
             serverURL,
             Request.Method.GET,
             "$GET_FILE_PAGE/$path",
+            queue,
+            processResponse,
+            failedResponse,
+            errorListener
+        )
+    }
+
+    /**
+     * Creates a new folder with the specified path.
+     *
+     * @param path Path to the new folder.
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun createFolder(
+        path: String,
+        processResponse: (JSONObject) -> Any,
+        failedResponse: (String, JSONObject) -> Any,
+        errorListener: Response.ErrorListener
+    ) {
+        sendRequest(
+            serverURL,
+            Request.Method.POST,
+            "$CREATE_FOLDER_PAGE/$path",
             queue,
             processResponse,
             failedResponse,
