@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,8 +45,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Cloud
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -63,11 +62,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,8 +72,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -86,6 +81,7 @@ import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import site.overwrite.encryptedfilesapp.src.Cryptography
+import site.overwrite.encryptedfilesapp.src.Dialogs
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.src.decodeHex
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
@@ -176,98 +172,6 @@ class MainActivity : ComponentActivity() {
     }
 
     // Composables
-    /**
-     * Creates a new text input dialog.
-     *
-     * @param dialogTitle Title of the dialog.
-     * @param textFieldLabel Label for the text field.
-     * @param textFieldPlaceholder Placeholder for the text field.
-     * @param textFieldErrorText Text to show if the validation fails.
-     * @param onDismissal Function that handles dismissal requests.
-     * @param onConfirmation Function that handles confirmation requests.
-     * @param textFieldValidator Validation function that validates the input for the text field.
-     * @param icon Optional icon to display on the dialog.
-     * @param iconDesc Optional description for the icon. If an icon is provided, must be present.
-     * @param singleLine Whether the text field accepts only one line of text.
-     */
-    @Composable
-    fun TextInputDialog(
-        dialogTitle: String,
-        textFieldLabel: String,
-        textFieldPlaceholder: String = "",
-        textFieldErrorText: String = "Invalid input",
-        onDismissal: () -> Unit,
-        onConfirmation: (String) -> Unit,
-        textFieldValidator: (String) -> Boolean,
-        icon: ImageVector? = null,
-        iconDesc: String? = null,
-        singleLine: Boolean = true,
-    ) {
-        // Attributes
-        var text by remember { mutableStateOf("") }
-        var isInvalidText by remember { mutableStateOf(false) }
-
-        val focusRequester = remember { FocusRequester() }
-
-        // Dialog
-        AlertDialog(
-            icon = {
-                if (icon != null) {
-                    Icon(icon, iconDesc)
-                }
-            },
-            title = {
-                Text(text = dialogTitle)
-            },
-            text = {
-                TextField(
-                    modifier = Modifier.focusRequester(focusRequester),
-                    value = text,
-                    onValueChange = {
-                        text = it
-                        isInvalidText = !textFieldValidator(text)
-                    },
-                    label = { Text(textFieldLabel) },
-                    placeholder = { Text(textFieldPlaceholder) },
-                    supportingText = {
-                        if (isInvalidText) {
-                            Text(
-                                modifier = Modifier.fillMaxWidth(),
-                                text = textFieldErrorText,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    singleLine = singleLine
-                )
-            },
-            onDismissRequest = {
-                onDismissal()
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !(text.isBlank() || isInvalidText),
-                    onClick = { onConfirmation(text) }
-                ) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        onDismissal()
-                    }
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-
-        LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
-        }
-    }
-
     /**
      * List of files.
      */
@@ -571,13 +475,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 if (showCreateFolderInputDialog) {
-                    TextInputDialog(
+                    Dialogs.TextInputDialog(
                         dialogTitle = "Enter Folder Name",
                         textFieldLabel = "Name",
                         textFieldPlaceholder = "Name of the folder",
                         textFieldErrorText = "Invalid folder name",
-                        onDismissal = { showCreateFolderInputDialog = false },
                         onConfirmation = { folderName -> onConfirmFolderName(folderName) },
+                        onDismissal = { showCreateFolderInputDialog = false },
 
                         // TODO: Perhaps also filter by specific chars (e.g. [0-9A-z_-])
                         textFieldValidator = { text -> text.isNotBlank() }
