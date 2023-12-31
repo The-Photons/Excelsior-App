@@ -462,9 +462,11 @@ class MainActivity : ComponentActivity() {
                                 expanded = expanded,
                                 onDismissRequest = { expanded = false }
                             ) {
+                                val path = "$dirPath/$name"
                                 DropdownMenuItem(
                                     leadingIcon = { Icon(Icons.Filled.Sync, "Sync") },
                                     text = { Text("Sync") },
+                                    enabled = !IOMethods.checkIfFileExists(path),
                                     onClick = {
                                         Toast.makeText(
                                             applicationContext,
@@ -530,6 +532,7 @@ class MainActivity : ComponentActivity() {
                     val fileName = getFileName(uri)
                     val filePath = "$dirPath/$fileName".trimStart('/')
 
+                    // TODO: Progress bar for uploading?
                     val inputStream = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
                         val content = inputStream.readBytes()
@@ -659,12 +662,11 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             },
-            snackbarHost = {
-                SnackbarHost(hostState = snackbarHostState)
-            },
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             floatingActionButton = { AddItemActionButton() },
             floatingActionButtonPosition = FabPosition.End
-        ) { innerPadding ->
+        )
+        { innerPadding ->
             if (isLoadingFiles) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
