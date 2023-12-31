@@ -17,6 +17,7 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
@@ -24,6 +25,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +76,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.android.volley.RequestQueue
@@ -284,6 +287,43 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        /**
+         * Deletes the specified item from the server.
+         *
+         * @param path Path to the item.
+         * @param type Item type.
+         */
+        fun deleteItem(path: String, type: String) {
+            Log.d("MAIN", "Deleting $type '$path'")
+            server.deleteItem(
+                path.trimStart('/'),
+                { _ ->
+                    run {
+                        Log.d("MAIN", "Deleted $type '$path' from server")
+                        val name = path.split('/').last()
+                        scope.launch { snackbarHostState.showSnackbar("Deleted $type '$name' from server") }
+
+                        getItemsInDir()
+                    }
+                },
+                { _, json ->
+                    run {
+                        val reason = json.getString("message")
+                        Log.d("MAIN", "Failed to delete $type: $reason")
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Failed to delete $type: $reason")
+                        }
+                    }
+                },
+                { error ->
+                    run {
+                        Log.d("MAIN", "Error when deleting $type: $error")
+                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                    }
+                }
+            )
+        }
+
         // Helper composables
         /**
          * Creates a directory item on the screen.
@@ -299,6 +339,8 @@ class MainActivity : ComponentActivity() {
 
             val context = LocalContext.current
             var expanded by remember { mutableStateOf(false) }
+
+            var showConfirmDeleteDialog by remember { mutableStateOf(false) }
 
             TextButton(
                 shape = RoundedCornerShape(0),
@@ -383,18 +425,39 @@ class MainActivity : ComponentActivity() {
                                 DropdownMenuItem(
                                     leadingIcon = { Icon(Icons.Filled.Delete, "Delete") },
                                     text = { Text("Delete From Server") },
-                                    onClick = {
-                                        Toast.makeText(
-                                            context,
-                                            "Delete From Server",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
+                                    onClick = { showConfirmDeleteDialog = true }
                                 )
                             }
                         }
                     }
                 }
+            }
+
+            if (showConfirmDeleteDialog) {
+                Dialogs.YesNoDialog(
+                    icon = Icons.Filled.Warning,
+                    iconDesc = "Warning",
+                    dialogTitle = "Confirm Deletion",
+                    dialogContent = {
+                        Column (
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ){
+                            Text(
+                                "Are you sure that you want to delete the $type '$name' " +
+                                        "from the server?"
+                            )
+                            if (type == "directory") {
+                                Text("This action also deletes all files within the directory.")
+                            }
+                            Text("This action is irreversible!", fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    onYes = {
+                        showConfirmDeleteDialog = false
+                        deleteItem("$dirPath/$name", type)
+                    },
+                    onNo = { showConfirmDeleteDialog = false }
+                )
             }
         }
 

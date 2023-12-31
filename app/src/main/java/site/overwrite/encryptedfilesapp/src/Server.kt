@@ -30,6 +30,7 @@ const val PING_PAGE = "ping"
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
 const val CREATE_FOLDER_PAGE = "create-dir"
+const val DELETE_ITEM_PAGE = "delete-item"
 
 // HELPER FUNCTIONS
 fun String.decodeHex(): ByteArray {
@@ -125,6 +126,31 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
             serverURL,
             Request.Method.POST,
             "$CREATE_FOLDER_PAGE/$path",
+            queue,
+            processResponse,
+            failedResponse,
+            errorListener
+        )
+    }
+
+    /**
+     * Deletes an item from the server. **This action is irreversible.**
+     *
+     * @param path Path to the item.
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun deleteItem(
+        path: String,
+        processResponse: (JSONObject) -> Any,
+        failedResponse: (String, JSONObject) -> Any,
+        errorListener: Response.ErrorListener
+    ) {
+        sendRequest(
+            serverURL,
+            Request.Method.DELETE,
+            "$DELETE_ITEM_PAGE/$path",
             queue,
             processResponse,
             failedResponse,

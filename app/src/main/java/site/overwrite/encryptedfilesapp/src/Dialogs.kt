@@ -44,7 +44,7 @@ class Dialogs {
          * Creates a new confirmation dialog.
          *
          * @param dialogTitle Title of the dialog.
-         * @param dialogText Text to show on the dialog.
+         * @param dialogContent Content of the dialog.
          * @param confirmText Text to show for the "confirm" button.
          * @param dismissText Text to show for the "dismiss" button.
          * @param onDismissal Function that handles dismissal requests.
@@ -56,7 +56,7 @@ class Dialogs {
         @Composable
         fun ConfirmDialog(
             dialogTitle: String,
-            dialogText: String,
+            dialogContent: @Composable (() -> Unit)?,
             confirmText: String,
             dismissText: String,
             onConfirmation: () -> Unit,
@@ -71,7 +71,7 @@ class Dialogs {
                     }
                 },
                 title = { Text(text = dialogTitle) },
-                text = { Text(text = dialogText) },
+                text = dialogContent,
                 onDismissRequest = { onDismissal() },
                 confirmButton = {
                     TextButton(
@@ -94,7 +94,7 @@ class Dialogs {
          * Creates a new yes/no dialog.
          *
          * @param dialogTitle Title of the dialog.
-         * @param dialogText Text to show on the dialog.
+         * @param dialogContent Content of the dialog.
          * @param onYes Function that handles the "yes" request.
          * @param onNo Function that handles the "no" request and dismissals.
          * @param icon Optional icon to display on the dialog.
@@ -104,7 +104,7 @@ class Dialogs {
         @Composable
         fun YesNoDialog(
             dialogTitle: String,
-            dialogText: String,
+            dialogContent: @Composable (() -> Unit)?,
             onYes: () -> Unit,
             onNo: () -> Unit,
             icon: ImageVector? = null,
@@ -112,7 +112,7 @@ class Dialogs {
         ) {
             ConfirmDialog(
                 dialogTitle = dialogTitle,
-                dialogText = dialogText,
+                dialogContent = dialogContent,
                 confirmText = "Yes",
                 dismissText = "No",
                 onConfirmation = { onYes() },
