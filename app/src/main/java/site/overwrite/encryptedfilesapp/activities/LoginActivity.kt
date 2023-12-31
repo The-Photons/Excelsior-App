@@ -116,6 +116,59 @@ class LoginActivity : ComponentActivity() {
 
         var isLoading by remember { mutableStateOf(false) }
 
+        // Helper functions
+        fun attemptLogin() {
+            Log.d("LOGIN", "Login button clicked")
+            isLoading = true
+            Server.isValidURL(serverURL, queue) { isValid ->
+                run {
+                    if (!isValid) {
+                        isErrorServerURL = true
+                        Log.d("LOGIN", "Invalid server URL: $serverURL")
+                        isLoading = false
+                    } else {
+                        Log.d("LOGIN", "Good URL: $serverURL")
+
+                        // Update the saved URL
+                        runBlocking {
+                            dataStoreManager.setServerURL(serverURL)
+                        }
+
+                        // Now check the password
+                        Server.isValidEncryptionPassword(
+                            serverURL,
+                            userPassword,
+                            queue
+                        ) { isValid, encryptionParameters ->
+                            run {
+                                if (!isValid || encryptionParameters == null) {
+                                    Log.d("LOGIN", "Password is invalid")
+                                    isErrorPassword = true
+                                    isLoading = false
+                                } else {
+                                    Log.d("LOGIN", "Password is valid")
+
+                                    // Return needed things
+                                    val resultIntent = Intent()
+                                    resultIntent.putExtra("server_url", serverURL)
+                                    resultIntent.putExtra("iv", encryptionParameters.iv)
+                                    resultIntent.putExtra("salt", encryptionParameters.salt)
+                                    resultIntent.putExtra(
+                                        "encryption_key",
+                                        encryptionParameters.encryptionKey
+                                    )
+
+                                    setResult(RESULT_OK, resultIntent)
+                                    isLoading = false
+                                    finish()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Main UI
         Scaffold(
             topBar = {
@@ -187,63 +240,7 @@ class LoginActivity : ComponentActivity() {
                     modifier = Modifier.padding(horizontal = 8.dp)
                 ) {
                     Button(
-                        onClick = {
-                            Log.d("LOGIN", "Login button clicked")
-                            isLoading = true
-                            Server.isValidURL(serverURL, queue) { isValid ->
-                                run {
-                                    if (!isValid) {
-                                        isErrorServerURL = true
-                                        Log.d("LOGIN", "Invalid server URL: $serverURL")
-                                        isLoading = false
-                                    } else {
-                                        Log.d("LOGIN", "Good URL: $serverURL")
-
-                                        // Update the saved URL
-                                        runBlocking {
-                                            dataStoreManager.setServerURL(serverURL)
-                                        }
-
-                                        // Now check the password
-                                        Server.isValidEncryptionPassword(
-                                            serverURL,
-                                            userPassword,
-                                            queue
-                                        ) { isValid, encryptionParameters ->
-                                            run {
-                                                if (!isValid || encryptionParameters == null) {
-                                                    Log.d("LOGIN", "Password is invalid")
-                                                    isErrorPassword = true
-                                                    isLoading = false
-                                                } else {
-                                                    Log.d("LOGIN", "Password is valid")
-
-                                                    // Return needed things
-                                                    val resultIntent = Intent()
-                                                    resultIntent.putExtra("server_url", serverURL)
-                                                    resultIntent.putExtra(
-                                                        "iv",
-                                                        encryptionParameters.iv
-                                                    )
-                                                    resultIntent.putExtra(
-                                                        "salt",
-                                                        encryptionParameters.salt
-                                                    )
-                                                    resultIntent.putExtra(
-                                                        "encryption_key",
-                                                        encryptionParameters.encryptionKey
-                                                    )
-
-                                                    setResult(RESULT_OK, resultIntent)
-                                                    isLoading = false
-                                                    finish()
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        onClick = { attemptLogin() }
                     ) {
                         Text("Login")
                     }

@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.volley.RequestQueue
 import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -94,7 +95,10 @@ const val PREVIOUS_DIRECTORY_TYPE = "prev-dir"
 // MAIN ACTIVITY
 class MainActivity : ComponentActivity() {
     // Properties
+    private var loggedIn = false
+
     private lateinit var server: Server
+    private lateinit var queue: RequestQueue
     private lateinit var loginIntent: Intent
 
     private lateinit var encryptionIV: String
@@ -107,42 +111,51 @@ class MainActivity : ComponentActivity() {
         Log.d("MAIN", "Main activity onCreate")
         super.onCreate(savedInstanceState)
 
-        // TODO: Remove and Uncomment Below
-        val queue = Volley.newRequestQueue(applicationContext)
-        server = Server(queue, "http://10.0.2.2:5000")  // 10.0.2.2 refers to localhost on PC
-        encryptionIV = "encryptionIntVec"
-        encryptionSalt = "someSalt12345678"
-        encryptionKey = String(
-            Cryptography.decryptAES(
-                "UXMMpaGD1SJ3ZATBuJnt7I3MWYHzsVFURgo0tKDg5aOoP16mmDPal/8GmsqvXXkohZkf7SxRorWXe9qcIW+rmAA5niaqZeI2nvAuSrmztRg=",
-                Cryptography.genAESKey("password", encryptionSalt),
-                encryptionIV
-            )
-        ).decodeHex()
-//        // We first need to ask for the login details, especially the encryption key
-//        loginIntent = Intent(this, LoginActivity::class.java);
-//        val getLoginCredentials =
-//            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-//                if (result.resultCode == Activity.RESULT_OK) {
-//                    // Retrieve data from the result intent
-//                    val resultIntent: Intent? = result.data
-//                    val serverURL: String = resultIntent?.getStringExtra("server_url") ?: ""
-//                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
-//                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
-//                    encryptionKey =
-//                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
-//                    Log.d(
-//                        "MAIN",
-//                        "Got URL '$serverURL', IV '$encryptionIV', salt '$encryptionSalt', " +
-//                                "and encryption key (as hex string) '${encryptionKey.toHexString()}'"
-//                    )
-//
-//                    // Now initialize the things needed
-//                    val queue = Volley.newRequestQueue(applicationContext)
-//                    server = Server(queue, serverURL)
-//                }
-//            }
-//        getLoginCredentials.launch(loginIntent)
+        // Create the request queue
+        queue = Volley.newRequestQueue(applicationContext)
+
+//        // TODO: Remove and Uncomment Below
+//        server = Server(queue, "http://10.0.2.2:5000")  // 10.0.2.2 refers to localhost on PC
+//        encryptionIV = "encryptionIntVec"
+//        encryptionSalt = "someSalt12345678"
+//        encryptionKey = String(
+//            Cryptography.decryptAES(
+//                "UXMMpaGD1SJ3ZATBuJnt7I3MWYHzsVFURgo0tKDg5aOoP16mmDPal/8GmsqvXXkohZkf7SxRorWXe9qcIW+rmAA5niaqZeI2nvAuSrmztRg=",
+//                Cryptography.genAESKey("password", encryptionSalt),
+//                encryptionIV
+//            )
+//        ).decodeHex()
+//        loggedIn = true
+
+        // We first need to ask for the login details, especially the encryption key
+        loginIntent = Intent(this, LoginActivity::class.java);
+        val getLoginCredentials =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val resultIntent = result.data
+                    val serverURL = resultIntent?.getStringExtra("server_url") ?: ""
+
+                    server = Server(queue, serverURL)
+                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
+                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
+                    encryptionKey =
+                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
+
+                    loggedIn = true
+                    Log.d(
+                        "MAIN",
+                        "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
+                                " salt '$encryptionSalt', and encryption key (as hex string)" +
+                                " '${encryptionKey.toHexString()}'"
+                    )
+                }
+            }
+        getLoginCredentials.launch(loginIntent)
+    }
+
+    override fun onStart() {
+        Log.d("MAIN", "Main activity onStart")
+        super.onStart()
 
         setContent {
             EncryptedFilesAppTheme {
@@ -151,7 +164,9 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    FilesList()
+                    if (loggedIn) {
+                        FilesList()
+                    }
                 }
             }
         }
