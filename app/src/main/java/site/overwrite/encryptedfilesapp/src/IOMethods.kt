@@ -129,6 +129,19 @@ class IOMethods {
         }
 
         /**
+         * Gets the file at the specified file path.
+         *
+         * @param filePath Path to the file, with respect to the application directory.
+         * @return The file object, or `null` if the file does not exist.
+         */
+        fun getFile(filePath: String): File? {
+            if (checkIfFileExists(filePath)) {
+                return File(getFilePath(filePath))
+            }
+            return null
+        }
+
+        /**
          * Checks if a file exists at the specified path.
          *
          * @param itemPath Path to the file to check.

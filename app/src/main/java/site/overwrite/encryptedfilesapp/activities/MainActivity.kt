@@ -17,12 +17,13 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
-import android.widget.Toast
+import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -77,10 +78,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import com.android.volley.RequestQueue
 import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
@@ -133,7 +135,7 @@ class MainActivity : ComponentActivity() {
         loggedIn = true
 
 //        // We first need to ask for the login details, especially the encryption key
-//        loginIntent = Intent(this, LoginActivity::class.java);
+//        loginIntent = Intent(this, LoginActivity::class.java)
 //        val getLoginCredentials =
 //            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
 //                if (result.resultCode == Activity.RESULT_OK) {
@@ -196,44 +198,6 @@ class MainActivity : ComponentActivity() {
 
         // Helper functions
         /**
-         * Gets the file at the specified path.
-         *
-         * @param rawPath Path to the file.
-         */
-        fun getFile(rawPath: String) {
-            val path = rawPath.trimStart('/')
-            Log.d("MAIN", "Getting file: '$path'")
-            server.getFile(
-                path,
-                { json ->
-                    run {
-                        val encryptedContent = json.getString("content")
-                        Log.d("MAIN", "Encrypted file content: $encryptedContent")
-                        val fileData = Cryptography.decryptAES(
-                            encryptedContent, encryptionKey, encryptionIV
-                        )
-                        IOMethods.createFile(rawPath, fileData)
-                        Log.d("MAIN", "Synced file '$rawPath'")
-                        scope.launch { snackbarHostState.showSnackbar("File Synced") }
-                    }
-                },
-                { status, _ ->
-                    run {
-                        Log.d("MAIN", "Failed file request: $status")
-                        scope.launch { snackbarHostState.showSnackbar(status) }
-                    }
-                },
-                { error ->
-                    run {
-                        Log.d("MAIN", "File request had error: $error")
-                        // Todo: allow retry
-                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
-                    }
-                }
-            )
-        }
-
-        /**
          * Gets all the items in the current directory.
          */
         fun getItemsInDir() {
@@ -274,6 +238,47 @@ class MainActivity : ComponentActivity() {
                         // Todo: allow retry
                         scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                         isLoadingFiles = false
+                    }
+                }
+            )
+        }
+
+        /**
+         * Gets the file at the specified path.
+         *
+         * @param rawPath Path to the file.
+         */
+        fun getFile(rawPath: String) {
+            val path = rawPath.trimStart('/')
+            Log.d("MAIN", "Getting file: '$path'")
+            server.getFile(
+                path,
+                { json ->
+                    run {
+                        val encryptedContent = json.getString("content")
+                        Log.d("MAIN", "Encrypted file content: $encryptedContent")
+                        val fileData = Cryptography.decryptAES(
+                            encryptedContent, encryptionKey, encryptionIV
+                        )
+                        IOMethods.createFile(rawPath, fileData)
+                        Log.d("MAIN", "Synced file '$rawPath'")
+                        scope.launch {
+                            snackbarHostState.showSnackbar("File Synced")
+                            getItemsInDir()
+                        }
+                    }
+                },
+                { status, _ ->
+                    run {
+                        Log.d("MAIN", "Failed file request: $status")
+                        scope.launch { snackbarHostState.showSnackbar(status) }
+                    }
+                },
+                { error ->
+                    run {
+                        Log.d("MAIN", "File request had error: $error")
+                        // Todo: allow retry
+                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                     }
                 }
             )
@@ -357,6 +362,32 @@ class MainActivity : ComponentActivity() {
                 onClick = {
                     Log.d("MAIN", "Clicked on $type named '$name'")
                     if (type == "file") {
+                        // Check if the file exists on the phone (i.e., synced)
+                        val filePath = "$dirPath/$name"
+                        val file = IOMethods.getFile(filePath)
+                        if (file != null) {
+                            // Get URI and MIME type of file
+                            val uri = FileProvider.getUriForFile(
+                                this,
+                                "${applicationContext.packageName}.provider",
+                                file
+                            )
+                            val mime = contentResolver.getType(uri)
+
+                            // Open file with user selected app
+                            val intent = Intent()
+                            intent.setAction(Intent.ACTION_VIEW)
+                            intent.setDataAndType(uri, mime)
+                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            try {
+                                startActivity(intent)
+                            } catch (error: ActivityNotFoundException) {
+                                Log.d("MAIN", "Cannot open file, activity not found: ${error.message}")
+                            }
+                        } else {
+                            Log.d("MAIN", "File '$filePath' not synced")
+                            scope.launch { snackbarHostState.showSnackbar("File not synced") }
+                        }
                         // TODO: Open file
                     } else {
                         if (isPreviousDirectoryItem) {
@@ -431,8 +462,8 @@ class MainActivity : ComponentActivity() {
                                     leadingIcon = { Icon(Icons.Filled.Sync, "Sync") },
                                     text = { Text("Sync") },
                                     onClick = {
+                                        // Todo: show toast message that the syncing has started
                                         getFile("$dirPath/$name")
-                                        getItemsInDir()
                                     }
                                 )
                                 DropdownMenuItem(
