@@ -24,6 +24,7 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
 import android.webkit.MimeTypeMap
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -382,7 +383,10 @@ class MainActivity : ComponentActivity() {
                             try {
                                 startActivity(intent)
                             } catch (error: ActivityNotFoundException) {
-                                Log.d("MAIN", "Cannot open file, activity not found: ${error.message}")
+                                Log.d(
+                                    "MAIN",
+                                    "Cannot open file, activity not found: ${error.message}"
+                                )
                             }
                         } else {
                             Log.d("MAIN", "File '$filePath' not synced")
@@ -462,7 +466,11 @@ class MainActivity : ComponentActivity() {
                                     leadingIcon = { Icon(Icons.Filled.Sync, "Sync") },
                                     text = { Text("Sync") },
                                     onClick = {
-                                        // Todo: show toast message that the syncing has started
+                                        Toast.makeText(
+                                            applicationContext,
+                                            "Starting sync of '$name'",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                         getFile("$dirPath/$name")
                                     }
                                 )
