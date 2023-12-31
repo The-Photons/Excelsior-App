@@ -17,13 +17,14 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
-import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
-import android.util.Base64
+import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -203,7 +204,6 @@ class MainActivity : ComponentActivity() {
                 Cryptography.decryptAES(encryptedFileContent, encryptionKey, encryptionIV)
 
             // TODO: Continue
-            Log.d("MAIN", "File data: ${String(fileData)}")
             scope.launch { snackbarHostState.showSnackbar(String(fileData)) }
         }
 
@@ -219,10 +219,9 @@ class MainActivity : ComponentActivity() {
                 path,
                 { json ->
                     run {
-                        val rawBase64Content = json.getString("content")
-                        val innerContent = String(Base64.decode(rawBase64Content, Base64.DEFAULT))
-                        Log.d("MAIN", "File content: $innerContent")
-                        processFileContent(innerContent)
+                        val encryptedContent = json.getString("content")
+                        Log.d("MAIN", "Encrypted file content: $encryptedContent")
+                        processFileContent(encryptedContent)
                     }
                 },
                 { status, _ ->
@@ -322,6 +321,26 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             )
+        }
+
+        /**
+         * Gets the file name from a `content://` URI.
+         *
+         * @param uri A URI with the `content` scheme.
+         * @return File name.
+         */
+        fun getFileName(uri: Uri): String {
+            var result = ""
+
+            contentResolver.query(uri, null, null, null, null).use { cursor ->
+                if (cursor != null) {
+                    if (cursor.moveToFirst()) {
+                        val colIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        result = cursor.getString(colIndex)
+                    }
+                }
+            }
+            return result
         }
 
         // Helper composables
@@ -439,9 +458,9 @@ class MainActivity : ComponentActivity() {
                     iconDesc = "Warning",
                     dialogTitle = "Confirm Deletion",
                     dialogContent = {
-                        Column (
+                        Column(
                             verticalArrangement = Arrangement.spacedBy(5.dp)
-                        ){
+                        ) {
                             Text(
                                 "Are you sure that you want to delete the $type '$name' " +
                                         "from the server?"
@@ -467,10 +486,53 @@ class MainActivity : ComponentActivity() {
         @Composable
         fun AddItemActionButton() {
             // Attributes
-            val context = LocalContext.current
             var expanded by remember { mutableStateOf(false) }
 
             var showCreateFolderInputDialog by remember { mutableStateOf(false) }
+
+            val pickFileLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.GetContent()
+            ) { uri ->
+                if (uri != null) {
+                    val fileName = getFileName(uri)
+                    val filePath = "$dirPath/$fileName".trimStart('/')
+
+                    val inputStream = contentResolver.openInputStream(uri)
+                    if (inputStream != null) {
+                        val content = inputStream.readBytes()
+                        Log.d("MAIN", "Got content of '$fileName'")
+                        val encrypted =
+                            Cryptography.encryptAES(content, key = encryptionKey, iv = encryptionIV)
+                        server.createFile(
+                            filePath,
+                            encrypted,
+                            { _ ->
+                                run {
+                                    Log.d("MAIN", "New file created: $filePath")
+                                    scope.launch { snackbarHostState.showSnackbar("Added file") }
+                                    getItemsInDir()
+                                }
+                            },
+                            { _, json ->
+                                run {
+                                    val reason = json.getString("message")
+                                    Log.d("MAIN", "Failed to create file: $reason")
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Failed to create file: $reason")
+                                    }
+                                }
+                            },
+                            { error ->
+                                run {
+                                    Log.d("MAIN", "Error when making file: $error")
+                                    scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                                }
+                            }
+                        )
+                        inputStream.close()
+                    }
+                }
+            }
 
             // Helper functions
             /**
@@ -517,7 +579,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.padding(all = 16.dp),
                     onClick = { expanded = !expanded },
                 ) {
-                    Icon(Icons.Filled.Add, "Add File/Folder")
+                    Icon(Icons.Filled.Add, "Add")
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
@@ -525,9 +587,7 @@ class MainActivity : ComponentActivity() {
                         DropdownMenuItem(
                             leadingIcon = { Icon(Icons.Filled.NoteAdd, "Add File") },
                             text = { Text("Add File") },
-                            onClick = {
-                                Toast.makeText(context, "Add File", Toast.LENGTH_SHORT).show()
-                            }
+                            onClick = { pickFileLauncher.launch("*/*") }
                         )
                         DropdownMenuItem(
                             leadingIcon = { Icon(Icons.Filled.CreateNewFolder, "Create Folder") },

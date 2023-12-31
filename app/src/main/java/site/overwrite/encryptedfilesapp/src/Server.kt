@@ -30,6 +30,7 @@ const val PING_PAGE = "ping"
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
 const val CREATE_FOLDER_PAGE = "create-dir"
+const val CREATE_FILE_PAGE = "create-file"
 const val DELETE_ITEM_PAGE = "delete-item"
 
 // HELPER FUNCTIONS
@@ -134,6 +135,39 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
     }
 
     /**
+     * Creates a new file on the server.
+     *
+     * @param path Path to the new file.
+     * @param encryptedContent Encrypted, Base64 string of the file.
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun createFile(
+        path: String,
+        encryptedContent: String,
+        processResponse: (JSONObject) -> Any,
+        failedResponse: (String, JSONObject) -> Any,
+        errorListener: Response.ErrorListener
+    ) {
+        // Create the POST Data
+        val postData = HashMap<String, String>()
+        postData["content"] = encryptedContent
+
+        // Send the POST data to the page
+        sendRequest(
+            serverURL,
+            Request.Method.POST,
+            "$CREATE_FILE_PAGE/$path",
+            queue,
+            processResponse,
+            failedResponse,
+            errorListener,
+            postData
+        )
+    }
+
+    /**
      * Deletes an item from the server. **This action is irreversible.**
      *
      * @param path Path to the item.
@@ -168,6 +202,7 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
          * @param processResponse Listener for a successful page request.
          * @param failedResponse Listener for a failed page request.
          * @param errorListener Listener for an page request that results in an error.
+         * @param postData Data to included in the POST request. Required if the request is POST.
          */
         private fun sendRequest(
             serverURL: String,
@@ -176,28 +211,53 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
             queue: RequestQueue,
             processResponse: (JSONObject) -> Any,
             failedResponse: (String, JSONObject) -> Any,
-            errorListener: Response.ErrorListener
+            errorListener: Response.ErrorListener,
+            postData: HashMap<String, String>? = null,
         ) {
             // Form the full URL
             val url = "$serverURL/$page"
 
             // Request a string response from the provided URL
-            val stringRequest = StringRequest(
-                method,
-                url,
-                { response ->
-                    run {
-                        val json = JSONObject(response)
-                        val status = json.getString("status")
-                        if (status == "ok") {
-                            processResponse(json)
-                        } else {
-                            failedResponse(status, json)
+            val stringRequest: StringRequest
+            if (method == Request.Method.POST) {
+                stringRequest = object : StringRequest(
+                    method,
+                    url,
+                    { response ->
+                        run {
+                            val json = JSONObject(response)
+                            val status = json.getString("status")
+                            if (status == "ok") {
+                                processResponse(json)
+                            } else {
+                                failedResponse(status, json)
+                            }
                         }
+                    },
+                    errorListener
+                ) {
+                    override fun getParams(): MutableMap<String, String>? {
+                        return postData
                     }
-                },
-                errorListener
-            )
+                }
+            } else {
+                stringRequest = StringRequest(
+                    method,
+                    url,
+                    { response ->
+                        run {
+                            val json = JSONObject(response)
+                            val status = json.getString("status")
+                            if (status == "ok") {
+                                processResponse(json)
+                            } else {
+                                failedResponse(status, json)
+                            }
+                        }
+                    },
+                    errorListener
+                )
+            }
 
             // Add the request to the RequestQueue
             queue.add(stringRequest)
