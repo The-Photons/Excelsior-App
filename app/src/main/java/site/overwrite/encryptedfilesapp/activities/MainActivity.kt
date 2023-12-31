@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
@@ -86,6 +87,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import site.overwrite.encryptedfilesapp.src.Cryptography
 import site.overwrite.encryptedfilesapp.src.Dialogs
+import site.overwrite.encryptedfilesapp.src.IOMethods
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.src.decodeHex
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
@@ -194,20 +196,6 @@ class MainActivity : ComponentActivity() {
 
         // Helper functions
         /**
-         * Processes a successful file content request.
-         *
-         * @param encryptedFileContent Encrypted content of the file.
-         */
-        fun processFileContent(encryptedFileContent: String) {
-            // Decrypt the data
-            val fileData =
-                Cryptography.decryptAES(encryptedFileContent, encryptionKey, encryptionIV)
-
-            // TODO: Continue
-            scope.launch { snackbarHostState.showSnackbar(String(fileData)) }
-        }
-
-        /**
          * Gets the file at the specified path.
          *
          * @param rawPath Path to the file.
@@ -221,7 +209,12 @@ class MainActivity : ComponentActivity() {
                     run {
                         val encryptedContent = json.getString("content")
                         Log.d("MAIN", "Encrypted file content: $encryptedContent")
-                        processFileContent(encryptedContent)
+                        val fileData = Cryptography.decryptAES(
+                            encryptedContent, encryptionKey, encryptionIV
+                        )
+                        IOMethods.createFile(rawPath, fileData)
+                        Log.d("MAIN", "Synced file '$rawPath'")
+                        scope.launch { snackbarHostState.showSnackbar("File Synced") }
                     }
                 },
                 { status, _ ->
@@ -299,7 +292,7 @@ class MainActivity : ComponentActivity() {
                 { _ ->
                     run {
                         Log.d("MAIN", "Deleted $type '$path' from server")
-                        val name = path.split('/').last()
+                        val name = IOMethods.getFileName(path)
                         scope.launch { snackbarHostState.showSnackbar("Deleted $type '$name' from server") }
 
                         getItemsInDir()
@@ -356,9 +349,7 @@ class MainActivity : ComponentActivity() {
             // Attributes
             val isPreviousDirectoryItem = type == PREVIOUS_DIRECTORY_TYPE
 
-            val context = LocalContext.current
             var expanded by remember { mutableStateOf(false) }
-
             var showConfirmDeleteDialog by remember { mutableStateOf(false) }
 
             TextButton(
@@ -366,12 +357,11 @@ class MainActivity : ComponentActivity() {
                 onClick = {
                     Log.d("MAIN", "Clicked on $type named '$name'")
                     if (type == "file") {
-                        getFile("$dirPath/$name")
+                        // TODO: Open file
                     } else {
                         if (isPreviousDirectoryItem) {
                             dirPath = prevDir
-                            val split = prevDir.split("/")
-                            prevDir = split.subList(0, split.size - 1).joinToString("/")
+                            prevDir = IOMethods.getContainingDir(prevDir)
                         } else {
                             prevDir = dirPath
                             dirPath = "$dirPath/$name"
@@ -410,8 +400,11 @@ class MainActivity : ComponentActivity() {
                     if (isPreviousDirectoryItem) {
                         Spacer(Modifier.size(24.dp))
                     } else {
-                        // TODO: Implement syncing
-                        Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
+                        if (IOMethods.checkIfFileExists("$dirPath/$name")) {
+                            Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
+                        } else {
+                            Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
+                        }
                     }
                     Spacer(Modifier.size(10.dp))
                     Icon(icon, description)
@@ -438,7 +431,8 @@ class MainActivity : ComponentActivity() {
                                     leadingIcon = { Icon(Icons.Filled.Sync, "Sync") },
                                     text = { Text("Sync") },
                                     onClick = {
-                                        Toast.makeText(context, "Sync", Toast.LENGTH_SHORT).show()
+                                        getFile("$dirPath/$name")
+                                        getItemsInDir()
                                     }
                                 )
                                 DropdownMenuItem(
