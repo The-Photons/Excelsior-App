@@ -257,16 +257,11 @@ class MainActivity : ComponentActivity() {
                 { json ->
                     run {
                         val encryptedContent = json.getString("content")
-                        Log.d("MAIN", "Encrypted file content: $encryptedContent")
                         val fileData = Cryptography.decryptAES(
                             encryptedContent, encryptionKey, encryptionIV
                         )
                         IOMethods.createFile(rawPath, fileData)
-                        Log.d("MAIN", "Synced file '$rawPath'")
-                        scope.launch {
-                            snackbarHostState.showSnackbar("File Synced")
-                            getItemsInDir()
-                        }
+                        Log.d("MAIN", "Downloaded '$rawPath'")
                     }
                 },
                 { status, _ ->
@@ -342,6 +337,78 @@ class MainActivity : ComponentActivity() {
             return result
         }
 
+        /**
+         * Handles the sync of the item at the specified path.
+         *
+         * @param path Path to the file or folder.
+         * @param type Type, file or folder.
+         * @param displayResult Whether to display the results of syncing.
+         */
+        fun handleSync(path: String, type: String, displayResult: Boolean = true) {
+            if (type == "file") {
+                Log.d("MAIN", "Syncing file '$path'")
+                getFile(path)
+                Log.d("MAIN", "Synced file '$path'")
+                if (displayResult) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("File Synced")
+                        getItemsInDir()
+                    }
+                }
+            } else {
+                // Get all items within the folder
+                Log.d("MAIN", "Syncing directory '$path'")
+                server.listFiles(
+                    path.trimStart('/'),
+                    { json ->
+                        run {
+                            val itemsInDirStr = json.getString("content")
+
+                            // If the items is null, then the directory does not exist
+                            val items: JSONArray = if (itemsInDirStr == "null") {
+                                JSONArray()
+                            } else {
+                                JSONArray(itemsInDirStr)
+                            }
+
+                            for (i in 0..<items.length()) {
+                                val item = items.getJSONObject(i)
+                                val itemName = item.getString("name")
+                                val itemPath = "$path/$itemName"
+                                val itemType = item.getString("type")
+
+                                handleSync(itemPath, itemType, false)
+                            }
+
+                            Log.d("MAIN", "Synced directory '$path'")
+                            if (displayResult) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Folder Synced")
+                                    getItemsInDir()
+                                }
+                            }
+                        }
+                    },
+                    { status, _ ->
+                        run {
+                            Log.d("MAIN", "Failed to get items in directory")
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    "Failed to get things in directory: $status"
+                                )
+                            }
+                        }
+                    },
+                    { error ->
+                        run {
+                            Log.d("MAIN", "Error when getting items in directory: $error")
+                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                        }
+                    }
+                )
+            }
+        }
+
         // Helper composables
         /**
          * Creates a directory item on the screen.
@@ -392,7 +459,6 @@ class MainActivity : ComponentActivity() {
                             Log.d("MAIN", "File '$filePath' not synced")
                             scope.launch { snackbarHostState.showSnackbar("File not synced") }
                         }
-                        // TODO: Open file
                     } else {
                         if (isPreviousDirectoryItem) {
                             dirPath = prevDir
@@ -435,6 +501,8 @@ class MainActivity : ComponentActivity() {
                     if (isPreviousDirectoryItem) {
                         Spacer(Modifier.size(24.dp))
                     } else {
+                        // TODO: Handle checking of sync of folders
+                        //       (Use a downloaded folder index?)
                         if (IOMethods.checkIfFileExists("$dirPath/$name")) {
                             Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
                         } else {
@@ -473,7 +541,7 @@ class MainActivity : ComponentActivity() {
                                             "Starting sync of '$name'",
                                             Toast.LENGTH_SHORT
                                         ).show()
-                                        getFile("$dirPath/$name")
+                                        handleSync(path, type)
                                     }
                                 )
                                 DropdownMenuItem(
