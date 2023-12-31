@@ -17,7 +17,6 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
@@ -25,7 +24,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,10 +38,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -114,43 +116,44 @@ class MainActivity : ComponentActivity() {
         // Create the request queue
         queue = Volley.newRequestQueue(applicationContext)
 
-//        // TODO: Remove and Uncomment Below
-//        server = Server(queue, "http://10.0.2.2:5000")  // 10.0.2.2 refers to localhost on PC
-//        encryptionIV = "encryptionIntVec"
-//        encryptionSalt = "someSalt12345678"
-//        encryptionKey = String(
-//            Cryptography.decryptAES(
-//                "UXMMpaGD1SJ3ZATBuJnt7I3MWYHzsVFURgo0tKDg5aOoP16mmDPal/8GmsqvXXkohZkf7SxRorWXe9qcIW+rmAA5niaqZeI2nvAuSrmztRg=",
-//                Cryptography.genAESKey("password", encryptionSalt),
-//                encryptionIV
-//            )
-//        ).decodeHex()
-//        loggedIn = true
+        // TODO: Remove and Uncomment Below
+        server = Server(queue, "http://10.0.2.2:5000")  // 10.0.2.2 refers to localhost on PC
+        encryptionIV = "encryptionIntVec"
+        encryptionSalt = "someSalt12345678"
+        encryptionKey = String(
+            Cryptography.decryptAES(
+                "UXMMpaGD1SJ3ZATBuJnt7I3MWYHzsVFURgo0tKDg5aOoP16mmDPal/8GmsqvXXkohZk" +
+                        "f7SxRorWXe9qcIW+rmAA5niaqZeI2nvAuSrmztRg=",
+                Cryptography.genAESKey("password", encryptionSalt),
+                encryptionIV
+            )
+        ).decodeHex()
+        loggedIn = true
 
-        // We first need to ask for the login details, especially the encryption key
-        loginIntent = Intent(this, LoginActivity::class.java);
-        val getLoginCredentials =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-                if (result.resultCode == Activity.RESULT_OK) {
-                    val resultIntent = result.data
-                    val serverURL = resultIntent?.getStringExtra("server_url") ?: ""
-
-                    server = Server(queue, serverURL)
-                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
-                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
-                    encryptionKey =
-                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
-
-                    loggedIn = true
-                    Log.d(
-                        "MAIN",
-                        "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
-                                " salt '$encryptionSalt', and encryption key (as hex string)" +
-                                " '${encryptionKey.toHexString()}'"
-                    )
-                }
-            }
-        getLoginCredentials.launch(loginIntent)
+//        // We first need to ask for the login details, especially the encryption key
+//        loginIntent = Intent(this, LoginActivity::class.java);
+//        val getLoginCredentials =
+//            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+//                if (result.resultCode == Activity.RESULT_OK) {
+//                    val resultIntent = result.data
+//                    val serverURL = resultIntent?.getStringExtra("server_url") ?: ""
+//
+//                    server = Server(queue, serverURL)
+//                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
+//                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
+//                    encryptionKey =
+//                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
+//
+//                    loggedIn = true
+//                    Log.d(
+//                        "MAIN",
+//                        "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
+//                                " salt '$encryptionSalt', and encryption key (as hex string)" +
+//                                " '${encryptionKey.toHexString()}'"
+//                    )
+//                }
+//            }
+//        getLoginCredentials.launch(loginIntent)
     }
 
     override fun onStart() {
@@ -357,7 +360,11 @@ class MainActivity : ComponentActivity() {
                 { status, _ ->
                     run {
                         Log.d("MAIN", "Failed to list items in directory")
-                        scope.launch { snackbarHostState.showSnackbar("Failed to get things in directory: $status") }
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                "Failed to get things in directory: $status"
+                            )
+                        }
                         isLoadingFiles = false
                     }
                 },
@@ -463,12 +470,14 @@ class MainActivity : ComponentActivity() {
                                 onDismissRequest = { expanded = false }
                             ) {
                                 DropdownMenuItem(
+                                    leadingIcon = { Icon(Icons.Filled.Sync, "Sync") },
                                     text = { Text("Sync") },
                                     onClick = {
                                         Toast.makeText(context, "Sync", Toast.LENGTH_SHORT).show()
                                     }
                                 )
                                 DropdownMenuItem(
+                                    leadingIcon = { Icon(Icons.Filled.Delete, "Delete") },
                                     text = { Text("Delete From Server") },
                                     onClick = {
                                         Toast.makeText(
@@ -494,8 +503,48 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             var expanded by remember { mutableStateOf(false) }
 
-            var showFolderNameInputDialog by remember { mutableStateOf(false) }
+            var showCreateFolderInputDialog by remember { mutableStateOf(false) }
 
+            // Helper functions
+            /**
+             * Code to run once the user confirms the folder name to create.
+             *
+             * @param folderName Name of the folder to create.
+             */
+            fun onConfirmFolderName(folderName: String) {
+                Log.d("MAIN", "Request for new folder: $folderName")
+                showCreateFolderInputDialog = false
+
+                val fullFolderPath = "$dirPath/$folderName".trimStart('/')
+
+                server.createFolder(
+                    fullFolderPath,
+                    { _ ->
+                        run {
+                            Log.d("MAIN", "New folder created: $fullFolderPath")
+                            scope.launch { snackbarHostState.showSnackbar("Directory created") }
+                            getItemsInDir()
+                        }
+                    },
+                    { _, json ->
+                        run {
+                            val reason = json.getString("message")
+                            Log.d("MAIN", "Failed to create folder: $reason")
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Failed to create folder: $reason")
+                            }
+                        }
+                    },
+                    { error ->
+                        run {
+                            Log.d("MAIN", "Error when making folder: $error")
+                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                        }
+                    }
+                )
+            }
+
+            // Main UI
             if (!isLoadingFiles) {
                 FloatingActionButton(
                     modifier = Modifier.padding(all = 16.dp),
@@ -507,60 +556,31 @@ class MainActivity : ComponentActivity() {
                         onDismissRequest = { expanded = false }
                     ) {
                         DropdownMenuItem(
+                            leadingIcon = { Icon(Icons.Filled.NoteAdd, "Add File") },
                             text = { Text("Add File") },
                             onClick = {
                                 Toast.makeText(context, "Add File", Toast.LENGTH_SHORT).show()
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Add Folder") },
-                            onClick = { showFolderNameInputDialog = true }
+                            leadingIcon = { Icon(Icons.Filled.CreateNewFolder, "Create Folder") },
+                            text = { Text("Create Folder") },
+                            onClick = { showCreateFolderInputDialog = true }
                         )
                     }
                 }
 
-                if (showFolderNameInputDialog) {
+                if (showCreateFolderInputDialog) {
                     TextInputDialog(
                         dialogTitle = "Enter Folder Name",
                         textFieldLabel = "Name",
                         textFieldPlaceholder = "Name of the folder",
                         textFieldErrorText = "Invalid folder name",
-                        onDismissal = {
-                            showFolderNameInputDialog = false
-                        },
-                        onConfirmation = { folderName ->
-                            run {
-                                Log.d("MAIN", "Request for new folder: $folderName")
-                                showFolderNameInputDialog = false
+                        onDismissal = { showCreateFolderInputDialog = false },
+                        onConfirmation = { folderName -> onConfirmFolderName(folderName) },
 
-                                val fullFolderPath = "$dirPath/$folderName".trimStart('/')
-
-                                server.createFolder(
-                                    fullFolderPath,
-                                    { _ ->
-                                        run {
-                                            Log.d("MAIN", "New folder created: $fullFolderPath")
-                                            scope.launch { snackbarHostState.showSnackbar("Directory created") }
-                                            getItemsInDir()
-                                        }
-                                    },
-                                    { _, json ->
-                                        run {
-                                            Log.d("MAIN", "Failed to create folder")
-                                            val reason = json.getString("message")
-                                            scope.launch { snackbarHostState.showSnackbar("Failed to create folder: $reason") }
-                                        }
-                                    },
-                                    { error ->
-                                        run {
-                                            Log.d("MAIN", "Error when making folder: $error")
-                                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
-                                        }
-                                    }
-                                )
-                            }
-                        },
-                        textFieldValidator = { text -> text.isNotBlank() }  // TODO: Perhaps also filter by specific chars (e.g. [0-9A-z_-])
+                        // TODO: Perhaps also filter by specific chars (e.g. [0-9A-z_-])
+                        textFieldValidator = { text -> text.isNotBlank() }
                     )
                 }
             }
