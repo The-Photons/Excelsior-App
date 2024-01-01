@@ -18,10 +18,13 @@
 package site.overwrite.encryptedfilesapp.activities
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.webkit.URLUtil
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -99,6 +102,11 @@ class LoginActivity : ComponentActivity() {
         }
     }
 
+    override fun onStop() {
+        Log.d("LOGIN", "Login activity onStop")
+        super.onStop()
+    }
+
     // Composables
     /**
      * Login view.
@@ -110,7 +118,7 @@ class LoginActivity : ComponentActivity() {
         // Attributes
         var isErrorServerURL by remember { mutableStateOf(false) }
 
-        var userPassword by remember { mutableStateOf("password") }  // FIXME: REMOVE!!!
+        var userPassword by remember { mutableStateOf("") }
         var isErrorPassword by remember { mutableStateOf(false) }
         var isPasswordVisible by remember { mutableStateOf(false) }
 
@@ -254,6 +262,21 @@ class LoginActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+
+        // Immediately close app upon back button press
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT
+            ) {
+                finishAffinity()
+            }
+        } else {
+            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    finishAffinity()
+                }
+            })
         }
     }
 }
