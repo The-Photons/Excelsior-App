@@ -26,12 +26,14 @@ import org.json.JSONObject
 
 // CONSTANTS
 const val GET_ENCRYPTION_PARAMS_PAGE = "get-encryption-params"
-const val PING_PAGE = "ping"
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
 const val CREATE_FOLDER_PAGE = "create-dir"
 const val CREATE_FILE_PAGE = "create-file"
 const val DELETE_ITEM_PAGE = "delete-item"
+
+const val PING_PAGE = "ping"
+const val GET_VERSION_PAGE = "version"
 
 // HELPER FUNCTIONS
 fun String.decodeHex(): ByteArray {
@@ -49,7 +51,7 @@ fun String.decodeHex(): ByteArray {
  * @property queue Volley `RequestQueue` for processing HTTP requests.
  * @property serverURL URL to the server. **Assumed to be valid**.
  */
-class Server(private val queue: RequestQueue, private val serverURL: String) {
+class Server(private val queue: RequestQueue, val serverURL: String) {
     // Main methods
     /**
      * Gets the list of files in the path.
@@ -185,6 +187,29 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
             serverURL,
             Request.Method.DELETE,
             "$DELETE_ITEM_PAGE/$path",
+            queue,
+            processResponse,
+            failedResponse,
+            errorListener
+        )
+    }
+
+    /**
+     * Gets the server version.
+     *
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun getServerVersion(
+        processResponse: (JSONObject) -> Any,
+        failedResponse: (String, JSONObject) -> Any,
+        errorListener: Response.ErrorListener
+    ) {
+        sendRequest(
+            serverURL,
+            Request.Method.GET,
+            GET_VERSION_PAGE,
             queue,
             processResponse,
             failedResponse,

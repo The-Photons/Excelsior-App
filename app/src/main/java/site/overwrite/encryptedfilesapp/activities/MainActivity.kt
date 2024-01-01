@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
@@ -202,6 +203,7 @@ class MainActivity : ComponentActivity() {
 
         var isLoadingFiles by remember { mutableStateOf(false) }
 
+        var showExtrasMenu by remember { mutableStateOf(false) }
         var showConfirmLogoutDialog by remember { mutableStateOf(false) }
 
         // Helper functions
@@ -783,10 +785,30 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     actions = {
-                        IconButton(onClick = { /* TODO: do something with menu */ }) {
+                        IconButton(onClick = { showExtrasMenu = true }) {
                             Icon(
                                 imageVector = Icons.Filled.Menu,
                                 contentDescription = "Menu"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showExtrasMenu,
+                            onDismissRequest = { showExtrasMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                leadingIcon = { Icon(Icons.Filled.Info, "About") },
+                                text = { Text("About") },
+                                onClick = {
+                                    Log.d("MAIN", "Showing about page")
+                                    val aboutIntent = Intent(applicationContext, AboutActivity::class.java)
+                                    aboutIntent.putExtra("server_url", server.serverURL)
+                                    try {
+                                        startActivity(aboutIntent)
+                                    } catch (e: ActivityNotFoundException) {
+                                        Log.d("MAIN", "Failed to show about: ${e.message}")
+                                    }
+                                    showExtrasMenu = false
+                                }
                             )
                         }
                     }
