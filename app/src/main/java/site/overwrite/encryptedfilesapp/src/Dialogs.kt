@@ -174,6 +174,7 @@ class Dialogs {
                         },
                         label = { Text(textFieldLabel) },
                         placeholder = { Text(textFieldPlaceholder) },
+                        isError = isInvalidText,
                         supportingText = {
                             if (isInvalidText) {
                                 Text(

@@ -221,6 +221,7 @@ class LoginActivity : ComponentActivity() {
                     singleLine = true,
                     placeholder = { Text("Password") },
                     onValueChange = { userPassword = it },
+                    isError = isErrorPassword,
                     supportingText = {
                         if (isErrorPassword) {
                             Text(
