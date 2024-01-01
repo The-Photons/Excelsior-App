@@ -21,11 +21,14 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Toast
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -786,7 +789,8 @@ class MainActivity : ComponentActivity() {
                                 text = { Text("About") },
                                 onClick = {
                                     Log.d("MAIN", "Showing about page")
-                                    val aboutIntent = Intent(applicationContext, AboutActivity::class.java)
+                                    val aboutIntent =
+                                        Intent(applicationContext, AboutActivity::class.java)
                                     aboutIntent.putExtra("server_url", server.serverURL)
                                     try {
                                         startActivity(aboutIntent)
@@ -869,5 +873,20 @@ class MainActivity : ComponentActivity() {
 
         // Now display the main directory
         getItemsInDir()
+
+        // Show logout question when the back button is pressed
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT
+            ) {
+                showConfirmLogoutDialog = true
+            }
+        } else {
+            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    showConfirmLogoutDialog = true
+                }
+            })
+        }
     }
 }
