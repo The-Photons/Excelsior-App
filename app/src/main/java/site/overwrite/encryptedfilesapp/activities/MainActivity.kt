@@ -23,7 +23,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.util.Log
-import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -63,8 +62,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -83,8 +84,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import androidx.core.net.toUri
 import com.android.volley.RequestQueue
+import com.android.volley.VolleyError
 import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -199,6 +200,33 @@ class MainActivity : ComponentActivity() {
 
         // Helper functions
         /**
+         * Handle a failed connection.
+         *
+         * @param snackbarHostState Snackbar host state.
+         * @param error Error thrown when attempting network connection.
+         * @param retryAction Action to take when retry is selected.
+         * @param dismissedAction Action to take when dismissal is selected.
+         */
+        fun handleFailedConnection(
+            snackbarHostState: SnackbarHostState,
+            error: VolleyError,
+            retryAction: () -> Unit,
+            dismissedAction: () -> Unit
+        ) {
+            scope.launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = error.message.toString(),
+                    actionLabel = "Retry",
+                    duration = SnackbarDuration.Indefinite
+                )
+                when (result) {
+                    SnackbarResult.ActionPerformed -> retryAction()
+                    SnackbarResult.Dismissed -> dismissedAction()
+                }
+            }
+        }
+
+        /**
          * Gets all the items in the current directory.
          */
         fun getItemsInDir() {
@@ -236,8 +264,15 @@ class MainActivity : ComponentActivity() {
                     run {
                         Log.d("MAIN", "Error when getting items in directory: $error")
                         dirItems = JSONArray()
-                        // Todo: allow retry
-                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                        handleFailedConnection(
+                            snackbarHostState,
+                            error,
+                            {
+                                Log.d("MAIN", "Attempting retry of directory listing")
+                                getItemsInDir()
+                            },
+                            {}
+                        )
                         isLoadingFiles = false
                     }
                 }
@@ -273,8 +308,15 @@ class MainActivity : ComponentActivity() {
                 { error ->
                     run {
                         Log.d("MAIN", "File request had error: $error")
-                        // Todo: allow retry
-                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                        handleFailedConnection(
+                            snackbarHostState,
+                            error,
+                            {
+                                Log.d("MAIN", "Attempting retry of file retrieval")
+                                getFile(rawPath)
+                            },
+                            {}
+                        )
                     }
                 }
             )
