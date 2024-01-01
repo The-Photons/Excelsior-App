@@ -773,9 +773,7 @@ class MainActivity : ComponentActivity() {
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.primary,
                     ),
-                    title = {
-                        Text("Files (${if (dirPath != "") dirPath else "/"})")
-                    },
+                    title = { Text("Files") },
                     navigationIcon = {
                         IconButton(onClick = { showConfirmLogoutDialog = true }) {
                             Icon(
@@ -813,42 +811,50 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             } else {
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    if (dirPath != "") {
-                        DirectoryItem(PREVIOUS_DIRECTORY_TEXT_LABEL, PREVIOUS_DIRECTORY_TYPE, "")
-                    }
-                    for (i in 0..<dirItems.length()) {
-                        // Get the specific item
-                        val item = dirItems.getJSONObject(i)
-                        val name = item.getString("name")
-                        val type = item.getString("type")
-                        val size = item.getString("size")
-
-                        // Create a button with that icon
-                        DirectoryItem(name, type, size)
-                    }
-                }
-                if (showConfirmLogoutDialog) {
-                    Dialogs.YesNoDialog(
-                        icon = Icons.Filled.Logout,
-                        iconDesc = "Logout",
-                        dialogTitle = "Confirm Logout",
-                        dialogContent = {
-                            Text("Are you sure that you want to log out?")
-                        },
-                        onYes = {
-                            showConfirmLogoutDialog = false
-                            Log.d("MAIN", "Start logout process; deleting all folders")
-                            IOMethods.deleteItem("")
-                            Log.d("MAIN", "Logged out")
-                            finish()
-                        },
-                        onNo = { showConfirmLogoutDialog = false }
+                Column(modifier = Modifier.padding(innerPadding)) {
+                    Text(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        text = if (dirPath != "") dirPath else "/"
                     )
+                    Column(
+                        modifier = Modifier.verticalScroll(rememberScrollState())
+                    ) {
+                        if (dirPath != "") {
+                            DirectoryItem(
+                                PREVIOUS_DIRECTORY_TEXT_LABEL,
+                                PREVIOUS_DIRECTORY_TYPE,
+                                ""
+                            )
+                        }
+                        for (i in 0..<dirItems.length()) {
+                            // Get the specific item
+                            val item = dirItems.getJSONObject(i)
+                            val name = item.getString("name")
+                            val type = item.getString("type")
+                            val size = item.getString("size")
+
+                            // Create a button with that icon
+                            DirectoryItem(name, type, size)
+                        }
+                    }
+                    if (showConfirmLogoutDialog) {
+                        Dialogs.YesNoDialog(
+                            icon = Icons.Filled.Logout,
+                            iconDesc = "Logout",
+                            dialogTitle = "Confirm Logout",
+                            dialogContent = {
+                                Text("Are you sure that you want to log out?")
+                            },
+                            onYes = {
+                                showConfirmLogoutDialog = false
+                                Log.d("MAIN", "Start logout process; deleting all folders")
+                                IOMethods.deleteItem("")
+                                Log.d("MAIN", "Logged out")
+                                finish()
+                            },
+                            onNo = { showConfirmLogoutDialog = false }
+                        )
+                    }
                 }
             }
         }
