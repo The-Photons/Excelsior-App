@@ -127,20 +127,6 @@ class MainActivity : ComponentActivity() {
         // Create the request queue
         queue = Volley.newRequestQueue(applicationContext)
 
-//        // TODO: Remove and Uncomment Below
-//        server = Server(queue, "http://10.0.2.2:5000")  // 10.0.2.2 refers to localhost on PC
-//        encryptionIV = "encryptionIntVec"
-//        encryptionSalt = "someSalt12345678"
-//        encryptionKey = String(
-//            Cryptography.decryptAES(
-//                "UXMMpaGD1SJ3ZATBuJnt7I3MWYHzsVFURgo0tKDg5aOoP16mmDPal/8GmsqvXXkohZk" +
-//                        "f7SxRorWXe9qcIW+rmAA5niaqZeI2nvAuSrmztRg=",
-//                Cryptography.genAESKey("password", encryptionSalt),
-//                encryptionIV
-//            )
-//        ).decodeHex()
-//        loggedIn = true
-
         // We first need to ask for the login details, especially the encryption key
         loginIntent = Intent(this, LoginActivity::class.java)
         val getLoginCredentials =

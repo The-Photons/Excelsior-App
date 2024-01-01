@@ -29,13 +29,11 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 
-class DataStoreManager(context: Context) {
-    // Properties
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-    private val dataStore = context.dataStore
-
-    // Keys
+class DataStoreManager(private val context: Context) {
+    // Properties and keys
     companion object {
+        private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
         val serverURLKey = stringPreferencesKey("server_url")
     }
 
@@ -46,14 +44,14 @@ class DataStoreManager(context: Context) {
      * @return Server URL as a flow string.
      */
     fun getServerURL(): Flow<String> {
-        return dataStore.data.catch { exception ->
+        return context.dataStore.data.catch { exception ->
             if (exception is IOException) {
                 emit(emptyPreferences())
             } else {
                 throw exception
             }
         }.map { preferences ->
-            var serverURL = preferences[serverURLKey] ?: ""
+            val serverURL = preferences[serverURLKey] ?: ""
             serverURL
         }
     }
@@ -65,7 +63,7 @@ class DataStoreManager(context: Context) {
      * @param serverURL Server URL to set.
      */
     suspend fun setServerURL(serverURL: String) {
-        dataStore.edit { preferences ->
+        context.dataStore.edit { preferences ->
             preferences[serverURLKey] = serverURL
         }
     }
