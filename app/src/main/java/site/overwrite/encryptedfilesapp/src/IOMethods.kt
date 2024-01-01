@@ -33,17 +33,23 @@ val DOWNLOADS_DIR: File =
  */
 class IOMethods {
     companion object {
-        // Private methods
+        // Path methods
         /**
-         * Gets the file path with reference to the application directory.
-         *
-         * @param filePath Path to the file, with reference to the application directory.
+         * @return The application directory that is within the downloads directory.
          */
-        private fun getFilePath(filePath: String): String {
-            return "${DOWNLOADS_DIR.path}/$APP_DIR_NAME/$filePath"
+        fun getAppDir(): String {
+            return "${DOWNLOADS_DIR.path}/$APP_DIR_NAME"
         }
 
-        // Public methods
+        /**
+         * Gets the file/directory path with reference to the application directory.
+         *
+         * @param itemPath Path to the file/directory, with reference to the application directory.
+         */
+        fun getItemPath(itemPath: String): String {
+            return "${getAppDir()}/$itemPath".trimEnd('/')
+        }
+
         /**
          * Gets the file name from the file path.
          *
@@ -66,6 +72,22 @@ class IOMethods {
         }
 
         /**
+         * Checks if a file exists at the specified path.
+         *
+         * @param itemPath Path to the file to check.
+         * @return A boolean; `true` if there is an item at the specified path and `false`
+         * otherwise. If the path specifies a folder this always returns `false`.
+         */
+        fun checkIfFileExists(itemPath: String): Boolean {
+            val possibleFile = File(getItemPath(itemPath))
+            if (possibleFile.isFile) {
+                return possibleFile.exists()
+            }
+            return false
+        }
+
+        // CRUD methods
+        /**
          * Creates a directory at the specified path.
          *
          * The directory is created within the application directory that is within the `Download`
@@ -76,7 +98,7 @@ class IOMethods {
          * failed.
          */
         fun createDirectory(pathToDir: String): File? {
-            val appDirectory = File(getFilePath(pathToDir))
+            val appDirectory = File(getItemPath(pathToDir))
             if (!appDirectory.exists()) {
                 val directoryCreated = appDirectory.mkdirs()
                 if (!directoryCreated) {
@@ -105,7 +127,7 @@ class IOMethods {
             val containingDir = createDirectory(getContainingDir(filePath))
             if (containingDir != null) {
                 // Create the file within the directory
-                val file = File(getFilePath(filePath))
+                val file = File(getItemPath(filePath))
                 try {
                     if (!file.exists()) {
                         Log.d("IO METHODS", file.path)
@@ -136,24 +158,39 @@ class IOMethods {
          */
         fun getFile(filePath: String): File? {
             if (checkIfFileExists(filePath)) {
-                return File(getFilePath(filePath))
+                return File(getItemPath(filePath))
             }
             return null
         }
 
         /**
-         * Checks if a file exists at the specified path.
+         * Delete a item on the phone.
          *
-         * @param itemPath Path to the file to check.
-         * @return A boolean; `true` if there is an item at the specified path and `false`
-         * otherwise. If the path specifies a folder this always returns `false`.
+         * If the item is a directory, then this function also deletes its contents.
+         *
+         * @param fileOrDirectory File or directory to delete.
          */
-        fun checkIfFileExists(itemPath: String): Boolean {
-            val possibleFile = File(getFilePath(itemPath))
-            if (possibleFile.isFile) {
-                return possibleFile.exists()
+        fun deleteItem(fileOrDirectory: File) {
+            if (fileOrDirectory.isDirectory) {
+                for (child in fileOrDirectory.listFiles()!!) {
+                    deleteItem(child)
+                }
             }
-            return false
+
+            fileOrDirectory.delete()
+            Log.d("IO METHODS", "Deleted '${fileOrDirectory.path}'")
+        }
+
+        /**
+         * Delete a item on the phone.
+         *
+         * If the path points to a directory, then this function also deletes its contents.
+         *
+         * @param itemPath Path to the file/folder.
+         */
+        fun deleteItem(itemPath: String) {
+            val fileOrDirectory = File(getItemPath(itemPath))
+            deleteItem(fileOrDirectory)
         }
     }
 }

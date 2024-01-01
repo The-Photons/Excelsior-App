@@ -37,7 +37,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -46,12 +48,15 @@ import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -69,7 +74,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -197,6 +201,8 @@ class MainActivity : ComponentActivity() {
         var dirItems by remember { mutableStateOf(JSONArray()) }
 
         var isLoadingFiles by remember { mutableStateOf(false) }
+
+        var showConfirmLogoutDialog by remember { mutableStateOf(false) }
 
         // Helper functions
         /**
@@ -762,13 +768,29 @@ class MainActivity : ComponentActivity() {
         // Main UI
         Scaffold(
             topBar = {
-                TopAppBar(
+                CenterAlignedTopAppBar(
                     colors = topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         titleContentColor = MaterialTheme.colorScheme.primary,
                     ),
                     title = {
                         Text("Files (${if (dirPath != "") dirPath else "/"})")
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { showConfirmLogoutDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Logout,
+                                contentDescription = "Logout"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { /* TODO: do something with menu */ }) {
+                            Icon(
+                                imageVector = Icons.Filled.Menu,
+                                contentDescription = "Menu"
+                            )
+                        }
                     }
                 )
             },
@@ -777,6 +799,7 @@ class MainActivity : ComponentActivity() {
             floatingActionButtonPosition = FabPosition.End
         )
         { innerPadding ->
+            // TODO: Scrolling?
             if (isLoadingFiles) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -790,7 +813,11 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             } else {
-                Column(modifier = Modifier.padding(innerPadding)) {
+                Column(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     if (dirPath != "") {
                         DirectoryItem(PREVIOUS_DIRECTORY_TEXT_LABEL, PREVIOUS_DIRECTORY_TYPE, "")
                     }
@@ -804,6 +831,24 @@ class MainActivity : ComponentActivity() {
                         // Create a button with that icon
                         DirectoryItem(name, type, size)
                     }
+                }
+                if (showConfirmLogoutDialog) {
+                    Dialogs.YesNoDialog(
+                        icon = Icons.Filled.Logout,
+                        iconDesc = "Logout",
+                        dialogTitle = "Confirm Logout",
+                        dialogContent = {
+                            Text("Are you sure that you want to log out?")
+                        },
+                        onYes = {
+                            showConfirmLogoutDialog = false
+                            Log.d("MAIN", "Start logout process; deleting all folders")
+                            IOMethods.deleteItem("")
+                            Log.d("MAIN", "Logged out")
+                            finish()
+                        },
+                        onNo = { showConfirmLogoutDialog = false }
+                    )
                 }
             }
         }
