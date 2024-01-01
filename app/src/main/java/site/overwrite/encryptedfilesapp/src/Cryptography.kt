@@ -18,7 +18,6 @@
 package site.overwrite.encryptedfilesapp.src
 
 import android.util.Base64
-import java.lang.IllegalArgumentException
 import java.security.SecureRandom
 import javax.crypto.BadPaddingException
 import javax.crypto.Cipher

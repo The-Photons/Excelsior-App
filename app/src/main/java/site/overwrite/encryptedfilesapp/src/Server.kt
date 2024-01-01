@@ -19,9 +19,9 @@ package site.overwrite.encryptedfilesapp.src
 
 import android.util.Log
 import com.android.volley.Request
+import com.android.volley.RequestQueue
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
-import com.android.volley.RequestQueue
 import org.json.JSONObject
 
 // CONSTANTS
@@ -343,9 +343,8 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
 
                             // Since successful, decrypt the actual key that is used to encrypt all
                             // the data
-                            val strEncryptionKey =
+                            val encryptionKey =
                                 Cryptography.decryptAES(encryptedEncryptionKey, userAESKey, iv)
-                            val encryptionKey = String(strEncryptionKey).decodeHex()
                             Log.d("SERVER", "Retrieved file encryption key")
 
                             // Create the encryption parameters object to return
