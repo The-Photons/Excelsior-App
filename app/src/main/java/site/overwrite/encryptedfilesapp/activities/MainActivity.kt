@@ -17,11 +17,13 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -115,6 +117,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var encryptionIV: String
     private lateinit var encryptionSalt: String
+    private lateinit var userKey: ByteArray
     private lateinit var encryptionKey: ByteArray
 
     // Overridden functions
@@ -126,44 +129,46 @@ class MainActivity : ComponentActivity() {
         // Create the request queue
         queue = Volley.newRequestQueue(applicationContext)
 
-        // TODO: Remove and Uncomment Below
-        server = Server(queue, "http://10.0.2.2:5000")  // 10.0.2.2 refers to localhost on PC
-        encryptionIV = "encryptionIntVec"
-        encryptionSalt = "someSalt12345678"
-        encryptionKey = String(
-            Cryptography.decryptAES(
-                "UXMMpaGD1SJ3ZATBuJnt7I3MWYHzsVFURgo0tKDg5aOoP16mmDPal/8GmsqvXXkohZk" +
-                        "f7SxRorWXe9qcIW+rmAA5niaqZeI2nvAuSrmztRg=",
-                Cryptography.genAESKey("password", encryptionSalt),
-                encryptionIV
-            )
-        ).decodeHex()
-        loggedIn = true
+//        // TODO: Remove and Uncomment Below
+//        server = Server(queue, "http://10.0.2.2:5000")  // 10.0.2.2 refers to localhost on PC
+//        encryptionIV = "encryptionIntVec"
+//        encryptionSalt = "someSalt12345678"
+//        userKey = Cryptography.genAESKey("password", encryptionSalt)
+//        encryptionKey = String(
+//            Cryptography.decryptAES(
+//                "UXMMpaGD1SJ3ZATBuJnt7I3MWYHzsVFURgo0tKDg5aOoP16mmDPal/8GmsqvXXkohZk" +
+//                        "f7SxRorWXe9qcIW+rmAA5niaqZeI2nvAuSrmztRg=",
+//                userKey,
+//                encryptionIV
+//            )
+//        ).decodeHex()
+//        loggedIn = true
 
-//        // We first need to ask for the login details, especially the encryption key
-//        loginIntent = Intent(this, LoginActivity::class.java)
-//        val getLoginCredentials =
-//            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-//                if (result.resultCode == Activity.RESULT_OK) {
-//                    val resultIntent = result.data
-//                    val serverURL = resultIntent?.getStringExtra("server_url") ?: ""
-//
-//                    server = Server(queue, serverURL)
-//                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
-//                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
-//                    encryptionKey =
-//                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
-//
-//                    loggedIn = true
-//                    Log.d(
-//                        "MAIN",
-//                        "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
-//                                " salt '$encryptionSalt', and encryption key (as hex string)" +
-//                                " '${encryptionKey.toHexString()}'"
-//                    )
-//                }
-//            }
-//        getLoginCredentials.launch(loginIntent)
+        // We first need to ask for the login details, especially the encryption key
+        loginIntent = Intent(this, LoginActivity::class.java)
+        val getLoginCredentials =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val resultIntent = result.data
+                    val serverURL = resultIntent?.getStringExtra("server_url") ?: ""
+
+                    server = Server(queue, serverURL)
+                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
+                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
+                    userKey = resultIntent?.getByteArrayExtra("user_key") ?: ByteArray(0)
+                    encryptionKey =
+                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
+
+                    loggedIn = true
+                    Log.d(
+                        "MAIN",
+                        "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
+                                " salt '$encryptionSalt', and encryption key (as hex string)" +
+                                " '${encryptionKey.toHexString()}'"
+                    )
+                }
+            }
+        getLoginCredentials.launch(loginIntent)
     }
 
     override fun onStart() {
@@ -183,6 +188,50 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // Helper functions
+    /**
+     * Handles the logout process.
+     */
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun handleLogout() {
+        Log.d("MAIN", "Start logout process; deleting all folders")
+
+        // Delete all items on the user's phone first
+        IOMethods.deleteItem("")
+
+        // Re-encrypt the key
+        val newIV = Cryptography.genIV(Cryptography.IV_LENGTH)
+        val encryptedKey = Cryptography.encryptAES(
+            encryptionKey.toHexString().toByteArray(),
+            userKey,
+            newIV
+        )
+
+        // Generate a new test string, consisting of only uppercase letters
+        val rawTestString = Cryptography.getRandomString(64, Cryptography.UPPERCASE_LETTERS)
+        val testString = Cryptography.encryptAES(rawTestString.toByteArray(), userKey, encryptionIV)
+
+        // Now upload this to the server
+        server.updateEncryptionParameters(
+            newIV,
+            encryptionSalt,
+            testString,
+            encryptedKey,
+            { _ ->
+                Log.d("MAIN", "Encryption parameters updated; logged out")
+                finish()
+            },
+            { _, _ ->
+                Log.d("MAIN", "Failed to update encryption parameters")
+            },
+            { error ->
+                run {
+                    Log.d("MAIN", "Error when updating encryption parameters: ${error.message}")
+                }
+            }
+        )
     }
 
     // Composables
@@ -584,11 +633,12 @@ class MainActivity : ComponentActivity() {
                                     text = { Text("Sync") },
                                     enabled = !IOMethods.checkIfFileExists(path),
                                     onClick = {
-                                        Toast.makeText(
-                                            applicationContext,
-                                            "Starting sync of '$name'",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                "Starting sync of '$name'",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
                                         handleSync(path, type)
                                     }
                                 )
@@ -847,10 +897,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onYes = {
                                 showConfirmLogoutDialog = false
-                                Log.d("MAIN", "Start logout process; deleting all folders")
-                                IOMethods.deleteItem("")
-                                Log.d("MAIN", "Logged out")
-                                finish()
+                                handleLogout()
                             },
                             onNo = { showConfirmLogoutDialog = false }
                         )

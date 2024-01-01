@@ -153,6 +153,7 @@ class LoginActivity : ComponentActivity() {
                                     resultIntent.putExtra("server_url", serverURL)
                                     resultIntent.putExtra("iv", encryptionParameters.iv)
                                     resultIntent.putExtra("salt", encryptionParameters.salt)
+                                    resultIntent.putExtra("user_key", encryptionParameters.userKey)
                                     resultIntent.putExtra(
                                         "encryption_key",
                                         encryptionParameters.encryptionKey
