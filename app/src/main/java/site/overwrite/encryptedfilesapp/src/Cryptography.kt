@@ -18,6 +18,7 @@
 package site.overwrite.encryptedfilesapp.src
 
 import android.util.Base64
+import java.lang.IllegalArgumentException
 import java.security.SecureRandom
 import javax.crypto.BadPaddingException
 import javax.crypto.Cipher
@@ -38,28 +39,6 @@ private const val KEYGEN_ITERATIONS = 120000
  */
 class Cryptography {
     companion object {
-        // Constants
-        const val IV_LENGTH = 16
-        const val UPPERCASE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        const val ALPHANUM_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnpqrstuvwxyz"
-
-        // Helper methods
-        /**
-         * Generates a random alphabetical string.
-         *
-         * @param sizeOfRandomString Length of the string.
-         * @param allowedCharacters Allowed characters for the string.
-         * @return String of characters.
-         */
-        fun getRandomString(sizeOfRandomString: Int, allowedCharacters: String): String {
-            val random = SecureRandom()
-            val sb = StringBuilder(sizeOfRandomString)
-            for (i in 0 until sizeOfRandomString)
-                sb.append(allowedCharacters[random.nextInt(allowedCharacters.length)])
-            return sb.toString()
-        }
-
-        // Main methods
         /**
          * Generates the key for AES encryption based on a user's password.
          *
@@ -85,8 +64,12 @@ class Cryptography {
          * @param length Length of the IV.
          * @return IV as a hexadecimal string.
          */
+        @OptIn(ExperimentalStdlibApi::class)
         fun genIV(length: Int): String {
-            return getRandomString(length, ALPHANUM_CHARS)
+            val rand = SecureRandom()
+            val iv = ByteArray(length)
+            rand.nextBytes(iv)
+            return iv.toHexString()
         }
 
         /**
@@ -136,15 +119,9 @@ class Cryptography {
  *
  * @property iv Initialization vector.
  * @property salt Salt for the encryption.
- * @property userKey User's AES key for encrypting the actual encryption key.
  * @property encryptionKey Byte array, representing the encryption key.
  */
-class EncryptionParameters(
-    val iv: String,
-    val salt: String,
-    val userKey: ByteArray,
-    val encryptionKey: ByteArray
-)
+class EncryptionParameters(val iv: String, val salt: String, val encryptionKey: ByteArray)
 
 // EXCEPTIONS
 class InvalidDecryptionException(message: String) : Exception(message)

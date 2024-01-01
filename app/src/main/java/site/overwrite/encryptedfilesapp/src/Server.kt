@@ -26,7 +26,6 @@ import org.json.JSONObject
 
 // CONSTANTS
 const val GET_ENCRYPTION_PARAMS_PAGE = "get-encryption-params"
-const val UPDATE_ENCRYPTION_PARAMS_PAGE = "update-encryption-params"
 const val PING_PAGE = "ping"
 const val LIST_DIR_PAGE = "list-dir"
 const val GET_FILE_PAGE = "get-file"
@@ -52,46 +51,6 @@ fun String.decodeHex(): ByteArray {
  */
 class Server(private val queue: RequestQueue, private val serverURL: String) {
     // Main methods
-    /**
-     * Updates the encryption parameters on the server.
-     *
-     * @param iv Initialization vector.
-     * @param salt Salting used.
-     * @param testStr Encrypted testing string.
-     * @param encryptedKey Encrypted encryption key using the user's AES key.
-     * @param processResponse Listener for a successful page request.
-     * @param failedResponse Listener for a failed page request.
-     * @param errorListener Listener for an page request that results in an error.
-     */
-    fun updateEncryptionParameters(
-        iv: String,
-        salt: String,
-        testStr: String,
-        encryptedKey: String,
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
-    ) {
-        // Create the POST Data
-        val postData = HashMap<String, String>()
-        postData["iv"] = iv
-        postData["salt"] = salt
-        postData["test_str"] = testStr
-        postData["encrypted_key"] = encryptedKey
-
-        // Send the POST data to the page
-        sendRequest(
-            serverURL,
-            Request.Method.POST,
-            UPDATE_ENCRYPTION_PARAMS_PAGE,
-            queue,
-            processResponse,
-            failedResponse,
-            errorListener,
-            postData
-        )
-    }
-
     /**
      * Gets the list of files in the path.
      *
@@ -393,7 +352,6 @@ class Server(private val queue: RequestQueue, private val serverURL: String) {
                             val encryptionParameters = EncryptionParameters(
                                 iv,
                                 salt,
-                                userAESKey,
                                 encryptionKey
                             )
 
