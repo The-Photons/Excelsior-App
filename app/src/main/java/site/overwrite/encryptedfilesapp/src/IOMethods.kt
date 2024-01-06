@@ -86,6 +86,29 @@ class IOMethods {
             return false
         }
 
+        /**
+         * Recursively list the items in the directory.
+         *
+         * @param dirPath Path to the directory.
+         * @return
+         */
+        fun traverseDir(dirPath: String): List<String> {
+            val paths = mutableListOf<String>()
+            val appDir = getAppDir()
+
+            File(getItemPath(dirPath)).walkTopDown().forEach {
+                // We only want to add files and non-empty directories
+                if (it.isFile || (it.isDirectory && (it.list()?.size ?: 0) != 0)) {
+                    paths.add(it.path.substring(appDir.length))
+                }
+            }
+            // Remove the empty app directory
+            paths.remove("")
+
+            // Now sort the paths
+            return paths.sorted()
+        }
+
         // CRUD methods
         /**
          * Creates a directory at the specified path.

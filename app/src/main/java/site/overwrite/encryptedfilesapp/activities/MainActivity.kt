@@ -448,6 +448,57 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        /**
+         * Checks if the item at the specified path has been synced.
+         *
+         * @param path Path to the file or folder.
+         * @param type Type, file or folder.
+         * @param listener Listener to the result of the check.
+         */
+        fun checkSync(path: String, type: String, listener: (Boolean) -> Unit) {
+            if (type == "file") {
+                listener(IOMethods.checkIfFileExists(path))
+            } else {
+                // Get directory contents on the phone
+                val localDirContents = IOMethods.traverseDir(path)
+
+                // Then check the server's copy
+                server.recursiveListFiles(
+                    path.trimStart('/'),
+                    { json ->
+                        run {
+                            val serverDirContents = json.getJSONArray("content")
+
+                            // Check if everything on the server copy is on the local copy
+                            val numItems = serverDirContents.length()
+                            var item: String
+                            for (i in 0..<numItems) {
+                                item = serverDirContents.getString(i)
+                                if (!localDirContents.contains(item)) {
+                                    listener(false)
+                                    return@run
+                                }
+                            }
+
+                            // If reached here then everything is synced
+                            listener(true)
+                        }
+                    },
+                    { _, _ ->
+                        run {
+                            listener(false)
+                        }
+                    },
+                    { error ->
+                        run {
+                            Log.d("MAIN", "Error when traversing server copy of '$path': $error")
+                            listener(false)
+                        }
+                    }
+                )
+            }
+        }
+
         // Helper composables
         /**
          * Creates a directory item on the screen.
@@ -463,6 +514,8 @@ class MainActivity : ComponentActivity() {
 
             var expanded by remember { mutableStateOf(false) }
             var showConfirmDeleteDialog by remember { mutableStateOf(false) }
+
+            var isSynced by remember { mutableStateOf(false) }
 
             TextButton(
                 shape = RoundedCornerShape(0),
@@ -540,9 +593,9 @@ class MainActivity : ComponentActivity() {
                     if (isPreviousDirectoryItem) {
                         Spacer(Modifier.size(24.dp))
                     } else {
-                        // TODO: Handle checking of sync of folders
-                        //       (Use a downloaded folder index?)
-                        if (IOMethods.checkIfFileExists("$dirPath/$name")) {
+                        checkSync("$dirPath/$name", type) { synced -> isSynced = synced }
+
+                        if (isSynced) {
                             Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
                         } else {
                             Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
@@ -809,7 +862,6 @@ class MainActivity : ComponentActivity() {
             floatingActionButtonPosition = FabPosition.End
         )
         { innerPadding ->
-            // TODO: Scrolling?
             if (isLoadingFiles) {
                 Column(
                     modifier = Modifier.fillMaxSize(),

@@ -27,6 +27,7 @@ import org.json.JSONObject
 // CONSTANTS
 const val GET_ENCRYPTION_PARAMS_PAGE = "get-encryption-params"
 const val LIST_DIR_PAGE = "list-dir"
+const val RECURSIVE_LIST_DIR_PAGE = "recursive-list-dir"
 const val GET_FILE_PAGE = "get-file"
 const val CREATE_FOLDER_PAGE = "create-dir"
 const val CREATE_FILE_PAGE = "create-file"
@@ -72,6 +73,39 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
             "$LIST_DIR_PAGE?path=$path"
         } else {
             LIST_DIR_PAGE
+        }
+
+        // Now we can send the request
+        sendRequest(
+            serverURL,
+            Request.Method.GET,
+            page,
+            queue,
+            processResponse,
+            failedResponse,
+            errorListener
+        )
+    }
+
+    /**
+     * Lists all the items in a path recursively.
+     *
+     * @param path Path to the directory.
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun recursiveListFiles(
+        path: String,
+        processResponse: (JSONObject) -> Any,
+        failedResponse: (String, JSONObject) -> Any,
+        errorListener: Response.ErrorListener
+    ) {
+        // Properly set the page
+        val page: String = if (path != "") {
+            "$RECURSIVE_LIST_DIR_PAGE?path=$path"
+        } else {
+            RECURSIVE_LIST_DIR_PAGE
         }
 
         // Now we can send the request
