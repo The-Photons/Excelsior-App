@@ -109,6 +109,8 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 const val PREVIOUS_DIRECTORY_TEXT_LABEL = "Previous Directory"
 const val PREVIOUS_DIRECTORY_TYPE = "prev-dir"
 
+val FOLDER_NAME_REGEX = Regex("[0-9A-z+\\-_= ]+")
+
 // MAIN ACTIVITY
 class MainActivity : ComponentActivity() {
     // Properties
@@ -836,9 +838,11 @@ class MainActivity : ComponentActivity() {
                         textFieldErrorText = "Invalid folder name",
                         onConfirmation = { folderName -> onConfirmFolderName(folderName) },
                         onDismissal = { showCreateFolderInputDialog = false },
-
-                        // TODO: Perhaps also filter by specific chars (e.g. [0-9A-z_-])
-                        textFieldValidator = { text -> text.isNotBlank() }
+                        textFieldValidator = { text ->
+                            text.isNotBlank() && FOLDER_NAME_REGEX.matches(
+                                text
+                            )
+                        }
                     )
                 }
             }
