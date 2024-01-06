@@ -334,6 +334,14 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
             queue: RequestQueue,
             listener: (Boolean, EncryptionParameters?) -> Unit
         ) {
+            // We need to ensure that a password is provided
+            if (password.isBlank()) {
+                Log.d("SERVER", "Provided password is blank")
+                listener(false, null)
+                return
+            }
+
+            // Otherwise we can send the request to the server
             sendRequest(
                 serverURL,
                 Request.Method.GET,

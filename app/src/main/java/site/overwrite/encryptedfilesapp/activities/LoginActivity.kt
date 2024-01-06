@@ -226,7 +226,7 @@ class LoginActivity : ComponentActivity() {
                         if (isErrorPassword) {
                             Text(
                                 modifier = Modifier.fillMaxWidth(),
-                                text = "Incorrect Password",
+                                text = "Invalid Password",
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
