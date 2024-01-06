@@ -47,6 +47,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
@@ -637,7 +638,41 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                                 DropdownMenuItem(
-                                    leadingIcon = { Icon(Icons.Filled.Delete, "Delete") },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            "Delete From Device"
+                                        )
+                                    },
+                                    text = { Text("Delete From Device") },
+                                    onClick = {
+                                        IOMethods.deleteItem(path)
+                                        scope.launch {
+                                            val result = snackbarHostState.showSnackbar(
+                                                "Deleted item",
+                                                "Undo",
+                                                duration = SnackbarDuration.Long
+                                            )
+                                            when (result) {
+                                                SnackbarResult.ActionPerformed -> {
+                                                    handleSync(path, type)
+                                                }
+
+                                                SnackbarResult.Dismissed -> {
+                                                    handleSync(path, type)
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Filled.Clear,
+                                            "Delete From Server"
+                                        )
+                                    },
                                     text = { Text("Delete From Server") },
                                     onClick = { showConfirmDeleteDialog = true }
                                 )
