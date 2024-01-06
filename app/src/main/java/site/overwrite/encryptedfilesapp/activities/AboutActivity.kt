@@ -17,9 +17,7 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
-import android.os.Build.VERSION
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,8 +27,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -89,7 +85,7 @@ class AboutActivity : ComponentActivity() {
     fun AboutInfo() {
         // Attributes
         val appVersion = packageManager.getPackageInfo(packageName, 0).versionName
-        var serverVersion by remember { mutableStateOf("X.Y.Z") }
+        var serverVersion by remember { mutableStateOf("") }
 
         // Main UI
         Scaffold(
@@ -124,10 +120,12 @@ class AboutActivity : ComponentActivity() {
 
         // Get the server version
         server.getServerVersion(
-            { json -> run {
-                serverVersion = json.getString("version")
-                Log.d("ABOUT", "Server version: $serverVersion")
-            } },
+            { json ->
+                run {
+                    serverVersion = json.getString("version")
+                    Log.d("ABOUT", "Server version: $serverVersion")
+                }
+            },
             { _, _ ->
                 run {
                     Log.d("ABOUT", "Failed to get version of server")
