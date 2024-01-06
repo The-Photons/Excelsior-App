@@ -17,6 +17,8 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.annotation.SuppressLint
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -57,9 +59,13 @@ class AboutActivity : ComponentActivity() {
     private lateinit var server: Server
 
     // Overridden methods
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("ABOUT", "About activity onCreate")
         super.onCreate(savedInstanceState)
+
+        // Prevent screen rotate
+        this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         // Set the queue and server
         queue = Volley.newRequestQueue(applicationContext)

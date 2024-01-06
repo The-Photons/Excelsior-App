@@ -17,9 +17,11 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -124,10 +126,14 @@ class MainActivity : ComponentActivity() {
     private lateinit var encryptionKey: ByteArray
 
     // Overridden functions
+    @SuppressLint("SourceLockedOrientationActivity")
     @OptIn(ExperimentalStdlibApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("MAIN", "Main activity onCreate")
         super.onCreate(savedInstanceState)
+
+        // Prevent screen rotate
+        this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         // Create the request queue
         queue = Volley.newRequestQueue(applicationContext)

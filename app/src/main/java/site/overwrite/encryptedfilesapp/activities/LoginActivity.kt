@@ -17,7 +17,9 @@
 
 package site.overwrite.encryptedfilesapp.activities
 
+import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -76,9 +78,13 @@ class LoginActivity : ComponentActivity() {
     private lateinit var dataStoreManager: DataStoreManager
 
     // Overridden methods
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("LOGIN", "Login activity onCreate")
         super.onCreate(savedInstanceState)
+
+        // Prevent screen rotate
+        this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         // Update properties
         queue = Volley.newRequestQueue(applicationContext)
