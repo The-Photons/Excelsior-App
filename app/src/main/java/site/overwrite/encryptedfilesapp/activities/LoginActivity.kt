@@ -58,7 +58,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.asLiveData
 import com.android.volley.RequestQueue
@@ -66,7 +65,6 @@ import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import site.overwrite.encryptedfilesapp.src.DataStoreManager
-import site.overwrite.encryptedfilesapp.src.IOMethods
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
@@ -113,7 +111,6 @@ class LoginActivity : ComponentActivity() {
      * Login view.
      */
     @OptIn(ExperimentalMaterial3Api::class)
-    @Preview
     @Composable
     fun LoginView() {
         // Attributes
@@ -267,7 +264,7 @@ class LoginActivity : ComponentActivity() {
         }
 
         // Immediately close app upon back button press
-        if (Build.VERSION.SDK_INT >= 33) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_DEFAULT
             ) {

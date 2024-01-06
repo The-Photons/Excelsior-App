@@ -184,7 +184,6 @@ class MainActivity : ComponentActivity() {
      */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    @Preview
     fun FilesList() {
         val scope = rememberCoroutineScope()
         val snackbarHostState = remember { SnackbarHostState() }
@@ -966,7 +965,7 @@ class MainActivity : ComponentActivity() {
         getItemsInDir()
 
         // Show logout question when the back button is pressed
-        if (Build.VERSION.SDK_INT >= 33) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_DEFAULT
             ) {

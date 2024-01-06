@@ -80,7 +80,6 @@ class AboutActivity : ComponentActivity() {
 
     // Composables
     @OptIn(ExperimentalMaterial3Api::class)
-    @Preview
     @Composable
     fun AboutInfo() {
         // Attributes
