@@ -131,6 +131,10 @@ class LoginActivity : ComponentActivity() {
         // Helper functions
         fun attemptLogin() {
             Log.d("LOGIN", "Login button clicked")
+
+            isErrorServerURL = false
+            isErrorPassword = false
+
             isLoading = true
             Server.isValidURL(serverURL, queue) { isValid ->
                 run {
