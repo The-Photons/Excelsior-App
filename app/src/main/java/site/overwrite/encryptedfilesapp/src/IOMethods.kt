@@ -192,16 +192,25 @@ class IOMethods {
          * If the item is a directory, then this function also deletes its contents.
          *
          * @param fileOrDirectory File or directory to delete.
+         * @return Status of the deletion: `true` if the item was deleted and `false` if not.
          */
-        fun deleteItem(fileOrDirectory: File) {
+        private fun deleteItem(fileOrDirectory: File): Boolean {
+            var allDeleted = true
             if (fileOrDirectory.isDirectory) {
                 for (child in fileOrDirectory.listFiles()!!) {
-                    deleteItem(child)
+                    if (!deleteItem(child)) {
+                        allDeleted = false
+                    }
                 }
             }
 
-            fileOrDirectory.delete()
-            Log.d("IO METHODS", "Deleted '${fileOrDirectory.path}'")
+            if (fileOrDirectory.delete()) {
+                Log.d("IO METHODS", "Deleted '${fileOrDirectory.path}'")
+            } else {
+                Log.d("IO METHODS", "Failed to delete '${fileOrDirectory.path}'")
+                allDeleted = false
+            }
+            return allDeleted
         }
 
         /**
@@ -210,10 +219,11 @@ class IOMethods {
          * If the path points to a directory, then this function also deletes its contents.
          *
          * @param itemPath Path to the file/folder.
+         * @return Status of the deletion: `true` if the item was deleted and `false` if not.
          */
-        fun deleteItem(itemPath: String) {
+        fun deleteItem(itemPath: String): Boolean {
             val fileOrDirectory = File(getItemPath(itemPath))
-            deleteItem(fileOrDirectory)
+            return deleteItem(fileOrDirectory)
         }
     }
 }

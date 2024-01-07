@@ -288,8 +288,9 @@ class MainActivity : ComponentActivity() {
          * Gets the file at the specified path.
          *
          * @param rawPath Path to the file.
+         * @param displayResult Whether to display the result of the syncing.
          */
-        fun getFile(rawPath: String) {
+        fun getFile(rawPath: String, displayResult: Boolean = true) {
             val path = rawPath.trimStart('/')
             Log.d("MAIN", "Getting file: '$path'")
             server.getFile(
@@ -302,6 +303,12 @@ class MainActivity : ComponentActivity() {
                         )
                         IOMethods.createFile(rawPath, fileData)
                         Log.d("MAIN", "Downloaded '$rawPath'")
+                        if (displayResult) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("File Synced")
+                                getItemsInDir()
+                            }
+                        }
                     }
                 },
                 { status, _ ->
@@ -342,7 +349,6 @@ class MainActivity : ComponentActivity() {
                         Log.d("MAIN", "Deleted $type '$path' from server")
                         val name = IOMethods.getFileName(path)
                         scope.launch { snackbarHostState.showSnackbar("Deleted $type '$name' from server") }
-
                         getItemsInDir()
                     }
                 },
@@ -394,14 +400,7 @@ class MainActivity : ComponentActivity() {
         fun handleSync(path: String, type: String, displayResult: Boolean = true) {
             if (type == "file") {
                 Log.d("MAIN", "Syncing file '$path'")
-                getFile(path)
-                Log.d("MAIN", "Synced file '$path'")
-                if (displayResult) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("File Synced")
-                        getItemsInDir()
-                    }
-                }
+                getFile(path, displayResult)
             } else {
                 // Get all items within the folder
                 Log.d("MAIN", "Syncing directory '$path'")
@@ -653,23 +652,25 @@ class MainActivity : ComponentActivity() {
                                     },
                                     text = { Text("Delete From Device") },
                                     onClick = {
-                                        IOMethods.deleteItem(path)
-                                        scope.launch {
-                                            val result = snackbarHostState.showSnackbar(
-                                                "Deleted item",
-                                                "Undo",
-                                                duration = SnackbarDuration.Long
-                                            )
-                                            when (result) {
-                                                SnackbarResult.ActionPerformed -> {
-                                                    handleSync(path, type)
-                                                }
+                                        if (IOMethods.deleteItem(path)) {
+                                            scope.launch {
+                                                val result = snackbarHostState.showSnackbar(
+                                                    "Deleted item",
+                                                    "Undo",
+                                                    duration = SnackbarDuration.Short
+                                                )
+                                                when (result) {
+                                                    SnackbarResult.ActionPerformed -> {
+                                                        handleSync(path, type)
+                                                    }
 
-                                                SnackbarResult.Dismissed -> {
-                                                    handleSync(path, type)
+                                                    SnackbarResult.Dismissed -> {
+                                                        // Don't need to do anything
+                                                    }
                                                 }
                                             }
-
+                                        } else {
+                                            scope.launch { snackbarHostState.showSnackbar("Failed to delete item") }
                                         }
                                     }
                                 )
