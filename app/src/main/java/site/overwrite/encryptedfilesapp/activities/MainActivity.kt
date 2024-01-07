@@ -567,7 +567,6 @@ class MainActivity : ComponentActivity() {
                             dirPath = "$dirPath/$name"
                         }
                         Log.d("MAIN", "Dir path: '$dirPath'; Prev dir: '$prevDir'")
-                        getItemsInDir()
                     }
                 }
             ) {
