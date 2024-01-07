@@ -72,6 +72,17 @@ class IOMethods {
         }
 
         /**
+         * Checks if an item exists at the specified path.
+         *
+         * @param itemPath Path to the item to check.
+         * @return A boolean; `true` if there is an item at the specified path and `false`
+         * otherwise.
+         */
+        fun checkIfExists(itemPath: String): Boolean {
+            return File(getItemPath(itemPath)).exists()
+        }
+
+        /**
          * Checks if a file exists at the specified path.
          *
          * @param itemPath Path to the file to check.

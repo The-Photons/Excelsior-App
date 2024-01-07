@@ -57,7 +57,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.filled.QuestionMark
@@ -650,6 +649,7 @@ class MainActivity : ComponentActivity() {
                                         )
                                     },
                                     text = { Text("Delete From Device") },
+                                    enabled = IOMethods.checkIfExists(path),
                                     onClick = {
                                         if (IOMethods.deleteItem(path)) {
                                             scope.launch {
@@ -733,6 +733,12 @@ class MainActivity : ComponentActivity() {
                 if (uri != null) {
                     val fileName = getFileName(uri)
                     val filePath = "$dirPath/$fileName".trimStart('/')
+
+                    Toast.makeText(
+                        applicationContext,
+                        "Uploading '$fileName'",
+                        Toast.LENGTH_SHORT
+                    ).show()
 
                     // TODO: Progress bar for uploading?
                     val inputStream = contentResolver.openInputStream(uri)
