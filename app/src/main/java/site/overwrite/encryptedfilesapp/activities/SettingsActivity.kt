@@ -58,8 +58,6 @@ import kotlinx.coroutines.runBlocking
 import site.overwrite.encryptedfilesapp.src.DataStoreManager
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
-// CONSTANTS
-
 // ENUMS
 enum class UploadBlockSize {
     BLOCK_SIZE_1024 {
@@ -75,6 +73,11 @@ enum class UploadBlockSize {
     BLOCK_SIZE_4096 {
         override fun toString(): String {
             return "4096 B (4 KiB)"
+        }
+    },
+    BLOCK_SIZE_8192 {
+        override fun toString(): String {
+            return "8192 B (8 KiB)"
         }
     }
 }

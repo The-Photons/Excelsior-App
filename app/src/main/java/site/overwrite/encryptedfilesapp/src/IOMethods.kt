@@ -164,7 +164,6 @@ class IOMethods {
                 val file = File(getItemPath(filePath))
                 try {
                     if (!file.exists()) {
-                        Log.d("IO METHODS", file.path)
                         val fileCreated = file.createNewFile()
                         if (!fileCreated) {
                             // Failed to create the file
