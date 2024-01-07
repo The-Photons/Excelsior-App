@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Cloud
@@ -872,14 +873,29 @@ class MainActivity : ComponentActivity() {
                     actions = {
                         IconButton(onClick = { showExtrasMenu = true }) {
                             Icon(
-                                imageVector = Icons.Filled.Menu,
-                                contentDescription = "Menu"
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = "More"
                             )
                         }
                         DropdownMenu(
                             expanded = showExtrasMenu,
                             onDismissRequest = { showExtrasMenu = false }
                         ) {
+                            DropdownMenuItem(
+                                leadingIcon = { Icon(Icons.Filled.Settings, "Settings") },
+                                text = { Text("Settings") },
+                                onClick = {
+                                    Log.d("MAIN", "Showing settings page")
+                                    val settingsIntent =
+                                        Intent(applicationContext, SettingsActivity::class.java)
+                                    try {
+                                        startActivity(settingsIntent)
+                                    } catch (e: ActivityNotFoundException) {
+                                        Log.d("MAIN", "Failed to show settings: ${e.message}")
+                                    }
+                                    showExtrasMenu = false
+                                }
+                            )
                             DropdownMenuItem(
                                 leadingIcon = { Icon(Icons.Filled.Info, "About") },
                                 text = { Text("About") },

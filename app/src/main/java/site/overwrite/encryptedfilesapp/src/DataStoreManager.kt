@@ -22,11 +22,13 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import site.overwrite.encryptedfilesapp.activities.UploadBlockSize
 import java.io.IOException
 
 class DataStoreManager(private val context: Context) {
@@ -35,6 +37,23 @@ class DataStoreManager(private val context: Context) {
         private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
         val serverURLKey = stringPreferencesKey("server_url")
+        val uploadBlockSizeKey = intPreferencesKey("upload_block_size")
+    }
+
+    // Helper methods
+    /**
+     * Gets the preferences from the data store.
+     *
+     * @return Preferences flow.
+     */
+    private fun getPreferences(): Flow<Preferences> {
+        return context.dataStore.data.catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
     }
 
     // Getters
@@ -44,15 +63,28 @@ class DataStoreManager(private val context: Context) {
      * @return Server URL as a flow string.
      */
     fun getServerURL(): Flow<String> {
-        return context.dataStore.data.catch { exception ->
-            if (exception is IOException) {
-                emit(emptyPreferences())
-            } else {
-                throw exception
-            }
-        }.map { preferences ->
+        return getPreferences().map { preferences ->
             val serverURL = preferences[serverURLKey] ?: ""
             serverURL
+        }
+    }
+
+    /**
+     * Gets the upload block size from the data store.
+     *
+     * @return Upload block size enum value. If the preferences did not already store an enum value,
+     * then it will return [UploadBlockSize.BLOCK_SIZE_1024].
+     */
+    fun getUploadBlockSize(): Flow<UploadBlockSize> {
+        return getPreferences().map { preferences ->
+            val uploadBlockSizeIdx = preferences[uploadBlockSizeKey] ?: -1
+            if (uploadBlockSizeIdx == -1) {
+                // If cannot find a block size, choose the smallest
+                UploadBlockSize.BLOCK_SIZE_1024
+            } else {
+                // Otherwise use the given block size
+                UploadBlockSize.entries[uploadBlockSizeIdx]
+            }
         }
     }
 
@@ -65,6 +97,17 @@ class DataStoreManager(private val context: Context) {
     suspend fun setServerURL(serverURL: String) {
         context.dataStore.edit { preferences ->
             preferences[serverURLKey] = serverURL
+        }
+    }
+
+    /**
+     * Sets the upload block size ordinal in the data store.
+     *
+     * @param uploadBlockSize Upload block size to set.
+     */
+    suspend fun setUploadBlockSize(uploadBlockSize: UploadBlockSize) {
+        context.dataStore.edit { preferences ->
+            preferences[uploadBlockSizeKey] = uploadBlockSize.ordinal
         }
     }
 }
