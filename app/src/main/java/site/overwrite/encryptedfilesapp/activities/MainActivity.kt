@@ -518,7 +518,7 @@ class MainActivity : ComponentActivity() {
             // Attributes
             val isPreviousDirectoryItem = type == PREVIOUS_DIRECTORY_TYPE
 
-            var expanded by remember { mutableStateOf(false) }
+            var isDropdownExpanded by remember { mutableStateOf(false) }
             var showConfirmDeleteDialog by remember { mutableStateOf(false) }
 
             var isSynced by remember { mutableStateOf(false) }
@@ -619,13 +619,13 @@ class MainActivity : ComponentActivity() {
                         } else {
                             IconButton(
                                 modifier = Modifier.size(24.dp),
-                                onClick = { expanded = !expanded }
+                                onClick = { isDropdownExpanded = !isDropdownExpanded }
                             ) {
                                 Icon(Icons.Filled.MoreVert, "More")
                             }
                             DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
+                                expanded = isDropdownExpanded,
+                                onDismissRequest = { isDropdownExpanded = false }
                             ) {
                                 val path = "$dirPath/$name"
                                 DropdownMenuItem(
@@ -639,6 +639,7 @@ class MainActivity : ComponentActivity() {
                                             Toast.LENGTH_SHORT
                                         ).show()
                                         handleSync(path, type)
+                                        isDropdownExpanded = false
                                     }
                                 )
                                 DropdownMenuItem(
@@ -671,6 +672,7 @@ class MainActivity : ComponentActivity() {
                                         } else {
                                             scope.launch { snackbarHostState.showSnackbar("Failed to delete item") }
                                         }
+                                        isDropdownExpanded = false
                                     }
                                 )
                                 DropdownMenuItem(
@@ -681,7 +683,10 @@ class MainActivity : ComponentActivity() {
                                         )
                                     },
                                     text = { Text("Delete From Server") },
-                                    onClick = { showConfirmDeleteDialog = true }
+                                    onClick = {
+                                        showConfirmDeleteDialog = true
+                                        isDropdownExpanded = false
+                                    }
                                 )
                             }
                         }
