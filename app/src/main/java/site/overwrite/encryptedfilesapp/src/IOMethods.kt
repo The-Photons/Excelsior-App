@@ -212,13 +212,20 @@ class IOMethods {
                         allDeleted = false
                     }
                 }
+
+                if (allDeleted) {
+                    // The `allDeleted` flag now depends on if we can delete the directory
+                    allDeleted = fileOrDirectory.delete()
+                }
+            } else {
+                // Just try to delete the file using secure deletion
+                allDeleted = SDelete.deleteFile(fileOrDirectory)
             }
 
-            if (fileOrDirectory.delete()) {
+            if (allDeleted) {
                 Log.d("IO METHODS", "Deleted '${fileOrDirectory.path}'")
             } else {
                 Log.d("IO METHODS", "Failed to delete '${fileOrDirectory.path}'")
-                allDeleted = false
             }
             return allDeleted
         }
