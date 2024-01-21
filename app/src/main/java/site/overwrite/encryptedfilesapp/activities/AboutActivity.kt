@@ -44,10 +44,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.android.volley.RequestQueue
-import com.android.volley.toolbox.Volley
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
@@ -55,7 +52,6 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
  * About page for the application.
  */
 class AboutActivity : ComponentActivity() {
-    private lateinit var queue: RequestQueue
     private lateinit var server: Server
 
     // Overridden methods
@@ -68,8 +64,7 @@ class AboutActivity : ComponentActivity() {
         this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         // Set the queue and server
-        queue = Volley.newRequestQueue(applicationContext)
-        server = Server(queue, intent?.getStringExtra("server_url") ?: "")
+        server = Server(intent?.getStringExtra("server_url") ?: "")
 
         // Then set the content
         setContent {

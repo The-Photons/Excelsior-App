@@ -62,8 +62,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.asLiveData
-import com.android.volley.RequestQueue
-import com.android.volley.toolbox.Volley
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import site.overwrite.encryptedfilesapp.src.DataStoreManager
@@ -74,7 +74,9 @@ class LoginActivity : ComponentActivity() {
     // Properties
     private var serverURL by mutableStateOf("http://127.0.0.1:5000")
     private var username by mutableStateOf("")
-    private lateinit var queue: RequestQueue
+
+    private lateinit var client: HttpClient
+    private lateinit var server: Server
 
     private lateinit var dataStoreManager: DataStoreManager
 
@@ -88,7 +90,7 @@ class LoginActivity : ComponentActivity() {
         this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         // Update properties
-        queue = Volley.newRequestQueue(applicationContext)
+        client = HttpClient(CIO)
 
         // Get things from the data store
         dataStoreManager = DataStoreManager(applicationContext)
@@ -141,7 +143,7 @@ class LoginActivity : ComponentActivity() {
             isErrorPassword = false
 
             isLoading = true
-            Server.isValidURL(serverURL, queue) { isValid ->
+            Server.isValidURL(serverURL, client) { isValid ->
                 run {
                     if (!isValid) {
                         isErrorServerURL = true
@@ -155,12 +157,14 @@ class LoginActivity : ComponentActivity() {
                             dataStoreManager.setServerURL(serverURL)
                         }
 
+                        // Create the server object
+                        server = Server(serverURL)
+
                         // Now check the credentials
-                        Server.isValidCredentials(
-                            serverURL,
+                        server.isValidCredentials(
                             username,
                             userPassword,
-                            queue
+                            actuallyLogin = false
                         ) { isValid ->
                             run {
                                 if (!isValid) {
@@ -179,6 +183,7 @@ class LoginActivity : ComponentActivity() {
                                     // Return needed things
                                     val resultIntent = Intent()
                                     resultIntent.putExtra("server_url", serverURL)
+                                    resultIntent.putExtra("username", username)
                                     resultIntent.putExtra("password", userPassword)
 
                                     setResult(RESULT_OK, resultIntent)

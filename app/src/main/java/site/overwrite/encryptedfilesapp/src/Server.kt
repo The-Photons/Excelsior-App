@@ -18,10 +18,14 @@
 package site.overwrite.encryptedfilesapp.src
 
 import android.util.Log
-import com.android.volley.Request
-import com.android.volley.RequestQueue
-import com.android.volley.Response
-import com.android.volley.toolbox.StringRequest
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.request.forms.submitForm
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.parameters
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 
 // CONSTANTS
@@ -49,13 +53,21 @@ fun String.decodeHex(): ByteArray {
 }
 
 // CLASSES
+enum class HttpMethod {
+    GET, POST
+}
+
 /**
  * Class that handles the communication with the encrypted files server.
  *
- * @property queue Volley `RequestQueue` for processing HTTP requests.
  * @property serverURL URL to the server. **Assumed to be valid**.
  */
-class Server(private val queue: RequestQueue, val serverURL: String) {
+class Server(val serverURL: String) {
+    // Attributes
+    private val client = HttpClient(CIO) {
+        install(HttpCookies)
+    }
+
     // Main methods
     /**
      * Gets the encryption parameters for the logged in user.
@@ -67,13 +79,13 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
     fun getEncryptionParameters(
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
+        errorListener: (Exception) -> Any
     ) {
         sendRequest(
             serverURL,
-            Request.Method.GET,
+            HttpMethod.GET,
             GET_ENCRYPTION_PARAMS_PAGE,
-            queue,
+            client,
             processResponse,
             failedResponse,
             errorListener
@@ -92,7 +104,7 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         path: String,
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
+        errorListener: (Exception) -> Any
     ) {
         // Properly set the page
         val page: String = if (path != "") {
@@ -104,9 +116,9 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         // Now we can send the request
         sendRequest(
             serverURL,
-            Request.Method.GET,
+            HttpMethod.GET,
             page,
-            queue,
+            client,
             processResponse,
             failedResponse,
             errorListener
@@ -125,7 +137,7 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         path: String,
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
+        errorListener: (Exception) -> Any
     ) {
         // Properly set the page
         val page: String = if (path != "") {
@@ -137,9 +149,9 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         // Now we can send the request
         sendRequest(
             serverURL,
-            Request.Method.GET,
+            HttpMethod.GET,
             page,
-            queue,
+            client,
             processResponse,
             failedResponse,
             errorListener
@@ -158,13 +170,13 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         path: String,
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
+        errorListener: (Exception) -> Any
     ) {
         sendRequest(
             serverURL,
-            Request.Method.GET,
+            HttpMethod.GET,
             "$GET_FILE_PAGE/$path",
-            queue,
+            client,
             processResponse,
             failedResponse,
             errorListener
@@ -183,13 +195,13 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         path: String,
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
+        errorListener: (Exception) -> Any
     ) {
         sendRequest(
             serverURL,
-            Request.Method.POST,
+            HttpMethod.POST,
             "$CREATE_FOLDER_PAGE/$path",
-            queue,
+            client,
             processResponse,
             failedResponse,
             errorListener
@@ -210,7 +222,7 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         encryptedContent: String,
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
+        errorListener: (Exception) -> Any
     ) {
         // Create the POST Data
         val postData = HashMap<String, String>()
@@ -219,9 +231,9 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         // Send the POST data to the page
         sendRequest(
             serverURL,
-            Request.Method.POST,
+            HttpMethod.POST,
             "$CREATE_FILE_PAGE/$path",
-            queue,
+            client,
             processResponse,
             failedResponse,
             errorListener,
@@ -241,13 +253,13 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         path: String,
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
+        errorListener: (Exception) -> Any
     ) {
         sendRequest(
             serverURL,
-            Request.Method.DELETE,
+            HttpMethod.GET,  // TODO: Fix to use DELETE
             "$DELETE_ITEM_PAGE/$path",
-            queue,
+            client,
             processResponse,
             failedResponse,
             errorListener
@@ -264,26 +276,81 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
     fun getServerVersion(
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: Response.ErrorListener
+        errorListener: (Exception) -> Any
     ) {
         sendRequest(
             serverURL,
-            Request.Method.GET,
+            HttpMethod.GET,
             GET_VERSION_PAGE,
-            queue,
+            client,
             processResponse,
             failedResponse,
             errorListener
         )
     }
 
-    // 'Static'/Class methods
+    /**
+     * Checks if the provided credentials are valid.
+     *
+     * @param username Username to check.
+     * @param password Password to check.
+     * @param listener Listener to process the result.
+     */
+    fun isValidCredentials(
+        username: String,
+        password: String,
+        actuallyLogin: Boolean = true,
+        listener: (Boolean) -> Unit
+    ) {
+        // We need to ensure that a username and password are provided
+        if (username.isBlank() || password.isBlank()) {
+            Log.d("SERVER", "Provided username or password is blank")
+            listener(false)
+            return
+        }
+
+        // Create the POST Data
+        val postData = HashMap<String, String>()
+        postData["username"] = username
+        postData["password"] = password
+
+        // Otherwise we can send the request to the server
+        sendRequest(
+            serverURL,
+            HttpMethod.POST,
+            if (actuallyLogin) LOGIN_PAGE else "$LOGIN_PAGE?actually-login=false",
+            client,
+            {
+                run {
+                    Log.d("SERVER", "Login successful")
+                    listener(true)
+                }
+            },
+            { _, json ->
+                run {
+                    val message = json.getString("message")
+                    Log.d("SERVER", "Login failed: $message")
+                    listener(false)
+                }
+            },
+            { error ->
+                run {
+                    Log.d("SERVER", "Error when logging in: $error")
+                    listener(false)
+                }
+            },
+            postData
+        )
+    }
+
+    // Static methods
     companion object {
         /**
          * Helper method that sends a request to the specified page on the server.
          *
          * @param method Request method.
          * @param page   Page (and URL parameters) to send the request to.
+         * @param client HTTP client.
          * @param processResponse Listener for a successful page request.
          * @param failedResponse Listener for a failed page request.
          * @param errorListener Listener for an page request that results in an error.
@@ -291,78 +358,60 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
          */
         private fun sendRequest(
             serverURL: String,
-            method: Int,
+            method: HttpMethod,
             page: String,
-            queue: RequestQueue,
+            client: HttpClient,
             processResponse: (JSONObject) -> Any,
             failedResponse: (String, JSONObject) -> Any,
-            errorListener: Response.ErrorListener,
+            errorListener: (Exception) -> Any,
             postData: HashMap<String, String>? = null,
         ) {
             // Form the full URL
             val url = "$serverURL/$page"
-
-            // Request a string response from the provided URL
-            val stringRequest: StringRequest
-            if (method == Request.Method.POST) {
-                stringRequest = object : StringRequest(
-                    method,
-                    url,
-                    { response ->
-                        run {
-                            val json = JSONObject(response)
-                            val status = json.getString("status")
-                            if (status == "ok") {
-                                processResponse(json)
-                            } else {
-                                failedResponse(status, json)
+            runBlocking {  // Todo: use better async?
+                try {
+                    val response = if (method == HttpMethod.POST) {
+                        client.submitForm(url, formParameters = parameters {
+                            postData?.forEach { (key, value) ->
+                                append(key, value)
                             }
-                        }
-                    },
-                    errorListener
-                ) {
-                    override fun getParams(): MutableMap<String, String>? {
-                        return postData
+                        })
+                    } else {
+                        client.get(url)
                     }
-                }
-            } else {
-                stringRequest = StringRequest(
-                    method,
-                    url,
-                    { response ->
-                        run {
-                            val json = JSONObject(response)
-                            val status = json.getString("status")
-                            if (status == "ok") {
-                                processResponse(json)
-                            } else {
-                                failedResponse(status, json)
-                            }
-                        }
-                    },
-                    errorListener
-                )
-            }
+                    Log.d("SERVER", "Sent request to '$url'")
 
-            // Add the request to the RequestQueue
-            queue.add(stringRequest)
-            Log.d("SERVER", "Sent request to $url")
+                    if (response.status.value == 200) {
+                        val json = JSONObject(response.bodyAsText())
+                        val status = json.getString("status")
+                        if (status == "ok") {
+                            processResponse(json)
+                        } else {
+                            failedResponse(status, json)
+                        }
+                    } else {
+                        Log.d("SERVER", "Error ${response.status.value} for '$url'")
+                    }
+                } catch (e: Exception) {
+                    errorListener(e)
+                }
+            }
         }
 
         /**
          * Determines whether the provided URL is a valid server URL.
          *
          * @param serverURL URL to check.
-         * @param queue Request Volley queue.
+         * @param client HTTP client.
          * @param listener Listener to process the result.
          */
-        fun isValidURL(serverURL: String, queue: RequestQueue, listener: (Boolean) -> Unit) {
+        fun isValidURL(serverURL: String, client: HttpClient, listener: (Boolean) -> Unit) {
             Log.d("SERVER", "Checking if '$serverURL' is valid")
             sendRequest(
                 serverURL,
-                Request.Method.GET,
+                HttpMethod.GET,
                 PING_PAGE,
-                queue,
+                client,
                 { json ->
                     run {
                         val response = json.get("content")
@@ -377,63 +426,6 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
                 },
                 { _, _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) },
                 { _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) }
-            )
-        }
-
-        /**
-         * Checks if the provided credentials are valid.
-         *
-         * @param serverURL **Verified** server URL.
-         * @param username Username to check.
-         * @param password Password to check.
-         * @param queue Request Volley queue.
-         * @param listener Listener to process the result.
-         */
-        fun isValidCredentials(
-            serverURL: String,
-            username: String,
-            password: String,
-            queue: RequestQueue,
-            listener: (Boolean) -> Unit
-        ) {
-            // We need to ensure that a username and password are provided
-            if (username.isBlank() || password.isBlank()) {
-                Log.d("SERVER", "Provided username or password is blank")
-                listener(false)
-                return
-            }
-
-            // Create the POST Data
-            val postData = HashMap<String, String>()
-            postData["username"] = username
-            postData["password"] = password
-
-            // Otherwise we can send the request to the server
-            sendRequest(
-                serverURL,
-                Request.Method.POST,
-                LOGIN_PAGE,
-                queue,
-                {
-                    run {
-                        Log.d("SERVER", "Login successful")
-                        listener(true)
-                    }
-                },
-                { _, json ->
-                    run {
-                        val message = json.getString("message")
-                        Log.d("SERVER", "Login failed: $message")
-                        listener(false)
-                    }
-                },
-                { error ->
-                    run {
-                        Log.d("SERVER", "Error when logging in: $error")
-                        listener(false)
-                    }
-                },
-                postData
             )
         }
     }

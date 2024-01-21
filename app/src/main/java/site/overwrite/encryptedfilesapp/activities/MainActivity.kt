@@ -95,9 +95,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import com.android.volley.RequestQueue
-import com.android.volley.VolleyError
-import com.android.volley.toolbox.Volley
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import site.overwrite.encryptedfilesapp.src.Cryptography
@@ -115,10 +112,10 @@ val FOLDER_NAME_REGEX = Regex("[0-9A-z+\\-_= ]+")
 // MAIN ACTIVITY
 class MainActivity : ComponentActivity() {
     // Properties
+    private var initialized = false
     private var loggedIn = false
 
     private lateinit var server: Server
-    private lateinit var queue: RequestQueue
     private lateinit var loginIntent: Intent
 
     private lateinit var encryptionIV: String
@@ -135,9 +132,6 @@ class MainActivity : ComponentActivity() {
         // Prevent screen rotate
         this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
-        // Create the request queue
-        queue = Volley.newRequestQueue(applicationContext)
-
         // We first need to ask for the login details, especially the encryption key
         loginIntent = Intent(this, LoginActivity::class.java)
         val getLoginCredentials =
@@ -145,19 +139,20 @@ class MainActivity : ComponentActivity() {
                 if (result.resultCode == Activity.RESULT_OK) {
                     val resultIntent = result.data
                     val serverURL = resultIntent?.getStringExtra("server_url") ?: ""
+                    val username = resultIntent?.getStringExtra("username") ?: ""
+                    val password = resultIntent?.getStringExtra("password") ?: ""
 
-                    server = Server(queue, serverURL)
+                    server = Server(serverURL)
+                    server.isValidCredentials(username, password) {}
                     server.getEncryptionParameters(
                         { json ->
                             run {
                                 // Set the IV and salt
                                 encryptionIV = json.getString("iv")
                                 encryptionSalt = json.getString("salt")
-                                val userPassword = json.getString("password")
 
                                 // Convert the given password into the AES
-                                val userAESKey =
-                                    Cryptography.genAESKey(userPassword, encryptionSalt)
+                                val userAESKey = Cryptography.genAESKey(password, encryptionSalt)
                                 encryptionKey = Cryptography.decryptAES(
                                     json.getString("encrypted_key"),
                                     userAESKey,
@@ -240,13 +235,13 @@ class MainActivity : ComponentActivity() {
          */
         fun handleFailedConnection(
             snackbarHostState: SnackbarHostState,
-            error: VolleyError,
+            error: String,
             retryAction: () -> Unit,
             dismissedAction: () -> Unit
         ) {
             scope.launch {
                 val result = snackbarHostState.showSnackbar(
-                    message = error.message.toString(),
+                    message = error,
                     actionLabel = "Retry",
                     duration = SnackbarDuration.Indefinite
                 )
@@ -297,7 +292,7 @@ class MainActivity : ComponentActivity() {
                         dirItems = JSONArray()
                         handleFailedConnection(
                             snackbarHostState,
-                            error,
+                            error.message.toString(),
                             {
                                 Log.d("MAIN", "Attempting retry of directory listing")
                                 getItemsInDir()
@@ -348,7 +343,7 @@ class MainActivity : ComponentActivity() {
                         Log.d("MAIN", "File request had error: $error")
                         handleFailedConnection(
                             snackbarHostState,
-                            error,
+                            error.message.toString(),
                             {
                                 Log.d("MAIN", "Attempting retry of file retrieval")
                                 getFile(rawPath)
@@ -1019,6 +1014,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // Fixme: navigating to another subfolder causes this to repeatedly call
+        Log.d("MAIN", "FilesList dddd")
 
         // Now display the main directory
         getItemsInDir()
