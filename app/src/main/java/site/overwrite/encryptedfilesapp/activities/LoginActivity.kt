@@ -73,6 +73,7 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 class LoginActivity : ComponentActivity() {
     // Properties
     private var serverURL by mutableStateOf("http://127.0.0.1:5000")
+    private var username by mutableStateOf("")
     private lateinit var queue: RequestQueue
 
     private lateinit var dataStoreManager: DataStoreManager
@@ -93,6 +94,8 @@ class LoginActivity : ComponentActivity() {
         dataStoreManager = DataStoreManager(applicationContext)
         dataStoreManager.getServerURL().asLiveData(Dispatchers.Main)
             .observe(this) { url -> serverURL = url }
+        dataStoreManager.getUsername().asLiveData(Dispatchers.Main)
+            .observe(this) { name -> username = name }
 
         setContent {
             EncryptedFilesAppTheme {
@@ -122,6 +125,8 @@ class LoginActivity : ComponentActivity() {
         // Attributes
         var isErrorServerURL by remember { mutableStateOf(false) }
 
+        var isErrorUsername by remember { mutableStateOf(false) }
+
         var userPassword by remember { mutableStateOf("") }
         var isErrorPassword by remember { mutableStateOf(false) }
         var isPasswordVisible by remember { mutableStateOf(false) }
@@ -150,29 +155,31 @@ class LoginActivity : ComponentActivity() {
                             dataStoreManager.setServerURL(serverURL)
                         }
 
-                        // Now check the password
-                        Server.isValidEncryptionPassword(
+                        // Now check the credentials
+                        Server.isValidCredentials(
                             serverURL,
+                            username,
                             userPassword,
                             queue
-                        ) { isValid, encryptionParameters ->
+                        ) { isValid ->
                             run {
-                                if (!isValid || encryptionParameters == null) {
-                                    Log.d("LOGIN", "Password is invalid")
+                                if (!isValid) {
+                                    Log.d("LOGIN", "Invalid credentials")
+                                    isErrorUsername = true
                                     isErrorPassword = true
                                     isLoading = false
                                 } else {
-                                    Log.d("LOGIN", "Password is valid")
+                                    Log.d("LOGIN", "Credentials valid; logged in as $username")
+
+                                    // Update the username
+                                    runBlocking {
+                                        dataStoreManager.setUsername(username)
+                                    }
 
                                     // Return needed things
                                     val resultIntent = Intent()
                                     resultIntent.putExtra("server_url", serverURL)
-                                    resultIntent.putExtra("iv", encryptionParameters.iv)
-                                    resultIntent.putExtra("salt", encryptionParameters.salt)
-                                    resultIntent.putExtra(
-                                        "encryption_key",
-                                        encryptionParameters.encryptionKey
-                                    )
+                                    resultIntent.putExtra("password", userPassword)
 
                                     setResult(RESULT_OK, resultIntent)
                                     isLoading = false
@@ -225,6 +232,23 @@ class LoginActivity : ComponentActivity() {
                 )
                 OutlinedTextField(
                     modifier = Modifier.padding(horizontal = 8.dp),
+                    value = username,
+                    singleLine = true,
+                    onValueChange = { username = it },
+                    isError = isErrorUsername,
+                    supportingText = {
+                        if (isErrorUsername) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = "Invalid Username",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    label = { Text("Username") }
+                )
+                OutlinedTextField(
+                    modifier = Modifier.padding(horizontal = 8.dp),
                     value = userPassword,
                     singleLine = true,
                     placeholder = { Text("Password") },
@@ -239,7 +263,7 @@ class LoginActivity : ComponentActivity() {
                             )
                         }
                     },
-                    label = { Text("Encryption Key") },
+                    label = { Text("Password") },
                     visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
@@ -262,6 +286,7 @@ class LoginActivity : ComponentActivity() {
                         Text("Login")
                     }
 
+                    // TODO: Fix spinner
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.width(32.dp),

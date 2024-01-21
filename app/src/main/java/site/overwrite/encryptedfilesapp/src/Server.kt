@@ -25,7 +25,10 @@ import com.android.volley.toolbox.StringRequest
 import org.json.JSONObject
 
 // CONSTANTS
-const val GET_ENCRYPTION_PARAMS_PAGE = "get-encryption-params"
+const val LOGIN_PAGE = "auth/login"
+const val LOGOUT_PAGE = "auth/logout"
+const val GET_ENCRYPTION_PARAMS_PAGE = "auth/get-encryption-params"
+
 const val LIST_DIR_PAGE = "list-dir"
 const val RECURSIVE_LIST_DIR_PAGE = "recursive-list-dir"
 const val GET_FILE_PAGE = "get-file"
@@ -54,6 +57,29 @@ fun String.decodeHex(): ByteArray {
  */
 class Server(private val queue: RequestQueue, val serverURL: String) {
     // Main methods
+    /**
+     * Gets the encryption parameters for the logged in user.
+     *
+     * @param processResponse Listener for a successful page request.
+     * @param failedResponse Listener for a failed page request.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun getEncryptionParameters(
+        processResponse: (JSONObject) -> Any,
+        failedResponse: (String, JSONObject) -> Any,
+        errorListener: Response.ErrorListener
+    ) {
+        sendRequest(
+            serverURL,
+            Request.Method.GET,
+            GET_ENCRYPTION_PARAMS_PAGE,
+            queue,
+            processResponse,
+            failedResponse,
+            errorListener
+        )
+    }
+
     /**
      * Gets the list of files in the path.
      *
@@ -355,91 +381,59 @@ class Server(private val queue: RequestQueue, val serverURL: String) {
         }
 
         /**
-         * Checks if the provided encryption password is valid.
+         * Checks if the provided credentials are valid.
          *
          * @param serverURL **Verified** server URL.
+         * @param username Username to check.
          * @param password Password to check.
          * @param queue Request Volley queue.
          * @param listener Listener to process the result.
          */
-        fun isValidEncryptionPassword(
+        fun isValidCredentials(
             serverURL: String,
+            username: String,
             password: String,
             queue: RequestQueue,
-            listener: (Boolean, EncryptionParameters?) -> Unit
+            listener: (Boolean) -> Unit
         ) {
-            // We need to ensure that a password is provided
-            if (password.isBlank()) {
-                Log.d("SERVER", "Provided password is blank")
-                listener(false, null)
+            // We need to ensure that a username and password are provided
+            if (username.isBlank() || password.isBlank()) {
+                Log.d("SERVER", "Provided username or password is blank")
+                listener(false)
                 return
             }
+
+            // Create the POST Data
+            val postData = HashMap<String, String>()
+            postData["username"] = username
+            postData["password"] = password
 
             // Otherwise we can send the request to the server
             sendRequest(
                 serverURL,
-                Request.Method.GET,
-                GET_ENCRYPTION_PARAMS_PAGE,
+                Request.Method.POST,
+                LOGIN_PAGE,
                 queue,
-                { json ->
+                {
                     run {
-                        // Split the response into the IV, the test string, and encrypted AES key
-                        val iv = json.getString("iv")
-                        val salt = json.getString("salt")
-                        val encryptedTestString = json.getString("test_str")
-                        val encryptedEncryptionKey = json.getString("encrypted_key")
-                        Log.d("SERVER", "IV: $iv")
-                        Log.d("SERVER", "Salt: $salt")
-                        Log.d("SERVER", "Encrypted test string: $encryptedTestString")
-                        Log.d("SERVER", "Encrypted encryption key: $encryptedEncryptionKey")
-
-                        // Convert the given password into the AES
-                        val userAESKey = Cryptography.genAESKey(password, salt)
-
-                        // Attempt to decrypt the test string
-                        try {
-                            val attemptedDecrypt =
-                                String(Cryptography.decryptAES(encryptedTestString, userAESKey, iv))
-                            for (element in attemptedDecrypt) {
-                                if (!element.isUpperCase()) {
-                                    Log.d("SERVER", "Decryption of test text failed")
-                                    listener(false, null)
-                                }
-                            }
-                            Log.d("SERVER", "Decryption of test text successful")
-
-                            // Since successful, decrypt the actual key that is used to encrypt all
-                            // the data
-                            val encryptionKey =
-                                Cryptography.decryptAES(encryptedEncryptionKey, userAESKey, iv)
-                            Log.d("SERVER", "Retrieved file encryption key")
-
-                            // Create the encryption parameters object to return
-                            val encryptionParameters = EncryptionParameters(
-                                iv,
-                                salt,
-                                encryptionKey
-                            )
-
-                            listener(true, encryptionParameters)
-                        } catch (e: InvalidDecryptionException) {
-                            Log.d("SERVER", "Decryption failed: $e")
-                            listener(false, null)
-                        }
+                        Log.d("SERVER", "Login successful")
+                        listener(true)
                     }
                 },
-                { _, _ ->
+                { _, json ->
                     run {
-                        Log.d("SERVER", "Invalid encryption password response")
-                        listener(false, null)
+                        val message = json.getString("message")
+                        Log.d("SERVER", "Login failed: $message")
+                        listener(false)
                     }
                 },
-                { _ ->
+                { error ->
                     run {
-                        Log.d("SERVER", "Error in encryption password response")
-                        listener(false, null)
+                        Log.d("SERVER", "Error when logging in: $error")
+                        listener(false)
                     }
-                }
+                },
+                postData
             )
         }
     }

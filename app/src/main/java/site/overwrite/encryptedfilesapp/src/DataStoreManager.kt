@@ -37,6 +37,8 @@ class DataStoreManager(private val context: Context) {
         private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
         val serverURLKey = stringPreferencesKey("server_url")
+        val usernameKey = stringPreferencesKey("username")
+
         val uploadBlockSizeKey = intPreferencesKey("upload_block_size")
     }
 
@@ -70,6 +72,18 @@ class DataStoreManager(private val context: Context) {
     }
 
     /**
+     * Gets the username from the data store.
+     *
+     * @return Username as a flow string.
+     */
+    fun getUsername(): Flow<String> {
+        return getPreferences().map { preferences ->
+            val username = preferences[usernameKey] ?: ""
+            username
+        }
+    }
+
+    /**
      * Gets the upload block size from the data store.
      *
      * @return Upload block size enum value. If the preferences did not already store an enum value,
@@ -97,6 +111,17 @@ class DataStoreManager(private val context: Context) {
     suspend fun setServerURL(serverURL: String) {
         context.dataStore.edit { preferences ->
             preferences[serverURLKey] = serverURL
+        }
+    }
+
+    /**
+     * Sets the username in the data store.
+     *
+     * @param username Username to set.
+     */
+    suspend fun setUsername(username: String) {
+        context.dataStore.edit { preferences ->
+            preferences[usernameKey] = username
         }
     }
 

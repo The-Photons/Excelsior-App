@@ -147,18 +147,45 @@ class MainActivity : ComponentActivity() {
                     val serverURL = resultIntent?.getStringExtra("server_url") ?: ""
 
                     server = Server(queue, serverURL)
-                    encryptionIV = resultIntent?.getStringExtra("iv") ?: ""
-                    encryptionSalt = resultIntent?.getStringExtra("salt") ?: ""
-                    encryptionKey =
-                        resultIntent?.getByteArrayExtra("encryption_key") ?: ByteArray(0)
+                    server.getEncryptionParameters(
+                        { json ->
+                            run {
+                                // Set the IV and salt
+                                encryptionIV = json.getString("iv")
+                                encryptionSalt = json.getString("salt")
+                                val userPassword = json.getString("password")
 
-                    loggedIn = true
-                    Log.d(
-                        "MAIN",
-                        "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
-                                " salt '$encryptionSalt', and encryption key (as hex string)" +
-                                " '${encryptionKey.toHexString()}'"
+                                // Convert the given password into the AES
+                                val userAESKey =
+                                    Cryptography.genAESKey(userPassword, encryptionSalt)
+                                encryptionKey = Cryptography.decryptAES(
+                                    json.getString("encrypted_key"),
+                                    userAESKey,
+                                    encryptionIV
+                                )
+
+                                // Mark that we are logged in
+                                loggedIn = true
+                                Log.d(
+                                    "MAIN",
+                                    "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
+                                            " salt '$encryptionSalt', and encryption key (as hex string)" +
+                                            " '${encryptionKey.toHexString()}'"
+                                )
+                            }
+                        },
+                        { _, json ->
+                            Log.d(
+                                "MAIN",
+                                "Failed to get encryption parameters: ${json.getString("message")}"
+                            )
+                        },
+                        { error ->
+                            Log.d("MAIN", "Error when getting encryption parameters: $error")
+                        }
                     )
+
+
                 }
             }
         getLoginCredentials.launch(loginIntent)
