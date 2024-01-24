@@ -56,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -140,6 +141,7 @@ class LoginActivity : ComponentActivity() {
             Log.d("LOGIN", "Login button clicked")
 
             isErrorServerURL = false
+            isErrorUsername = false
             isErrorPassword = false
 
             isLoading = true
@@ -165,12 +167,16 @@ class LoginActivity : ComponentActivity() {
                             username,
                             userPassword,
                             actuallyLogin = false
-                        ) { isValid ->
+                        ) { isValid, errorCode ->
                             run {
                                 if (!isValid) {
-                                    Log.d("LOGIN", "Invalid credentials")
-                                    isErrorUsername = true
-                                    isErrorPassword = true
+                                    if (errorCode == 1) {
+                                        Log.d("LOGIN", "Invalid username")
+                                        isErrorUsername = true
+                                    } else {
+                                        Log.d("LOGIN", "Incorrect password")
+                                        isErrorPassword = true
+                                    }
                                     isLoading = false
                                 } else {
                                     Log.d("LOGIN", "Credentials valid; logged in as $username")
@@ -212,8 +218,11 @@ class LoginActivity : ComponentActivity() {
             }
         ) { innerPadding ->
             Column(
-                modifier = Modifier.padding(innerPadding),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(innerPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 OutlinedTextField(
                     modifier = Modifier.padding(horizontal = 8.dp),

@@ -74,18 +74,26 @@ class Server(val serverURL: String) {
      *
      * @param username Username to check.
      * @param password Password to check.
-     * @param listener Listener to process the result.
+     * @param listener Listener to process the result. The first element is whether the login was
+     * successful. The second is the failure code.
+     * - 0: No error
+     * - 1: Invalid username
+     * - 2: Invalid password
      */
     fun handleLogin(
         username: String,
         password: String,
         actuallyLogin: Boolean = true,
-        listener: (Boolean) -> Unit
+        listener: (Boolean, Int) -> Unit
     ) {
         // We need to ensure that a username and password are provided
-        if (username.isBlank() || password.isBlank()) {
-            Log.d("SERVER", "Provided username or password is blank")
-            listener(false)
+        if (username.isBlank()) {
+            Log.d("SERVER", "Provided username is blank")
+            listener(false, 1)
+            return
+        } else if (password.isBlank()) {
+            Log.d("SERVER", "Provided password is blank")
+            listener(false, 2)
             return
         }
 
@@ -103,20 +111,21 @@ class Server(val serverURL: String) {
             {
                 run {
                     Log.d("SERVER", "Login successful")
-                    listener(true)
+                    listener(true, 0)
                 }
             },
             { _, json ->
                 run {
                     val message = json.getString("message")
+                    val errorCode = json.getInt("error_code")
                     Log.d("SERVER", "Login failed: $message")
-                    listener(false)
+                    listener(false, errorCode)
                 }
             },
             { error ->
                 run {
                     Log.d("SERVER", "Error when logging in: $error")
-                    listener(false)
+                    listener(false, 1)
                 }
             },
             postData

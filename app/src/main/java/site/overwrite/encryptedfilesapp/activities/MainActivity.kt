@@ -144,7 +144,7 @@ class MainActivity : ComponentActivity() {
                     val password = resultIntent?.getStringExtra("password") ?: ""
 
                     server = Server(serverURL)
-                    server.handleLogin(username, password) {}
+                    server.handleLogin(username, password) { _, _ -> }
                     server.getEncryptionParameters(
                         { json ->
                             run {
