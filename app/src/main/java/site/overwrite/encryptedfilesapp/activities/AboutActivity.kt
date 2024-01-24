@@ -25,6 +25,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -39,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +55,7 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
  */
 class AboutActivity : ComponentActivity() {
     private lateinit var server: Server
+    private lateinit var username: String
 
     // Overridden methods
     @SuppressLint("SourceLockedOrientationActivity")
@@ -63,8 +66,9 @@ class AboutActivity : ComponentActivity() {
         // Prevent screen rotate
         this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
-        // Set the queue and server
+        // Set the server and username
         server = Server(intent?.getStringExtra("server_url") ?: "")
+        username = intent?.getStringExtra("username") ?: ""
 
         // Then set the content
         setContent {
@@ -111,31 +115,30 @@ class AboutActivity : ComponentActivity() {
                 modifier = Modifier
                     .padding(innerPadding)
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
+                Text("Logged in as $username into server ${server.serverURL}")
+                Spacer(modifier = Modifier.padding(vertical = 8.dp))
                 Text("Application version: $appVersion")
                 Text("Server version: $serverVersion")
+                Spacer(modifier = Modifier.padding(vertical = 8.dp))
+                Text(
+                    "Source code for Excelsior is licensed under GNU General Public Licence " +
+                            "Version 3."
+                )
             }
         }
 
         // Get the server version
-        server.getServerVersion(
-            { json ->
-                run {
+        LaunchedEffect(Unit) {
+            server.getServerVersion(
+                { json ->
                     serverVersion = json.getString("version")
                     Log.d("ABOUT", "Server version: $serverVersion")
-                }
-            },
-            { _, _ ->
-                run {
-                    Log.d("ABOUT", "Failed to get version of server")
-                }
-            },
-            { error ->
-                run {
-                    Log.d("ABOUT", "Error when getting version of server: $error")
-                }
-            }
-        )
+                },
+                { _, _ -> Log.d("ABOUT", "Failed to get version of server") },
+                { error -> Log.d("ABOUT", "Error when getting version of server: $error") }
+            )
+        }
     }
 }

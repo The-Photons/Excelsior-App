@@ -242,7 +242,7 @@ class LoginActivity : ComponentActivity() {
                             )
                         }
                     },
-                    label = { Text("Server Address") }
+                    label = { Text("Server URL") }
                 )
                 OutlinedTextField(
                     modifier = Modifier.padding(horizontal = 8.dp),

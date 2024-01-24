@@ -113,10 +113,10 @@ val FOLDER_NAME_REGEX = Regex("[0-9A-z+\\-_= ]+")
 // MAIN ACTIVITY
 class MainActivity : ComponentActivity() {
     // Properties
-    private var initialized = false
     private var loggedIn = false
 
     private lateinit var server: Server
+    private lateinit var username: String
     private lateinit var loginIntent: Intent
 
     private lateinit var encryptionIV: String
@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
                 if (result.resultCode == Activity.RESULT_OK) {
                     val resultIntent = result.data
                     val serverURL = resultIntent?.getStringExtra("server_url") ?: ""
-                    val username = resultIntent?.getStringExtra("username") ?: ""
+                    username = resultIntent?.getStringExtra("username") ?: ""
                     val password = resultIntent?.getStringExtra("password") ?: ""
 
                     server = Server(serverURL)
@@ -939,10 +939,12 @@ class MainActivity : ComponentActivity() {
                                     val aboutIntent =
                                         Intent(applicationContext, AboutActivity::class.java)
                                     aboutIntent.putExtra("server_url", server.serverURL)
+                                    aboutIntent.putExtra("username", username)
+
                                     try {
                                         startActivity(aboutIntent)
                                     } catch (e: ActivityNotFoundException) {
-                                        Log.d("MAIN", "Failed to show about: ${e.message}")
+                                        Log.d("MAIN", "Failed to show about view: ${e.message}")
                                     }
                                     showExtrasMenu = false
                                 }
