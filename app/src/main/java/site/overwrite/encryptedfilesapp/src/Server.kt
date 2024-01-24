@@ -43,15 +43,6 @@ const val DELETE_ITEM_PAGE = "delete-item"
 const val PING_PAGE = "ping"
 const val GET_VERSION_PAGE = "version"
 
-// HELPER FUNCTIONS
-fun String.decodeHex(): ByteArray {
-    check(length % 2 == 0) { "Must have an even length" }
-
-    return chunked(2)
-        .map { it.toInt(16).toByte() }
-        .toByteArray()
-}
-
 // CLASSES
 enum class HttpMethod {
     GET, POST

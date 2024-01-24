@@ -18,7 +18,6 @@
 package site.overwrite.encryptedfilesapp.src
 
 import android.util.Base64
-import java.security.SecureRandom
 import javax.crypto.BadPaddingException
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
@@ -55,20 +54,6 @@ class Cryptography {
             )
             val key = factory.generateSecret(spec)
             return key.encoded
-        }
-
-        /**
-         * Generate a random initialization vector for AES encryption.
-         *
-         * @param length Length of the IV.
-         * @return IV as a hexadecimal string.
-         */
-        @OptIn(ExperimentalStdlibApi::class)
-        fun genIV(length: Int): String {
-            val rand = SecureRandom()
-            val iv = ByteArray(length)
-            rand.nextBytes(iv)
-            return iv.toHexString()
         }
 
         /**
@@ -112,15 +97,6 @@ class Cryptography {
         }
     }
 }
-
-/**
- * Class that encapsulates the different parameters needed for AES encryption/decryption.
- *
- * @property iv Initialization vector.
- * @property salt Salt for the encryption.
- * @property encryptionKey Byte array, representing the encryption key.
- */
-class EncryptionParameters(val iv: String, val salt: String, val encryptionKey: ByteArray)
 
 // EXCEPTIONS
 class InvalidDecryptionException(message: String) : Exception(message)
