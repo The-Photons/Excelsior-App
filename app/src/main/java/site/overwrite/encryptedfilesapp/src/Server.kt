@@ -68,7 +68,97 @@ class Server(val serverURL: String) {
         install(HttpCookies)
     }
 
-    // Main methods
+    // Authentication methods
+    /**
+     * Checks if the provided credentials are valid and log in, if requested.
+     *
+     * @param username Username to check.
+     * @param password Password to check.
+     * @param listener Listener to process the result.
+     */
+    fun handleLogin(
+        username: String,
+        password: String,
+        actuallyLogin: Boolean = true,
+        listener: (Boolean) -> Unit
+    ) {
+        // We need to ensure that a username and password are provided
+        if (username.isBlank() || password.isBlank()) {
+            Log.d("SERVER", "Provided username or password is blank")
+            listener(false)
+            return
+        }
+
+        // Create the POST Data
+        val postData = HashMap<String, String>()
+        postData["username"] = username
+        postData["password"] = password
+
+        // Otherwise we can send the request to the server
+        sendRequest(
+            serverURL,
+            HttpMethod.POST,
+            if (actuallyLogin) LOGIN_PAGE else "$LOGIN_PAGE?actually-login=false",
+            client,
+            {
+                run {
+                    Log.d("SERVER", "Login successful")
+                    listener(true)
+                }
+            },
+            { _, json ->
+                run {
+                    val message = json.getString("message")
+                    Log.d("SERVER", "Login failed: $message")
+                    listener(false)
+                }
+            },
+            { error ->
+                run {
+                    Log.d("SERVER", "Error when logging in: $error")
+                    listener(false)
+                }
+            },
+            postData
+        )
+    }
+
+    /**
+     * Handle the logging out of the user from the server.
+     *
+     * @param listener Listener to process the result.
+     */
+    fun handleLogout(
+        listener: (Boolean) -> Unit
+    ) {
+        sendRequest(
+            serverURL,
+            HttpMethod.GET,
+            LOGOUT_PAGE,
+            client,
+            {
+                run {
+                    Log.d("SERVER", "Logout successful")
+                    listener(true)
+                }
+            },
+            { _, json ->
+                run {
+                    val message = json.getString("message")
+                    Log.d("SERVER", "Logout failed: $message")
+                    listener(false)
+                }
+            },
+            { error ->
+                run {
+                    Log.d("SERVER", "Error when logging out: $error")
+                    listener(false)
+                }
+            }
+        )
+    }
+
+    // File methods
     /**
      * Gets the encryption parameters for the logged in user.
      *
@@ -266,6 +356,7 @@ class Server(val serverURL: String) {
         )
     }
 
+    // Miscellaneous methods
     /**
      * Gets the server version.
      *
@@ -286,60 +377,6 @@ class Server(val serverURL: String) {
             processResponse,
             failedResponse,
             errorListener
-        )
-    }
-
-    /**
-     * Checks if the provided credentials are valid.
-     *
-     * @param username Username to check.
-     * @param password Password to check.
-     * @param listener Listener to process the result.
-     */
-    fun isValidCredentials(
-        username: String,
-        password: String,
-        actuallyLogin: Boolean = true,
-        listener: (Boolean) -> Unit
-    ) {
-        // We need to ensure that a username and password are provided
-        if (username.isBlank() || password.isBlank()) {
-            Log.d("SERVER", "Provided username or password is blank")
-            listener(false)
-            return
-        }
-
-        // Create the POST Data
-        val postData = HashMap<String, String>()
-        postData["username"] = username
-        postData["password"] = password
-
-        // Otherwise we can send the request to the server
-        sendRequest(
-            serverURL,
-            HttpMethod.POST,
-            if (actuallyLogin) LOGIN_PAGE else "$LOGIN_PAGE?actually-login=false",
-            client,
-            {
-                run {
-                    Log.d("SERVER", "Login successful")
-                    listener(true)
-                }
-            },
-            { _, json ->
-                run {
-                    val message = json.getString("message")
-                    Log.d("SERVER", "Login failed: $message")
-                    listener(false)
-                }
-            },
-            { error ->
-                run {
-                    Log.d("SERVER", "Error when logging in: $error")
-                    listener(false)
-                }
-            },
-            postData
         )
     }
 

@@ -144,7 +144,7 @@ class MainActivity : ComponentActivity() {
                     val password = resultIntent?.getStringExtra("password") ?: ""
 
                     server = Server(serverURL)
-                    server.isValidCredentials(username, password) {}
+                    server.handleLogin(username, password) {}
                     server.getEncryptionParameters(
                         { json ->
                             run {
@@ -1005,10 +1005,21 @@ class MainActivity : ComponentActivity() {
                             },
                             onYes = {
                                 showConfirmLogoutDialog = false
-                                Log.d("MAIN", "Start logout process; deleting all folders")
-                                IOMethods.deleteItem("")
-                                Log.d("MAIN", "Logged out")
-                                finish()
+                                Log.d("MAIN", "Start logout process")
+                                server.handleLogout { success ->
+                                    if (success) {
+                                        loggedIn = false
+                                        Log.d("MAIN", "Deleting all folders")
+                                        IOMethods.deleteItem("")
+                                        Log.d("MAIN", "Logged out")
+                                        finish()
+                                    } else {
+                                        Log.d("MAIN", "Failed to log out")
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Failed to log out")
+                                        }
+                                    }
+                                }
                             },
                             onNo = { showConfirmLogoutDialog = false }
                         )
@@ -1029,11 +1040,13 @@ class MainActivity : ComponentActivity() {
                     showConfirmLogoutDialog = true
                 }
             } else {
-                onBackPressedDispatcher.addCallback(this@MainActivity, object : OnBackPressedCallback(true) {
-                    override fun handleOnBackPressed() {
-                        showConfirmLogoutDialog = true
-                    }
-                })
+                onBackPressedDispatcher.addCallback(
+                    this@MainActivity,
+                    object : OnBackPressedCallback(true) {
+                        override fun handleOnBackPressed() {
+                            showConfirmLogoutDialog = true
+                        }
+                    })
             }
         }
     }

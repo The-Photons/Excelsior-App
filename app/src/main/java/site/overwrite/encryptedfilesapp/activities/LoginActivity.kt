@@ -161,7 +161,7 @@ class LoginActivity : ComponentActivity() {
                         server = Server(serverURL)
 
                         // Now check the credentials
-                        server.isValidCredentials(
+                        server.handleLogin(
                             username,
                             userPassword,
                             actuallyLogin = false
