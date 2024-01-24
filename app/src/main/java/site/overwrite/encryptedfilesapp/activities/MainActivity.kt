@@ -84,6 +84,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -588,6 +589,7 @@ class MainActivity : ComponentActivity() {
                             dirPath = "$dirPath/$name"
                         }
                         Log.d("MAIN", "Dir path: '$dirPath'; Prev dir: '$prevDir'")
+                        getItemsInDir()
                     }
                 }
             ) {
@@ -1015,25 +1017,24 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Fixme: navigating to another subfolder causes this to repeatedly call
-        Log.d("MAIN", "FilesList dddd")
+        LaunchedEffect(Unit) {
+            // Now display the main directory
+            getItemsInDir()
 
-        // Now display the main directory
-        getItemsInDir()
-
-        // Show logout question when the back button is pressed
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            onBackInvokedDispatcher.registerOnBackInvokedCallback(
-                OnBackInvokedDispatcher.PRIORITY_DEFAULT
-            ) {
-                showConfirmLogoutDialog = true
-            }
-        } else {
-            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
+            // Show logout question when the back button is pressed
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT
+                ) {
                     showConfirmLogoutDialog = true
                 }
-            })
+            } else {
+                onBackPressedDispatcher.addCallback(this@MainActivity, object : OnBackPressedCallback(true) {
+                    override fun handleOnBackPressed() {
+                        showConfirmLogoutDialog = true
+                    }
+                })
+            }
         }
     }
 }
