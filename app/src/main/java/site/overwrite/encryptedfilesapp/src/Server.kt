@@ -25,7 +25,9 @@ import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.parameters
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 // CONSTANTS
@@ -393,6 +395,7 @@ class Server(val serverURL: String) {
          * @param errorListener Listener for an page request that results in an error.
          * @param postData Data to included in the POST request. Required if the request is POST.
          */
+        @OptIn(DelicateCoroutinesApi::class)
         private fun sendRequest(
             serverURL: String,
             method: HttpMethod,
@@ -405,7 +408,7 @@ class Server(val serverURL: String) {
         ) {
             // Form the full URL
             val url = "$serverURL/$page"
-            runBlocking {  // Todo: use better async?
+            GlobalScope.launch {  // Todo: use better async?
                 try {
                     val response = if (method == HttpMethod.POST) {
                         client.submitForm(url, formParameters = parameters {

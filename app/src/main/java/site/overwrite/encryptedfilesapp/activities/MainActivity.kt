@@ -144,44 +144,46 @@ class MainActivity : ComponentActivity() {
                     val password = resultIntent?.getStringExtra("password") ?: ""
 
                     server = Server(serverURL)
-                    server.handleLogin(username, password) { _, _ -> }
-                    server.getEncryptionParameters(
-                        { json ->
-                            run {
-                                // Set the IV and salt
-                                encryptionIV = json.getString("iv")
-                                encryptionSalt = json.getString("salt")
+                    server.handleLogin(username, password) { _, _ ->
+                        server.getEncryptionParameters(
+                            { json ->
+                                run {
+                                    // Set the IV and salt
+                                    encryptionIV = json.getString("iv")
+                                    encryptionSalt = json.getString("salt")
 
-                                // Convert the given password into the AES
-                                val userAESKey = Cryptography.genAESKey(password, encryptionSalt)
-                                encryptionKey = Cryptography.decryptAES(
-                                    json.getString("encrypted_key"),
-                                    userAESKey,
-                                    encryptionIV
-                                )
+                                    // Convert the given password into the AES
+                                    val userAESKey = Cryptography.genAESKey(password, encryptionSalt)
+                                    encryptionKey = Cryptography.decryptAES(
+                                        json.getString("encrypted_key"),
+                                        userAESKey,
+                                        encryptionIV
+                                    )
 
-                                // Mark that we are logged in
-                                loggedIn = true
+                                    // Mark that we are logged in
+                                    loggedIn = true
+                                    Log.d(
+                                        "MAIN",
+                                        "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
+                                                " salt '$encryptionSalt', and encryption key (as hex string)" +
+                                                " '${encryptionKey.toHexString()}'"
+                                    )
+
+                                    // Call the `onStart()` method again to load the GUI properly
+                                    onStart()
+                                }
+                            },
+                            { _, json ->
                                 Log.d(
                                     "MAIN",
-                                    "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
-                                            " salt '$encryptionSalt', and encryption key (as hex string)" +
-                                            " '${encryptionKey.toHexString()}'"
+                                    "Failed to get encryption parameters: ${json.getString("message")}"
                                 )
+                            },
+                            { error ->
+                                Log.d("MAIN", "Error when getting encryption parameters: $error")
                             }
-                        },
-                        { _, json ->
-                            Log.d(
-                                "MAIN",
-                                "Failed to get encryption parameters: ${json.getString("message")}"
-                            )
-                        },
-                        { error ->
-                            Log.d("MAIN", "Error when getting encryption parameters: $error")
-                        }
-                    )
-
-
+                        )
+                    }
                 }
             }
         getLoginCredentials.launch(loginIntent)
