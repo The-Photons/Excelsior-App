@@ -145,58 +145,54 @@ class LoginActivity : ComponentActivity() {
             isErrorPassword = false
 
             isLoading = true
-            Server.isValidURL(serverURL, client) { isValid ->
-                run {
-                    if (!isValid) {
-                        isErrorServerURL = true
-                        Log.d("LOGIN", "Invalid server URL: $serverURL")
-                        isLoading = false
-                    } else {
-                        Log.d("LOGIN", "Good URL: $serverURL")
+            Server.isValidURL(serverURL, client) { isValidURL ->
+                if (!isValidURL) {
+                    isErrorServerURL = true
+                    Log.d("LOGIN", "Invalid server URL: $serverURL")
+                    isLoading = false
+                } else {
+                    Log.d("LOGIN", "Good URL: $serverURL")
 
-                        // Update the saved URL
-                        runBlocking {
-                            dataStoreManager.setServerURL(serverURL)
-                        }
+                    // Update the saved URL
+                    runBlocking {
+                        dataStoreManager.setServerURL(Server.cleanUpURL(serverURL))
+                    }
 
-                        // Create the server object
-                        server = Server(serverURL)
+                    // Create the server object
+                    server = Server(serverURL)
 
-                        // Now check the credentials
-                        server.handleLogin(
-                            username,
-                            userPassword,
-                            actuallyLogin = false
-                        ) { isValid, errorCode ->
-                            run {
-                                if (!isValid) {
-                                    if (errorCode == 1) {
-                                        Log.d("LOGIN", "Invalid username")
-                                        isErrorUsername = true
-                                    } else {
-                                        Log.d("LOGIN", "Incorrect password")
-                                        isErrorPassword = true
-                                    }
-                                    isLoading = false
-                                } else {
-                                    Log.d("LOGIN", "Credentials valid; logged in as $username")
-
-                                    // Update the username
-                                    runBlocking {
-                                        dataStoreManager.setUsername(username)
-                                    }
-
-                                    // Return needed things
-                                    val resultIntent = Intent()
-                                    resultIntent.putExtra("server_url", serverURL)
-                                    resultIntent.putExtra("username", username)
-                                    resultIntent.putExtra("password", userPassword)
-
-                                    setResult(RESULT_OK, resultIntent)
-                                    isLoading = false
-                                    finish()
-                                }
+                    // Now check the credentials
+                    server.handleLogin(
+                        username,
+                        userPassword,
+                        actuallyLogin = false
+                    ) { isValidLogin, errorCode ->
+                        if (!isValidLogin) {
+                            if (errorCode == 1) {
+                                Log.d("LOGIN", "Invalid username")
+                                isErrorUsername = true
+                            } else {
+                                Log.d("LOGIN", "Incorrect password")
+                                isErrorPassword = true
                             }
+                            isLoading = false
+                        } else {
+                            Log.d("LOGIN", "Credentials valid; logged in as $username")
+
+                            // Update the username
+                            runBlocking {
+                                dataStoreManager.setUsername(username)
+                            }
+
+                            // Return needed things
+                            val resultIntent = Intent()
+                            resultIntent.putExtra("server_url", serverURL)
+                            resultIntent.putExtra("username", username)
+                            resultIntent.putExtra("password", userPassword)
+
+                            setResult(RESULT_OK, resultIntent)
+                            isLoading = false
+                            finish()
                         }
                     }
                 }

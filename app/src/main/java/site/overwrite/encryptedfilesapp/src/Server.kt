@@ -21,6 +21,7 @@ import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.request.delete
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -47,7 +48,7 @@ const val GET_VERSION_PAGE = "version"
 
 // CLASSES
 enum class HttpMethod {
-    GET, POST
+    GET, POST, DELETE
 }
 
 /**
@@ -349,7 +350,7 @@ class Server(val serverURL: String) {
     ) {
         sendRequest(
             serverURL,
-            HttpMethod.GET,  // TODO: Fix to use DELETE
+            HttpMethod.DELETE,
             "$DELETE_ITEM_PAGE/$path",
             client,
             processResponse,
@@ -410,16 +411,17 @@ class Server(val serverURL: String) {
             val url = "$serverURL/$page"
             GlobalScope.launch {  // Todo: use better async?
                 try {
-                    val response = if (method == HttpMethod.POST) {
-                        client.submitForm(url, formParameters = parameters {
+                    val response = when (method) {
+                        HttpMethod.GET -> client.get(url)
+                        HttpMethod.POST -> client.submitForm(url, formParameters = parameters {
                             postData?.forEach { (key, value) ->
                                 append(key, value)
                             }
                         })
-                    } else {
-                        client.get(url)
+
+                        HttpMethod.DELETE -> client.delete(url)
                     }
-                    Log.d("SERVER", "Sent request to '$url'")
+                    Log.d("SERVER", "Sent $method request to '$url'")
 
                     if (response.status.value == 200) {
                         val json = JSONObject(response.bodyAsText())
@@ -467,6 +469,17 @@ class Server(val serverURL: String) {
                 { _, _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) },
                 { _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) }
             )
+        }
+
+        /**
+         * Cleans up a dirty URL to be nicer for displaying.
+         *
+         * @param dirtyURL Dirty URL to process.
+         * @return Cleaned URL.
+         */
+        fun cleanUpURL(dirtyURL: String): String {
+            // Strip any trailing slashes
+            return dirtyURL.trimEnd('/')
         }
     }
 }
