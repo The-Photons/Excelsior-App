@@ -154,32 +154,30 @@ class MainActivity : ComponentActivity() {
                     server.handleLogin(username, password) { _, _ ->
                         server.getEncryptionParameters(
                             { json ->
-                                run {
-                                    // Set the IV and salt
-                                    encryptionIV = json.getString("iv")
-                                    encryptionSalt = json.getString("salt")
+                                // Set the IV and salt
+                                encryptionIV = json.getString("iv")
+                                encryptionSalt = json.getString("salt")
 
-                                    // Convert the given password into the AES
-                                    val userAESKey =
-                                        Cryptography.genAESKey(password, encryptionSalt)
-                                    encryptionKey = Cryptography.decryptAES(
-                                        json.getString("encrypted_key"),
-                                        userAESKey,
-                                        encryptionIV
-                                    )
+                                // Convert the given password into the AES
+                                val userAESKey =
+                                    Cryptography.genAESKey(password, encryptionSalt)
+                                encryptionKey = Cryptography.decryptAES(
+                                    json.getString("encrypted_key"),
+                                    userAESKey,
+                                    encryptionIV
+                                )
 
-                                    // Mark that we are logged in
-                                    loggedIn = true
-                                    Log.d(
-                                        "MAIN",
-                                        "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
-                                                " salt '$encryptionSalt', and encryption key (as hex string)" +
-                                                " '${encryptionKey.toHexString()}'"
-                                    )
+                                // Mark that we are logged in
+                                loggedIn = true
+                                Log.d(
+                                    "MAIN",
+                                    "Got server URL '$serverURL', initialization vector '$encryptionIV'," +
+                                            " salt '$encryptionSalt', and encryption key (as hex string)" +
+                                            " '${encryptionKey.toHexString()}'"
+                                )
 
-                                    // Call the `onStart()` method again to load the GUI properly
-                                    onStart()
-                                }
+                                // Call the `onStart()` method again to load the GUI properly
+                                onStart()
                             },
                             { _, json ->
                                 Log.d(
@@ -273,45 +271,39 @@ class MainActivity : ComponentActivity() {
             server.listFiles(
                 dir,
                 { json ->
-                    run {
-                        val itemsInDirStr = json.getString("content")
+                    val itemsInDirStr = json.getString("content")
 
-                        // If the items is null, then the directory does not exist
-                        if (itemsInDirStr == "null") {
-                            dirItems = JSONArray()
-                        } else {
-                            dirItems = JSONArray(itemsInDirStr)
-                            Log.d("MAIN", "Found ${dirItems.length()} items in directory")
-                        }
-                        isLoadingFiles = false
+                    // If the items is null, then the directory does not exist
+                    if (itemsInDirStr == "null") {
+                        dirItems = JSONArray()
+                    } else {
+                        dirItems = JSONArray(itemsInDirStr)
+                        Log.d("MAIN", "Found ${dirItems.length()} items in directory")
                     }
+                    isLoadingFiles = false
                 },
                 { status, _ ->
-                    run {
-                        Log.d("MAIN", "Failed to list items in directory")
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                "Failed to get things in directory: $status"
-                            )
-                        }
-                        isLoadingFiles = false
+                    Log.d("MAIN", "Failed to list items in directory")
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            "Failed to get things in directory: $status"
+                        )
                     }
+                    isLoadingFiles = false
                 },
                 { error ->
-                    run {
-                        Log.d("MAIN", "Error when getting items in directory: $error")
-                        dirItems = JSONArray()
-                        handleFailedConnection(
-                            snackbarHostState,
-                            error.message.toString(),
-                            {
-                                Log.d("MAIN", "Attempting retry of directory listing")
-                                getItemsInDir()
-                            },
-                            {}
-                        )
-                        isLoadingFiles = false
-                    }
+                    Log.d("MAIN", "Error when getting items in directory: $error")
+                    dirItems = JSONArray()
+                    handleFailedConnection(
+                        snackbarHostState,
+                        error.message.toString(),
+                        {
+                            Log.d("MAIN", "Attempting retry of directory listing")
+                            getItemsInDir()
+                        },
+                        {}
+                    )
+                    isLoadingFiles = false
                 }
             )
         }
@@ -328,40 +320,34 @@ class MainActivity : ComponentActivity() {
             server.getFile(
                 path,
                 { json ->
-                    run {
-                        val encryptedContent = json.getString("content")
-                        val fileData = Cryptography.decryptAES(
-                            encryptedContent, encryptionKey, encryptionIV
-                        )
-                        IOMethods.createFile(rawPath, fileData)
-                        Log.d("MAIN", "Downloaded '$rawPath'")
-                        if (displayResult) {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("File Synced")
-                                getItemsInDir()
-                            }
+                    val encryptedContent = json.getString("content")
+                    val fileData = Cryptography.decryptAES(
+                        encryptedContent, encryptionKey, encryptionIV
+                    )
+                    IOMethods.createFile(rawPath, fileData)
+                    Log.d("MAIN", "Downloaded '$rawPath'")
+                    if (displayResult) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("File Synced")
+                            getItemsInDir()
                         }
                     }
                 },
                 { status, _ ->
-                    run {
-                        Log.d("MAIN", "Failed file request: $status")
-                        scope.launch { snackbarHostState.showSnackbar(status) }
-                    }
+                    Log.d("MAIN", "Failed file request: $status")
+                    scope.launch { snackbarHostState.showSnackbar(status) }
                 },
                 { error ->
-                    run {
-                        Log.d("MAIN", "File request had error: $error")
-                        handleFailedConnection(
-                            snackbarHostState,
-                            error.message.toString(),
-                            {
-                                Log.d("MAIN", "Attempting retry of file retrieval")
-                                getFile(rawPath)
-                            },
-                            {}
-                        )
-                    }
+                    Log.d("MAIN", "File request had error: $error")
+                    handleFailedConnection(
+                        snackbarHostState,
+                        error.message.toString(),
+                        {
+                            Log.d("MAIN", "Attempting retry of file retrieval")
+                            getFile(rawPath)
+                        },
+                        {}
+                    )
                 }
             )
         }
@@ -377,27 +363,21 @@ class MainActivity : ComponentActivity() {
             server.deleteItem(
                 path.trimStart('/'),
                 { _ ->
-                    run {
-                        Log.d("MAIN", "Deleted $type '$path' from server")
-                        val name = IOMethods.getFileName(path)
-                        scope.launch { snackbarHostState.showSnackbar("Deleted $type '$name' from server") }
-                        getItemsInDir()
-                    }
+                    Log.d("MAIN", "Deleted $type '$path' from server")
+                    val name = IOMethods.getFileName(path)
+                    scope.launch { snackbarHostState.showSnackbar("Deleted $type '$name' from server") }
+                    getItemsInDir()
                 },
                 { _, json ->
-                    run {
-                        val reason = json.getString("message")
-                        Log.d("MAIN", "Failed to delete $type: $reason")
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Failed to delete $type: $reason")
-                        }
+                    val reason = json.getString("message")
+                    Log.d("MAIN", "Failed to delete $type: $reason")
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Failed to delete $type: $reason")
                     }
                 },
                 { error ->
-                    run {
-                        Log.d("MAIN", "Error when deleting $type: $error")
-                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
-                    }
+                    Log.d("MAIN", "Error when deleting $type: $error")
+                    scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                 }
             )
         }
@@ -439,49 +419,43 @@ class MainActivity : ComponentActivity() {
                 server.listFiles(
                     path.trimStart('/'),
                     { json ->
-                        run {
-                            val itemsInDirStr = json.getString("content")
+                        val itemsInDirStr = json.getString("content")
 
-                            // If the items is null, then the directory does not exist
-                            val items: JSONArray = if (itemsInDirStr == "null") {
-                                JSONArray()
-                            } else {
-                                JSONArray(itemsInDirStr)
-                            }
+                        // If the items is null, then the directory does not exist
+                        val items: JSONArray = if (itemsInDirStr == "null") {
+                            JSONArray()
+                        } else {
+                            JSONArray(itemsInDirStr)
+                        }
 
-                            for (i in 0..<items.length()) {
-                                val item = items.getJSONObject(i)
-                                val itemName = item.getString("name")
-                                val itemPath = "$path/$itemName"
-                                val itemType = item.getString("type")
+                        for (i in 0..<items.length()) {
+                            val item = items.getJSONObject(i)
+                            val itemName = item.getString("name")
+                            val itemPath = "$path/$itemName"
+                            val itemType = item.getString("type")
 
-                                handleSync(itemPath, itemType, false)
-                            }
+                            handleSync(itemPath, itemType, false)
+                        }
 
-                            Log.d("MAIN", "Synced directory '$path'")
-                            if (displayResult) {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Folder Synced")
-                                    getItemsInDir()
-                                }
+                        Log.d("MAIN", "Synced directory '$path'")
+                        if (displayResult) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Folder Synced")
+                                getItemsInDir()
                             }
                         }
                     },
                     { status, _ ->
-                        run {
-                            Log.d("MAIN", "Failed to get items in directory")
-                            scope.launch {
-                                snackbarHostState.showSnackbar(
-                                    "Failed to get things in directory: $status"
-                                )
-                            }
+                        Log.d("MAIN", "Failed to get items in directory")
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                "Failed to get things in directory: $status"
+                            )
                         }
                     },
                     { error ->
-                        run {
-                            Log.d("MAIN", "Error when getting items in directory: $error")
-                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
-                        }
+                        Log.d("MAIN", "Error when getting items in directory: $error")
+                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                     }
                 )
             }
@@ -523,16 +497,10 @@ class MainActivity : ComponentActivity() {
                             listener(true)
                         }
                     },
-                    { _, _ ->
-                        run {
-                            listener(false)
-                        }
-                    },
+                    { _, _ -> listener(false) },
                     { error ->
-                        run {
-                            Log.d("MAIN", "Error when traversing server copy of '$path': $error")
-                            listener(false)
-                        }
+                        Log.d("MAIN", "Error when traversing server copy of '$path': $error")
+                        listener(false)
                     }
                 )
             }
@@ -785,6 +753,8 @@ class MainActivity : ComponentActivity() {
                     val inputStream = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
                         showUploadProgressDialog = true
+                        uploadProgress = 0f
+
                         val content = inputStream.readBytes()
                         Log.d("MAIN", "Got content of '$fileName'")
                         // TODO: Encryption needs to be redone; specifically
@@ -796,6 +766,7 @@ class MainActivity : ComponentActivity() {
                         //       the raw bytes.
                         val encrypted =
                             Cryptography.encryptAES(content, key = encryptionKey, iv = encryptionIV)
+
                         server.createFile(
                             filePath,
                             encrypted,
@@ -841,26 +812,20 @@ class MainActivity : ComponentActivity() {
                 server.createFolder(
                     fullFolderPath,
                     { _ ->
-                        run {
-                            Log.d("MAIN", "New folder created: $fullFolderPath")
-                            scope.launch { snackbarHostState.showSnackbar("Directory created") }
-                            getItemsInDir()
-                        }
+                        Log.d("MAIN", "New folder created: $fullFolderPath")
+                        scope.launch { snackbarHostState.showSnackbar("Directory created") }
+                        getItemsInDir()
                     },
                     { _, json ->
-                        run {
-                            val reason = json.getString("message")
-                            Log.d("MAIN", "Failed to create folder: $reason")
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Failed to create folder: $reason")
-                            }
+                        val reason = json.getString("message")
+                        Log.d("MAIN", "Failed to create folder: $reason")
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Failed to create folder: $reason")
                         }
                     },
                     { error ->
-                        run {
-                            Log.d("MAIN", "Error when making folder: $error")
-                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
-                        }
+                        Log.d("MAIN", "Error when making folder: $error")
+                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                     }
                 )
             }

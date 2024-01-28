@@ -105,24 +105,18 @@ class Server(val serverURL: String) {
             if (actuallyLogin) LOGIN_PAGE else "$LOGIN_PAGE?actually-login=false",
             client,
             {
-                run {
-                    Log.d("SERVER", "Login successful")
-                    listener(true, 0)
-                }
+                Log.d("SERVER", "Login successful")
+                listener(true, 0)
             },
             { _, json ->
-                run {
-                    val message = json.getString("message")
-                    val errorCode = json.getInt("error_code")
-                    Log.d("SERVER", "Login failed: $message")
-                    listener(false, errorCode)
-                }
+                val message = json.getString("message")
+                val errorCode = json.getInt("error_code")
+                Log.d("SERVER", "Login failed: $message")
+                listener(false, errorCode)
             },
             { error ->
-                run {
-                    Log.d("SERVER", "Error when logging in: $error")
-                    listener(false, 1)
-                }
+                Log.d("SERVER", "Error when logging in: $error")
+                listener(false, 1)
             },
             postData
         )
@@ -142,23 +136,17 @@ class Server(val serverURL: String) {
             LOGOUT_PAGE,
             client,
             {
-                run {
-                    Log.d("SERVER", "Logout successful")
-                    listener(true)
-                }
+                Log.d("SERVER", "Logout successful")
+                listener(true)
             },
             { _, json ->
-                run {
-                    val message = json.getString("message")
-                    Log.d("SERVER", "Logout failed: $message")
-                    listener(false)
-                }
+                val message = json.getString("message")
+                Log.d("SERVER", "Logout failed: $message")
+                listener(false)
             },
             { error ->
-                run {
-                    Log.d("SERVER", "Error when logging out: $error")
-                    listener(false)
-                }
+                Log.d("SERVER", "Error when logging out: $error")
+                listener(false)
             }
         )
     }
@@ -172,9 +160,9 @@ class Server(val serverURL: String) {
      * @param errorListener Listener for an page request that results in an error.
      */
     fun getEncryptionParameters(
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any
+        processResponse: (JSONObject) -> Unit,
+        failedResponse: (String, JSONObject) -> Unit,
+        errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
             serverURL,
@@ -197,9 +185,9 @@ class Server(val serverURL: String) {
      */
     fun listFiles(
         path: String,
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any
+        processResponse: (JSONObject) -> Unit,
+        failedResponse: (String, JSONObject) -> Unit,
+        errorListener: (Exception) -> Unit,
     ) {
         // Properly set the page
         val page: String = if (path != "") {
@@ -230,9 +218,9 @@ class Server(val serverURL: String) {
      */
     fun recursiveListFiles(
         path: String,
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any
+        processResponse: (JSONObject) -> Unit,
+        failedResponse: (String, JSONObject) -> Unit,
+        errorListener: (Exception) -> Unit,
     ) {
         // Properly set the page
         val page: String = if (path != "") {
@@ -263,9 +251,9 @@ class Server(val serverURL: String) {
      */
     fun getFile(
         path: String,
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any
+        processResponse: (JSONObject) -> Unit,
+        failedResponse: (String, JSONObject) -> Unit,
+        errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
             serverURL,
@@ -288,9 +276,9 @@ class Server(val serverURL: String) {
      */
     fun createFolder(
         path: String,
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any
+        processResponse: (JSONObject) -> Unit,
+        failedResponse: (String, JSONObject) -> Unit,
+        errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
             serverURL,
@@ -317,9 +305,9 @@ class Server(val serverURL: String) {
     fun createFile(
         path: String,
         encryptedContent: String,
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any,
+        processResponse: (JSONObject) -> Unit,
+        failedResponse: (String, JSONObject) -> Unit,
+        errorListener: (Exception) -> Unit,
         uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit
     ) {
         // Create the POST Data
@@ -350,9 +338,9 @@ class Server(val serverURL: String) {
      */
     fun deleteItem(
         path: String,
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any
+        processResponse: (JSONObject) -> Unit,
+        failedResponse: (String, JSONObject) -> Unit,
+        errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
             serverURL,
@@ -374,9 +362,9 @@ class Server(val serverURL: String) {
      * @param errorListener Listener for an page request that results in an error.
      */
     fun getServerVersion(
-        processResponse: (JSONObject) -> Any,
-        failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any
+        processResponse: (JSONObject) -> Unit,
+        failedResponse: (String, JSONObject) -> Unit,
+        errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
             serverURL,
@@ -414,9 +402,9 @@ class Server(val serverURL: String) {
             method: HttpMethod,
             page: String,
             client: HttpClient,
-            processResponse: (JSONObject) -> Any,
-            failedResponse: (String, JSONObject) -> Any,
-            errorListener: (Exception) -> Any,
+            processResponse: (JSONObject) -> Unit,
+            failedResponse: (String, JSONObject) -> Unit,
+            errorListener: (Exception) -> Unit,
             postData: HashMap<String, String>? = null,
             downloadHandler: (suspend ((bytesSentTotal: Long, contentLength: Long) -> Unit))? = null,
             uploadHandler: (suspend ((bytesSentTotal: Long, contentLength: Long) -> Unit))? = null,
@@ -476,15 +464,13 @@ class Server(val serverURL: String) {
                 PING_PAGE,
                 client,
                 { json ->
-                    run {
-                        val response = json.get("content")
-                        if (response == "pong") {
-                            Log.d("SERVER", "'$serverURL' is valid")
-                            listener(true)
-                        } else {
-                            Log.d("SERVER", "'$serverURL' is not valid")
-                            listener(false)
-                        }
+                    val response = json.get("content")
+                    if (response == "pong") {
+                        Log.d("SERVER", "'$serverURL' is valid")
+                        listener(true)
+                    } else {
+                        Log.d("SERVER", "'$serverURL' is not valid")
+                        listener(false)
                     }
                 },
                 { _, _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) },
