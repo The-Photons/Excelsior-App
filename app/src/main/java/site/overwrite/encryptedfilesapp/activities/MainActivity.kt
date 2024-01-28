@@ -103,6 +103,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import site.overwrite.encryptedfilesapp.src.Cryptography
@@ -750,50 +751,69 @@ class MainActivity : ComponentActivity() {
                         Toast.LENGTH_SHORT
                     ).show()
 
-                    val inputStream = contentResolver.openInputStream(uri)
-                    if (inputStream != null) {
-                        showUploadProgressDialog = true
-                        uploadProgress = 0f
+                    // First check if the file exists already
+                    server.pathExists(
+                        filePath,
+                        { exists ->
+                            if (!exists) {
+                                val inputStream = contentResolver.openInputStream(uri)
+                                if (inputStream != null) {
+                                    showUploadProgressDialog = true
+                                    uploadProgress = 0f
 
-                        val content = inputStream.readBytes()
-                        Log.d("MAIN", "Got content of '$fileName'")
-                        // TODO: Encryption needs to be redone; specifically
-                        //       - add a progress bar for encryption
-                        //       - make encryption not be done all at once (i.e. saving all of the
-                        //         encrypted bytes into one variable, which may cause out-of-memory
-                        //         error)
-                        //       Also the `createFile()` function needs to support a file instead of
-                        //       the raw bytes.
-                        val encrypted =
-                            Cryptography.encryptAES(content, key = encryptionKey, iv = encryptionIV)
+                                    val content = inputStream.readBytes()
+                                    Log.d("MAIN", "Got content of '$fileName'")
+                                    // TODO: Encryption needs to be redone; specifically
+                                    //       - add a progress bar for encryption
+                                    //       - make encryption not be done all at once (i.e. saving all of the
+                                    //         encrypted bytes into one variable, which may cause out-of-memory
+                                    //         error)
+                                    //       Also the `createFile()` function needs to support a file instead of
+                                    //       the raw bytes.
+                                    val encrypted =
+                                        Cryptography.encryptAES(
+                                            content,
+                                            key = encryptionKey,
+                                            iv = encryptionIV
+                                        )
 
-                        server.createFile(
-                            filePath,
-                            encrypted,
-                            { _ ->
-                                Log.d("MAIN", "New file created: $filePath")
-                                scope.launch { snackbarHostState.showSnackbar("Added file") }
-                                getItemsInDir()
-                            },
-                            { _, json ->
-                                val reason = json.getString("message")
-                                Log.d("MAIN", "Failed to create file: $reason")
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Failed to create file: $reason")
+                                    server.createFile(
+                                        filePath,
+                                        encrypted,
+                                        { _ ->
+                                            Log.d("MAIN", "New file created: $filePath")
+                                            scope.launch { snackbarHostState.showSnackbar("Added file") }
+                                            getItemsInDir()
+                                        },
+                                        { _, json ->
+                                            val reason = json.getString("message")
+                                            Log.d("MAIN", "Failed to create file: $reason")
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Failed to create file: $reason")
+                                            }
+                                        },
+                                        { error ->
+                                            Log.d("MAIN", "Error when making file: $error")
+                                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                                        }
+                                    ) { bytesSentTotal, contentLength ->
+                                        uploadProgress = bytesSentTotal.toFloat() / contentLength
+                                        if (bytesSentTotal == contentLength) {
+                                            showUploadProgressDialog = false
+                                        }
+                                    }
+                                    inputStream.close()
                                 }
-                            },
-                            { error ->
-                                Log.d("MAIN", "Error when making file: $error")
-                                scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                            } else {
+                                Log.d("MAIN", "File already exists, not uploading")
+                                scope.launch { snackbarHostState.showSnackbar("File already exists on server") }
                             }
-                        ) { bytesSentTotal, contentLength ->
-                            uploadProgress = bytesSentTotal.toFloat() / contentLength
-                            if (bytesSentTotal == contentLength) {
-                                showUploadProgressDialog = false
-                            }
+                        },
+                        { error ->
+                            Log.d("MAIN", "Error when checking path existence: $error")
+                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                         }
-                        inputStream.close()
-                    }
+                    )
                 }
             }
 
@@ -809,22 +829,36 @@ class MainActivity : ComponentActivity() {
 
                 val fullFolderPath = "$dirPath/$folderName".trimStart('/')
 
-                server.createFolder(
+                server.pathExists(
                     fullFolderPath,
-                    { _ ->
-                        Log.d("MAIN", "New folder created: $fullFolderPath")
-                        scope.launch { snackbarHostState.showSnackbar("Directory created") }
-                        getItemsInDir()
-                    },
-                    { _, json ->
-                        val reason = json.getString("message")
-                        Log.d("MAIN", "Failed to create folder: $reason")
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Failed to create folder: $reason")
+                    { exists ->
+                        if (!exists) {
+                            server.createFolder(
+                                fullFolderPath,
+                                { _ ->
+                                    Log.d("MAIN", "New folder created: $fullFolderPath")
+                                    scope.launch { snackbarHostState.showSnackbar("Directory created") }
+                                    getItemsInDir()
+                                },
+                                { _, json ->
+                                    val reason = json.getString("message")
+                                    Log.d("MAIN", "Failed to create folder: $reason")
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Failed to create folder: $reason")
+                                    }
+                                },
+                                { error ->
+                                    Log.d("MAIN", "Error when making folder: $error")
+                                    scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                                }
+                            )
+                        } else {
+                            Log.d("MAIN", "Folder already exists, not creating")
+                            scope.launch { snackbarHostState.showSnackbar("Folder already exists on server") }
                         }
                     },
                     { error ->
-                        Log.d("MAIN", "Error when making folder: $error")
+                        Log.d("MAIN", "Error when checking path existence: $error")
                         scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                     }
                 )

@@ -40,6 +40,7 @@ const val GET_ENCRYPTION_PARAMS_PAGE = "auth/get-encryption-params"
 
 const val LIST_DIR_PAGE = "list-dir"
 const val RECURSIVE_LIST_DIR_PAGE = "recursive-list-dir"
+const val PATH_EXISTS_PAGE = "path-exists"
 const val GET_FILE_PAGE = "get-file"
 const val CREATE_FOLDER_PAGE = "create-dir"
 const val CREATE_FILE_PAGE = "create-file"
@@ -242,6 +243,31 @@ class Server(val serverURL: String) {
     }
 
     /**
+     * Checks if an item exists at the specified path.
+     *
+     * @param path Path to the file or folder.
+     * @param listener Listener for the path check.
+     * @param errorListener Listener for an page request that results in an error.
+     */
+    fun pathExists(
+        path: String,
+        listener: (Boolean) -> Unit,
+        errorListener: (Exception) -> Unit
+    ) {
+        sendRequest(
+            serverURL,
+            HttpMethod.GET,
+            "$PATH_EXISTS_PAGE/$path",
+            client,
+            { json ->
+                listener(json.getBoolean("exists"))
+            },
+            { _, _ -> },
+            errorListener
+        )
+    }
+
+    /**
      * Gets the contents of a file.
      *
      * @param path Path to the file.
@@ -253,7 +279,7 @@ class Server(val serverURL: String) {
         path: String,
         processResponse: (JSONObject) -> Unit,
         failedResponse: (String, JSONObject) -> Unit,
-        errorListener: (Exception) -> Unit,
+        errorListener: (Exception) -> Unit
     ) {
         sendRequest(
             serverURL,
