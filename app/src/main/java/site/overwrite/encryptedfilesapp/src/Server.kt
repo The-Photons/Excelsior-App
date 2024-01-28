@@ -21,6 +21,8 @@ import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.onDownload
+import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.delete
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
@@ -309,13 +311,16 @@ class Server(val serverURL: String) {
      * @param processResponse Listener for a successful page request.
      * @param failedResponse Listener for a failed page request.
      * @param errorListener Listener for an page request that results in an error.
+     * @param uploadHandler Function that handles uploads. Takes two parameters, the number of
+     * transmitted bytes (`bytesSentTotal`) and the total bytes to upload (`contentLength`).
      */
     fun createFile(
         path: String,
         encryptedContent: String,
         processResponse: (JSONObject) -> Any,
         failedResponse: (String, JSONObject) -> Any,
-        errorListener: (Exception) -> Any
+        errorListener: (Exception) -> Any,
+        uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit
     ) {
         // Create the POST Data
         val postData = HashMap<String, String>()
@@ -330,7 +335,8 @@ class Server(val serverURL: String) {
             processResponse,
             failedResponse,
             errorListener,
-            postData
+            postData,
+            uploadHandler = uploadHandler
         )
     }
 
@@ -395,6 +401,12 @@ class Server(val serverURL: String) {
          * @param failedResponse Listener for a failed page request.
          * @param errorListener Listener for an page request that results in an error.
          * @param postData Data to included in the POST request. Required if the request is POST.
+         * @param downloadHandler Function that takes two parameters, the number of transmitted
+         * bytes (`bytesSentTotal`) and the total bytes to download (`contentLength`), and processes
+         * it.
+         * @param uploadHandler Function that takes two parameters, the number of transmitted
+         * bytes (`bytesSentTotal`) and the total bytes to upload (`contentLength`), and processes
+         * it.
          */
         @OptIn(DelicateCoroutinesApi::class)
         private fun sendRequest(
@@ -406,18 +418,27 @@ class Server(val serverURL: String) {
             failedResponse: (String, JSONObject) -> Any,
             errorListener: (Exception) -> Any,
             postData: HashMap<String, String>? = null,
+            downloadHandler: (suspend ((bytesSentTotal: Long, contentLength: Long) -> Unit))? = null,
+            uploadHandler: (suspend ((bytesSentTotal: Long, contentLength: Long) -> Unit))? = null,
         ) {
+            // Todo: Handle timeout of server requests
+
             // Form the full URL
             val url = "$serverURL/$page"
-            GlobalScope.launch {  // Todo: use better async?
+            GlobalScope.launch {
                 try {
                     val response = when (method) {
-                        HttpMethod.GET -> client.get(url)
+                        HttpMethod.GET -> client.get(url) {
+                            onDownload(downloadHandler)
+                        }
+
                         HttpMethod.POST -> client.submitForm(url, formParameters = parameters {
                             postData?.forEach { (key, value) ->
                                 append(key, value)
                             }
-                        })
+                        }) {
+                            onUpload(uploadHandler)
+                        }
 
                         HttpMethod.DELETE -> client.delete(url)
                     }

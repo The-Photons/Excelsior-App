@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,6 +65,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -73,6 +75,7 @@ import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -86,6 +89,7 @@ import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -94,7 +98,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -153,7 +160,8 @@ class MainActivity : ComponentActivity() {
                                     encryptionSalt = json.getString("salt")
 
                                     // Convert the given password into the AES
-                                    val userAESKey = Cryptography.genAESKey(password, encryptionSalt)
+                                    val userAESKey =
+                                        Cryptography.genAESKey(password, encryptionSalt)
                                     encryptionKey = Cryptography.decryptAES(
                                         json.getString("encrypted_key"),
                                         userAESKey,
@@ -754,9 +762,12 @@ class MainActivity : ComponentActivity() {
         @Composable
         fun AddItemActionButton() {
             // Attributes
-            var expanded by remember { mutableStateOf(false) }
+            var dropdownExpanded by remember { mutableStateOf(false) }
 
             var showCreateFolderInputDialog by remember { mutableStateOf(false) }
+
+            var showUploadProgressDialog by remember { mutableStateOf(false) }
+            var uploadProgress by remember { mutableFloatStateOf(0f) }
 
             val pickFileLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.GetContent()
@@ -771,39 +782,45 @@ class MainActivity : ComponentActivity() {
                         Toast.LENGTH_SHORT
                     ).show()
 
-                    // TODO: Progress bar for uploading?
                     val inputStream = contentResolver.openInputStream(uri)
                     if (inputStream != null) {
+                        showUploadProgressDialog = true
                         val content = inputStream.readBytes()
                         Log.d("MAIN", "Got content of '$fileName'")
+                        // TODO: Encryption needs to be redone; specifically
+                        //       - add a progress bar for encryption
+                        //       - make encryption not be done all at once (i.e. saving all of the
+                        //         encrypted bytes into one variable, which may cause out-of-memory
+                        //         error)
+                        //       Also the `createFile()` function needs to support a file instead of
+                        //       the raw bytes.
                         val encrypted =
                             Cryptography.encryptAES(content, key = encryptionKey, iv = encryptionIV)
                         server.createFile(
                             filePath,
                             encrypted,
                             { _ ->
-                                run {
-                                    Log.d("MAIN", "New file created: $filePath")
-                                    scope.launch { snackbarHostState.showSnackbar("Added file") }
-                                    getItemsInDir()
-                                }
+                                Log.d("MAIN", "New file created: $filePath")
+                                scope.launch { snackbarHostState.showSnackbar("Added file") }
+                                getItemsInDir()
                             },
                             { _, json ->
-                                run {
-                                    val reason = json.getString("message")
-                                    Log.d("MAIN", "Failed to create file: $reason")
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Failed to create file: $reason")
-                                    }
+                                val reason = json.getString("message")
+                                Log.d("MAIN", "Failed to create file: $reason")
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Failed to create file: $reason")
                                 }
                             },
                             { error ->
-                                run {
-                                    Log.d("MAIN", "Error when making file: $error")
-                                    scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
-                                }
+                                Log.d("MAIN", "Error when making file: $error")
+                                scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
                             }
-                        )
+                        ) { bytesSentTotal, contentLength ->
+                            uploadProgress = bytesSentTotal.toFloat() / contentLength
+                            if (bytesSentTotal == contentLength) {
+                                showUploadProgressDialog = false
+                            }
+                        }
                         inputStream.close()
                     }
                 }
@@ -852,12 +869,12 @@ class MainActivity : ComponentActivity() {
             if (!isLoadingFiles) {
                 FloatingActionButton(
                     modifier = Modifier.padding(all = 16.dp),
-                    onClick = { expanded = !expanded },
+                    onClick = { dropdownExpanded = !dropdownExpanded },
                 ) {
                     Icon(Icons.Filled.Add, "Add")
                     DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false }
                     ) {
                         DropdownMenuItem(
                             leadingIcon = { Icon(Icons.Filled.NoteAdd, "Add File") },
@@ -886,6 +903,39 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     )
+                }
+
+                if (showUploadProgressDialog) {
+                    Dialog(
+                        onDismissRequest = { showUploadProgressDialog = false },
+                        DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Uploading File",
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text("${String.format("%.02f", uploadProgress * 100)}%")
+                                LinearProgressIndicator(
+                                    progress = uploadProgress,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -130,7 +130,8 @@ class LoginActivity : ComponentActivity() {
 
         var isErrorUsername by remember { mutableStateOf(false) }
 
-        var userPassword by remember { mutableStateOf("") }
+//        var userPassword by remember { mutableStateOf("") }
+        var userPassword by remember { mutableStateOf("password") }  // TODO: Remove
         var isErrorPassword by remember { mutableStateOf(false) }
         var isPasswordVisible by remember { mutableStateOf(false) }
 
