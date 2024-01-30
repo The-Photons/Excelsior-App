@@ -65,7 +65,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.asLiveData
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import site.overwrite.encryptedfilesapp.src.DataStoreManager
 import site.overwrite.encryptedfilesapp.src.Server
@@ -146,7 +148,7 @@ class LoginActivity : ComponentActivity() {
             isErrorPassword = false
 
             isLoading = true
-            Server.isValidURL(serverURL, client) { isValidURL ->
+            Server.isValidURL(serverURL, CoroutineScope(Job()), client) { isValidURL ->
                 if (!isValidURL) {
                     isErrorServerURL = true
                     Log.d("LOGIN", "Invalid server URL: $serverURL")

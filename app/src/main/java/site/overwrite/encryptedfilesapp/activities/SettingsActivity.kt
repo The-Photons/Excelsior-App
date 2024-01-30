@@ -59,23 +59,23 @@ import site.overwrite.encryptedfilesapp.src.DataStoreManager
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 // ENUMS
-enum class UploadBlockSize {
-    BLOCK_SIZE_1024 {
+enum class EncryptionBufferSize(val size: Int) {
+    BUFFER_SIZE_1024(1024) {
         override fun toString(): String {
             return "1024 B (1 KiB)"
         }
     },
-    BLOCK_SIZE_2048 {
+    BUFFER_SIZE_2048(2048) {
         override fun toString(): String {
             return "2048 B (2 KiB)"
         }
     },
-    BLOCK_SIZE_4096 {
+    BUFFER_SIZE_4096(4096) {
         override fun toString(): String {
             return "4096 B (4 KiB)"
         }
     },
-    BLOCK_SIZE_8192 {
+    BUFFER_SIZE_8192(8192) {
         override fun toString(): String {
             return "8192 B (8 KiB)"
         }
@@ -103,7 +103,8 @@ class SettingsActivity : ComponentActivity() {
             EncryptedFilesAppTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     SettingsStuff()
                 }
@@ -117,8 +118,8 @@ class SettingsActivity : ComponentActivity() {
     @Preview
     fun SettingsStuff() {
         // Attributes
-        var isUploadBlockSizeMenuExpanded by remember { mutableStateOf(false) }
-        var selectedUploadBlockSize by remember { mutableStateOf(UploadBlockSize.BLOCK_SIZE_1024) }
+        var isEncryptionBufferSizeMenuExpanded by remember { mutableStateOf(false) }
+        var selectedEncryptionBufferSize by remember { mutableStateOf(EncryptionBufferSize.BUFFER_SIZE_1024) }
 
         // Helper functions
         /**
@@ -126,8 +127,8 @@ class SettingsActivity : ComponentActivity() {
          * obtained.
          */
         fun getSettings() {
-            dataStoreManager.getUploadBlockSize().asLiveData(Dispatchers.Main)
-                .observe(this) { uploadBlockSize -> selectedUploadBlockSize = uploadBlockSize }
+            dataStoreManager.getEncryptionBufferSize().asLiveData(Dispatchers.Main)
+                .observe(this) { uploadBlockSize -> selectedEncryptionBufferSize = uploadBlockSize }
         }
 
         /**
@@ -135,7 +136,7 @@ class SettingsActivity : ComponentActivity() {
          */
         fun setSettings() {
             runBlocking {
-                dataStoreManager.setUploadBlockSize(selectedUploadBlockSize)
+                dataStoreManager.setEncryptionBufferSize(selectedEncryptionBufferSize)
             }
         }
 
@@ -172,31 +173,35 @@ class SettingsActivity : ComponentActivity() {
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Upload file block size:")
+                    Text("Encryption buffer size:")
                     ExposedDropdownMenuBox(
-                        expanded = isUploadBlockSizeMenuExpanded,
+                        expanded = isEncryptionBufferSizeMenuExpanded,
                         onExpandedChange = {
-                            isUploadBlockSizeMenuExpanded = !isUploadBlockSizeMenuExpanded
+                            isEncryptionBufferSizeMenuExpanded = !isEncryptionBufferSizeMenuExpanded
                         }
                     ) {
                         TextField(
-                            value = selectedUploadBlockSize.toString(),
+                            value = selectedEncryptionBufferSize.toString(),
                             onValueChange = {},
                             readOnly = true,
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isUploadBlockSizeMenuExpanded) },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = isEncryptionBufferSizeMenuExpanded
+                                )
+                            },
                             modifier = Modifier.menuAnchor()
                         )
                         ExposedDropdownMenu(
-                            expanded = isUploadBlockSizeMenuExpanded,
-                            onDismissRequest = { isUploadBlockSizeMenuExpanded = false }
+                            expanded = isEncryptionBufferSizeMenuExpanded,
+                            onDismissRequest = { isEncryptionBufferSizeMenuExpanded = false }
                         ) {
-                            UploadBlockSize.entries.forEach { item ->
+                            EncryptionBufferSize.entries.forEach { item ->
                                 DropdownMenuItem(
                                     text = { Text(text = item.toString()) },
                                     onClick = {
-                                        selectedUploadBlockSize = item
-                                        isUploadBlockSizeMenuExpanded = false
-                                        Log.d("SETTINGS", "Changed upload block size to '$item'")
+                                        selectedEncryptionBufferSize = item
+                                        isEncryptionBufferSizeMenuExpanded = false
+                                        Log.d("SETTINGS", "Changed encryption buffer size to '$item'")
                                     }
                                 )
                             }

@@ -18,8 +18,14 @@
 package site.overwrite.encryptedfilesapp.src
 
 import android.util.Base64
+import android.util.Log
+import site.overwrite.encryptedfilesapp.activities.EncryptionBufferSize
+import java.io.FileOutputStream
+import java.io.InputStream
 import javax.crypto.BadPaddingException
 import javax.crypto.Cipher
+import javax.crypto.CipherInputStream
+import javax.crypto.CipherOutputStream
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.PBEKeySpec
@@ -44,7 +50,10 @@ class Cryptography {
          * @param salt Salt for the password.
          * @return AES key.
          */
-        fun genAESKey(password: String, salt: String): ByteArray {
+        fun genAESKey(
+            password: String,
+            salt: String
+        ): ByteArray {
             val factory = SecretKeyFactory.getInstance(KEYGEN_ALGORITHM)
             val spec = PBEKeySpec(
                 password.toCharArray(),
@@ -64,7 +73,11 @@ class Cryptography {
          * @param iv Initialization vector used to encrypt the data.
          * @return Encrypted text. This is a Base64 string.
          */
-        fun encryptAES(plainText: ByteArray, key: ByteArray, iv: String): String {
+        fun encryptAES(
+            plainText: ByteArray,
+            key: ByteArray,
+            iv: String
+        ): String {
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
             val secretKeySpec = SecretKeySpec(key, "AES")
             val ivParameterSpec = IvParameterSpec(iv.toByteArray())
@@ -74,14 +87,68 @@ class Cryptography {
         }
 
         /**
+         * Encrypts bytes using AES.
+         *
+         * @param inputStream Input stream for the bytes to encrypt.
+         * @param outputStream Output stream for encrypted bytes.
+         * @param bufferSize Encryption buffer size value.
+         * @param key AES encryption/decryption key.
+         * @param iv Initialization vector used to encrypt the data.
+         * @param listener Listener for changes in the number of bytes encrypted.
+         */
+        fun encryptAES(
+            inputStream: InputStream,
+            outputStream: FileOutputStream,
+            bufferSize: EncryptionBufferSize,
+            key: ByteArray,
+            iv: String,
+            listener: (numBytesEncrypted: Int) -> Unit = {_->}
+        ) {
+            // Set up cipher
+            val cipher = Cipher.getInstance(AES_TRANSFORMATION)
+            val secretKeySpec = SecretKeySpec(key, "AES")
+            val ivParameterSpec = IvParameterSpec(iv.toByteArray())
+            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec)
+
+            // Then process the encryption
+            val cipherOutputStream = CipherOutputStream(outputStream, cipher)
+
+            val buffer = ByteArray(bufferSize.size)
+            var numBytesDecrypted = 0  // FIXME: Shouldn't this be long?
+            var numReadBytes: Int
+            inputStream.use { input ->
+                cipherOutputStream.use { output ->
+                    while (true) {
+                        // Read bytes from input and decrypt them
+                        numReadBytes = input.read(buffer)
+                        if (numReadBytes == -1) {
+                            break
+                        }
+
+                        Log.d("CRYPTO", "Bytes Dec: $numBytesDecrypted, Bytes Read: $numReadBytes")
+                        output.write(buffer, 0, numReadBytes)
+
+                        // Update the statuses
+                        numBytesDecrypted += numReadBytes
+                        listener(numBytesDecrypted)
+                    }
+                }
+            }
+        }
+
+        /**
          * Decrypts encrypted AES text.
          *
-         * @param encryptedText Text to decrypt. This text should be a Base64 string.
+         * @param encryptedText Text to decrypt. This text *should* be a Base64 string.
          * @param key AES encryption/decryption key.
          * @param iv Initialization vector used to encrypt the data.
          * @return Original plaintext.
          */
-        fun decryptAES(encryptedText: String, key: ByteArray, iv: String): ByteArray {
+        fun decryptAES(
+            encryptedText: String,
+            key: ByteArray,
+            iv: String
+        ): ByteArray {
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
             val secretKeySpec = SecretKeySpec(key, "AES")
             val ivParameterSpec = IvParameterSpec(iv.toByteArray())
@@ -93,6 +160,57 @@ class Cryptography {
                 throw InvalidDecryptionException("Invalid decryption of ciphertext")
             } catch (e: BadPaddingException) {
                 throw InvalidDecryptionException("Invalid decryption of ciphertext")
+            }
+        }
+
+        /**
+         * Decrypts encrypted AES text.
+         *
+         * @param inputStream Input stream for the bytes to decrypt. This should *not* be a Base64
+         * encrypted string.
+         * @param outputStream Output stream for decrypted bytes.
+         * @param bufferSize Encryption buffer size value.
+         * @param key AES encryption/decryption key.
+         * @param iv Initialization vector used to encrypt the data.
+         * @param listener Listener for changes in the number of bytes encrypted.
+         */
+        fun decryptAES(
+            inputStream: InputStream,
+            outputStream: FileOutputStream,
+            bufferSize: EncryptionBufferSize,
+            key: ByteArray,
+            iv: String,
+            listener: (numBytesDecrypted: Int) -> Unit = { _->}
+        ) {
+            // Set up cipher
+            val cipher = Cipher.getInstance(AES_TRANSFORMATION)
+            val secretKeySpec = SecretKeySpec(key, "AES")
+            val ivParameterSpec = IvParameterSpec(iv.toByteArray())
+            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec)
+
+            // Then process the decryption
+            val cipherInputStream = CipherInputStream(inputStream, cipher)
+
+            val buffer = ByteArray(bufferSize.size)
+            var numBytesDecrypted = 0  // FIXME: Shouldn't this be long?
+            var numReadBytes: Int
+            cipherInputStream.use { input ->
+                outputStream.use { output ->
+                    while (true) {
+                        // Read bytes from input and decrypt them
+                        numReadBytes = input.read(buffer)
+                        if (numReadBytes == -1) {
+                            break
+                        }
+
+                        Log.d("CRYPTO", "Bytes Dec: $numBytesDecrypted, Bytes Read: $numReadBytes")
+                        output.write(buffer, 0, numReadBytes)
+
+                        // Update the statuses
+                        numBytesDecrypted += numReadBytes
+                        listener(numBytesDecrypted)
+                    }
+                }
             }
         }
     }

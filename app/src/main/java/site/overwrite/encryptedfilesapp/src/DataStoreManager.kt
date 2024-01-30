@@ -28,7 +28,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import site.overwrite.encryptedfilesapp.activities.UploadBlockSize
+import site.overwrite.encryptedfilesapp.activities.EncryptionBufferSize
 import java.io.IOException
 
 class DataStoreManager(private val context: Context) {
@@ -39,7 +39,7 @@ class DataStoreManager(private val context: Context) {
         val serverURLKey = stringPreferencesKey("server_url")
         val usernameKey = stringPreferencesKey("username")
 
-        val uploadBlockSizeKey = intPreferencesKey("upload_block_size")
+        val encryptionBufferSizeKey = intPreferencesKey("encryption_buffer_size")
     }
 
     // Helper methods
@@ -84,20 +84,20 @@ class DataStoreManager(private val context: Context) {
     }
 
     /**
-     * Gets the upload block size from the data store.
+     * Gets the encryption buffer size from the data store.
      *
-     * @return Upload block size enum value. If the preferences did not already store an enum value,
-     * then it will return [UploadBlockSize.BLOCK_SIZE_1024].
+     * @return Encryption buffer size enum value. If the preferences did not already store an enum
+     * value, then it will return [EncryptionBufferSize.BUFFER_SIZE_1024].
      */
-    fun getUploadBlockSize(): Flow<UploadBlockSize> {
+    fun getEncryptionBufferSize(): Flow<EncryptionBufferSize> {
         return getPreferences().map { preferences ->
-            val uploadBlockSizeIdx = preferences[uploadBlockSizeKey] ?: -1
-            if (uploadBlockSizeIdx == -1) {
+            val encryptionBufferSizeIdx = preferences[encryptionBufferSizeKey] ?: -1
+            if (encryptionBufferSizeIdx == -1) {
                 // If cannot find a block size, choose the smallest
-                UploadBlockSize.BLOCK_SIZE_1024
+                EncryptionBufferSize.BUFFER_SIZE_1024
             } else {
                 // Otherwise use the given block size
-                UploadBlockSize.entries[uploadBlockSizeIdx]
+                EncryptionBufferSize.entries[encryptionBufferSizeIdx]
             }
         }
     }
@@ -126,13 +126,13 @@ class DataStoreManager(private val context: Context) {
     }
 
     /**
-     * Sets the upload block size ordinal in the data store.
+     * Sets the encryption buffer size ordinal in the data store.
      *
-     * @param uploadBlockSize Upload block size to set.
+     * @param encryptionBufferSize Encryption buffer size to set.
      */
-    suspend fun setUploadBlockSize(uploadBlockSize: UploadBlockSize) {
+    suspend fun setEncryptionBufferSize(encryptionBufferSize: EncryptionBufferSize) {
         context.dataStore.edit { preferences ->
-            preferences[uploadBlockSizeKey] = uploadBlockSize.ordinal
+            preferences[encryptionBufferSizeKey] = encryptionBufferSize.ordinal
         }
     }
 }

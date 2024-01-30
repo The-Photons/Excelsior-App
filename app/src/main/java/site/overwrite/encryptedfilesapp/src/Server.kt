@@ -17,6 +17,7 @@
 
 package site.overwrite.encryptedfilesapp.src
 
+import android.util.Base64
 import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -28,10 +29,11 @@ import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.parameters
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.io.File
 
 // CONSTANTS
 const val LOGIN_PAGE = "auth/login"
@@ -64,6 +66,8 @@ class Server(val serverURL: String) {
     private val client = HttpClient(CIO) {
         install(HttpCookies)
     }
+
+    private val scope = CoroutineScope(Job())
 
     // Authentication methods
     /**
@@ -104,6 +108,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.POST,
             if (actuallyLogin) LOGIN_PAGE else "$LOGIN_PAGE?actually-login=false",
+            scope,
             client,
             {
                 Log.d("SERVER", "Login successful")
@@ -135,6 +140,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.GET,
             LOGOUT_PAGE,
+            scope,
             client,
             {
                 Log.d("SERVER", "Logout successful")
@@ -169,6 +175,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.GET,
             GET_ENCRYPTION_PARAMS_PAGE,
+            scope,
             client,
             processResponse,
             failedResponse,
@@ -202,6 +209,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.GET,
             page,
+            scope,
             client,
             processResponse,
             failedResponse,
@@ -235,6 +243,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.GET,
             page,
+            scope,
             client,
             processResponse,
             failedResponse,
@@ -258,6 +267,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.GET,
             "$PATH_EXISTS_PAGE/$path",
+            scope,
             client,
             { json ->
                 listener(json.getBoolean("exists"))
@@ -285,6 +295,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.GET,
             "$GET_FILE_PAGE/$path",
+            scope,
             client,
             processResponse,
             failedResponse,
@@ -310,6 +321,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.POST,
             "$CREATE_FOLDER_PAGE/$path",
+            scope,
             client,
             processResponse,
             failedResponse,
@@ -321,7 +333,7 @@ class Server(val serverURL: String) {
      * Creates a new file on the server.
      *
      * @param path Path to the new file.
-     * @param encryptedContent Encrypted, Base64 string of the file.
+     * @param encryptedFile Encrypted file.
      * @param processResponse Listener for a successful page request.
      * @param failedResponse Listener for a failed page request.
      * @param errorListener Listener for an page request that results in an error.
@@ -330,21 +342,23 @@ class Server(val serverURL: String) {
      */
     fun createFile(
         path: String,
-        encryptedContent: String,
+        encryptedFile: File,
         processResponse: (JSONObject) -> Unit,
         failedResponse: (String, JSONObject) -> Unit,
         errorListener: (Exception) -> Unit,
-        uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit
+        uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = {_, _ ->}
     ) {
         // Create the POST Data
+        // TODO: Use file uploads instead of whatever this is
         val postData = HashMap<String, String>()
-        postData["content"] = encryptedContent
+        postData["content"] = Base64.encodeToString(encryptedFile.readBytes(), Base64.NO_WRAP)
 
         // Send the POST data to the page
         sendRequest(
             serverURL,
             HttpMethod.POST,
             "$CREATE_FILE_PAGE/$path",
+            scope,
             client,
             processResponse,
             failedResponse,
@@ -372,6 +386,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.DELETE,
             "$DELETE_ITEM_PAGE/$path",
+            scope,
             client,
             processResponse,
             failedResponse,
@@ -396,6 +411,7 @@ class Server(val serverURL: String) {
             serverURL,
             HttpMethod.GET,
             GET_VERSION_PAGE,
+            scope,
             client,
             processResponse,
             failedResponse,
@@ -408,8 +424,10 @@ class Server(val serverURL: String) {
         /**
          * Helper method that sends a request to the specified page on the server.
          *
+         * @param serverURL Server's URL.
          * @param method Request method.
          * @param page   Page (and URL parameters) to send the request to.
+         * @param scope Coroutine scope.
          * @param client HTTP client.
          * @param processResponse Listener for a successful page request.
          * @param failedResponse Listener for a failed page request.
@@ -422,24 +440,24 @@ class Server(val serverURL: String) {
          * bytes (`bytesSentTotal`) and the total bytes to upload (`contentLength`), and processes
          * it.
          */
-        @OptIn(DelicateCoroutinesApi::class)
         private fun sendRequest(
             serverURL: String,
             method: HttpMethod,
             page: String,
+            scope: CoroutineScope,
             client: HttpClient,
             processResponse: (JSONObject) -> Unit,
             failedResponse: (String, JSONObject) -> Unit,
             errorListener: (Exception) -> Unit,
             postData: HashMap<String, String>? = null,
-            downloadHandler: (suspend ((bytesSentTotal: Long, contentLength: Long) -> Unit))? = null,
-            uploadHandler: (suspend ((bytesSentTotal: Long, contentLength: Long) -> Unit))? = null,
+            downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = {_, _ ->},
+            uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = {_, _ ->},
         ) {
             // Todo: Handle timeout of server requests
 
             // Form the full URL
             val url = "$serverURL/$page"
-            GlobalScope.launch {
+            scope.launch {
                 try {
                     val response = when (method) {
                         HttpMethod.GET -> client.get(url) {
@@ -479,15 +497,22 @@ class Server(val serverURL: String) {
          * Determines whether the provided URL is a valid server URL.
          *
          * @param serverURL URL to check.
+         * @param scope Coroutine scope.
          * @param client HTTP client.
          * @param listener Listener to process the result.
          */
-        fun isValidURL(serverURL: String, client: HttpClient, listener: (Boolean) -> Unit) {
+        fun isValidURL(
+            serverURL: String,
+            scope: CoroutineScope,
+            client: HttpClient,
+            listener: (Boolean) -> Unit
+        ) {
             Log.d("SERVER", "Checking if '$serverURL' is valid")
             sendRequest(
                 serverURL,
                 HttpMethod.GET,
                 PING_PAGE,
+                scope,
                 client,
                 { json ->
                     val response = json.get("content")

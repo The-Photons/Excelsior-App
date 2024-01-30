@@ -26,6 +26,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import android.window.OnBackInvokedDispatcher
@@ -103,10 +104,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import site.overwrite.encryptedfilesapp.src.Cryptography
+import site.overwrite.encryptedfilesapp.src.DataStoreManager
 import site.overwrite.encryptedfilesapp.src.Dialogs
 import site.overwrite.encryptedfilesapp.src.IOMethods
 import site.overwrite.encryptedfilesapp.src.Server
@@ -122,6 +123,7 @@ val FOLDER_NAME_REGEX = Regex("[0-9A-z+\\-_= ]+")
 class MainActivity : ComponentActivity() {
     // Properties
     private var loggedIn = false
+    private lateinit var dataStoreManager: DataStoreManager
 
     private lateinit var server: Server
     private lateinit var username: String
@@ -140,6 +142,9 @@ class MainActivity : ComponentActivity() {
 
         // Prevent screen rotate
         this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+        // Get the data store manager
+        dataStoreManager = DataStoreManager(applicationContext)
 
         // We first need to ask for the login details, especially the encryption key
         loginIntent = Intent(this, LoginActivity::class.java)
@@ -315,17 +320,59 @@ class MainActivity : ComponentActivity() {
          * @param rawPath Path to the file.
          * @param displayResult Whether to display the result of the syncing.
          */
-        fun getFile(rawPath: String, displayResult: Boolean = true) {
+        fun syncFile(rawPath: String, displayResult: Boolean = true) {
             val path = rawPath.trimStart('/')
             Log.d("MAIN", "Getting file: '$path'")
             server.getFile(
                 path,
                 { json ->
+                    // TODO: Use file processing instead of whatever this is
                     val encryptedContent = json.getString("content")
-                    val fileData = Cryptography.decryptAES(
-                        encryptedContent, encryptionKey, encryptionIV
+
+                    // Create a temporary file to store the encrypted content
+                    val encryptedFile = IOMethods.createFile(
+                        "$rawPath.encrypted",
+                        Base64.decode(encryptedContent, Base64.NO_WRAP)
                     )
-                    IOMethods.createFile(rawPath, fileData)
+                    if (encryptedFile == null) {
+                        Log.d(
+                            "MAIN",
+                            "Error when making file: failed to create temporary file"
+                        )
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                "Failed to create temporary file"
+                            )
+                        }
+                        return@getFile
+                    }
+
+                    val decryptedFile = IOMethods.createFile(rawPath)
+                    if (decryptedFile == null) {
+                        Log.d(
+                            "MAIN",
+                            "Error when making file: failed to create output file"
+                        )
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                "Failed to create output file"
+                            )
+                        }
+                        return@getFile
+                    }
+
+                    Cryptography.decryptAES(
+                        encryptedFile.inputStream(),
+                        decryptedFile.outputStream(),
+                        EncryptionBufferSize.BUFFER_SIZE_4096,
+                        encryptionKey,
+                        encryptionIV
+                    ) { numBytesDecrypted ->
+                        // TODO: Do something
+                    }
+
+                    IOMethods.deleteItem(encryptedFile)
+
                     Log.d("MAIN", "Downloaded '$rawPath'")
                     if (displayResult) {
                         scope.launch {
@@ -345,7 +392,7 @@ class MainActivity : ComponentActivity() {
                         error.message.toString(),
                         {
                             Log.d("MAIN", "Attempting retry of file retrieval")
-                            getFile(rawPath)
+                            syncFile(rawPath)
                         },
                         {}
                     )
@@ -413,7 +460,7 @@ class MainActivity : ComponentActivity() {
         fun handleSync(path: String, type: String, displayResult: Boolean = true) {
             if (type == "file") {
                 Log.d("MAIN", "Syncing file '$path'")
-                getFile(path, displayResult)
+                syncFile(path, displayResult)
             } else {
                 // Get all items within the folder
                 Log.d("MAIN", "Syncing directory '$path'")
@@ -480,23 +527,21 @@ class MainActivity : ComponentActivity() {
                 server.recursiveListFiles(
                     path.trimStart('/'),
                     { json ->
-                        run {
-                            val serverDirContents = json.getJSONArray("content")
+                        val serverDirContents = json.getJSONArray("content")
 
-                            // Check if everything on the server copy is on the local copy
-                            val numItems = serverDirContents.length()
-                            var item: String
-                            for (i in 0..<numItems) {
-                                item = serverDirContents.getString(i)
-                                if (!localDirContents.contains(item)) {
-                                    listener(false)
-                                    return@run
-                                }
+                        // Check if everything on the server copy is on the local copy
+                        val numItems = serverDirContents.length()
+                        var item: String
+                        for (i in 0..<numItems) {
+                            item = serverDirContents.getString(i)
+                            if (!localDirContents.contains(item)) {
+                                listener(false)
+                                return@recursiveListFiles
                             }
-
-                            // If reached here then everything is synced
-                            listener(true)
                         }
+
+                        // If reached here then everything is synced
+                        listener(true)
                     },
                     { _, _ -> listener(false) },
                     { error ->
@@ -517,6 +562,8 @@ class MainActivity : ComponentActivity() {
          */
         @Composable
         fun DirectoryItem(name: String, type: String, sizeString: String) {
+            // FIXME: Fix syncing when syncing/deleting the item
+
             // Attributes
             val isPreviousDirectoryItem = type == PREVIOUS_DIRECTORY_TYPE
 
@@ -601,8 +648,6 @@ class MainActivity : ComponentActivity() {
                     if (isPreviousDirectoryItem) {
                         Spacer(Modifier.size(24.dp))
                     } else {
-                        checkSync("$dirPath/$name", type) { synced -> isSynced = synced }
-
                         if (isSynced) {
                             Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
                         } else {
@@ -723,6 +768,13 @@ class MainActivity : ComponentActivity() {
                     onNo = { showConfirmDeleteDialog = false }
                 )
             }
+
+            // Check the sync status of the item
+            LaunchedEffect(Unit) {
+                checkSync("$dirPath/$name", type) { synced ->
+                    isSynced = synced
+                }
+            }
         }
 
         /**
@@ -735,87 +787,137 @@ class MainActivity : ComponentActivity() {
 
             var showCreateFolderInputDialog by remember { mutableStateOf(false) }
 
+            var uploadProgressDialogTitle by remember { mutableStateOf("") }
             var showUploadProgressDialog by remember { mutableStateOf(false) }
             var uploadProgress by remember { mutableFloatStateOf(0f) }
 
+            fun uploadFile(uri: Uri) {
+                val fileName = getFileName(uri)
+                val filePath = "$dirPath/$fileName".trimStart('/')
+
+                Toast.makeText(
+                    applicationContext,
+                    "Uploading '$fileName'",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                // First check if the file exists already
+                server.pathExists(
+                    filePath,
+                    { exists ->
+                        if (!exists) {
+                            // Get the file size
+                            val fileDescriptor =
+                                contentResolver.openAssetFileDescriptor(uri, "r")
+                            var fileSize: Long = -1  // TODO: Handle -1 case
+                            if (fileDescriptor != null) {
+                                fileSize = fileDescriptor.length
+                                fileDescriptor.close()
+                            }
+
+                            // Get the input stream of the file
+                            val inputStream = contentResolver.openInputStream(uri)
+                            if (inputStream != null) {
+                                showUploadProgressDialog = true
+                                uploadProgress = 0f
+
+                                // Create a temporary file to store the encrypted content
+                                val encryptedFile =
+                                    IOMethods.createFile("$filePath.encrypted")
+                                if (encryptedFile == null) {
+                                    Log.d(
+                                        "MAIN",
+                                        "Error when making file: failed to create temporary file"
+                                    )
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "Failed to create temporary file"
+                                        )
+                                    }
+                                    return@pathExists
+                                }
+
+                                // Now encrypt the original file, storing the result in the temporary file
+                                uploadProgressDialogTitle = "Encrypting File"
+                                Cryptography.encryptAES(
+                                    inputStream,
+                                    encryptedFile.outputStream(),
+                                    EncryptionBufferSize.BUFFER_SIZE_4096,
+                                    encryptionKey,
+                                    encryptionIV
+                                ) { numBytesEncrypted ->
+                                    uploadProgress =
+                                        numBytesEncrypted.toFloat() / fileSize
+                                }
+                                Log.d("MAIN", "Encrypted file; attempting upload")
+
+                                // Once encrypted, send file to server
+                                uploadProgressDialogTitle = "Uploading File"
+                                uploadProgress = 0f
+                                server.createFile(
+                                    filePath,
+                                    encryptedFile,
+                                    { _ ->
+                                        Log.d("MAIN", "New file created: $filePath")
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                "Added file"
+                                            )
+                                        }
+                                        IOMethods.deleteItem(encryptedFile)
+                                        getItemsInDir()
+                                    },
+                                    { _, json ->
+                                        val reason = json.getString("message")
+                                        Log.d(
+                                            "MAIN",
+                                            "Failed to create file: $reason"
+                                        )
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Failed to create file: $reason")
+                                        }
+                                        IOMethods.deleteItem(encryptedFile)
+                                    },
+                                    { error ->
+                                        Log.d(
+                                            "MAIN",
+                                            "Error when making file: $error"
+                                        )
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                error.message.toString()
+                                            )
+                                        }
+                                        IOMethods.deleteItem(encryptedFile)
+                                    }
+                                ) { bytesSentTotal, contentLength ->
+                                    uploadProgress =
+                                        bytesSentTotal.toFloat() / contentLength
+                                    if (bytesSentTotal == contentLength) {
+                                        showUploadProgressDialog = false
+                                    }
+//                                            }
+                                }
+                                inputStream.close()
+                            } else {
+                                Log.d("MAIN", "Failed to read file '$filePath'")
+                                scope.launch { snackbarHostState.showSnackbar("Failed to read file '$fileName'") }
+                            }
+                        } else {
+                            Log.d("MAIN", "File already exists, not uploading")
+                            scope.launch { snackbarHostState.showSnackbar("File already exists on server") }
+                        }
+                    },
+                    { error ->
+                        Log.d("MAIN", "Error when checking path existence: $error")
+                        scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
+                    }
+                )
+            }
+
             val pickFileLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.GetContent()
-            ) { uri ->
-                if (uri != null) {
-                    val fileName = getFileName(uri)
-                    val filePath = "$dirPath/$fileName".trimStart('/')
-
-                    Toast.makeText(
-                        applicationContext,
-                        "Uploading '$fileName'",
-                        Toast.LENGTH_SHORT
-                    ).show()
-
-                    // First check if the file exists already
-                    server.pathExists(
-                        filePath,
-                        { exists ->
-                            if (!exists) {
-                                val inputStream = contentResolver.openInputStream(uri)
-                                if (inputStream != null) {
-                                    showUploadProgressDialog = true
-                                    uploadProgress = 0f
-
-                                    val content = inputStream.readBytes()
-                                    Log.d("MAIN", "Got content of '$fileName'")
-                                    // TODO: Encryption needs to be redone; specifically
-                                    //       - add a progress bar for encryption
-                                    //       - make encryption not be done all at once (i.e. saving all of the
-                                    //         encrypted bytes into one variable, which may cause out-of-memory
-                                    //         error)
-                                    //       Also the `createFile()` function needs to support a file instead of
-                                    //       the raw bytes.
-                                    val encrypted =
-                                        Cryptography.encryptAES(
-                                            content,
-                                            key = encryptionKey,
-                                            iv = encryptionIV
-                                        )
-
-                                    server.createFile(
-                                        filePath,
-                                        encrypted,
-                                        { _ ->
-                                            Log.d("MAIN", "New file created: $filePath")
-                                            scope.launch { snackbarHostState.showSnackbar("Added file") }
-                                            getItemsInDir()
-                                        },
-                                        { _, json ->
-                                            val reason = json.getString("message")
-                                            Log.d("MAIN", "Failed to create file: $reason")
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Failed to create file: $reason")
-                                            }
-                                        },
-                                        { error ->
-                                            Log.d("MAIN", "Error when making file: $error")
-                                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
-                                        }
-                                    ) { bytesSentTotal, contentLength ->
-                                        uploadProgress = bytesSentTotal.toFloat() / contentLength
-                                        if (bytesSentTotal == contentLength) {
-                                            showUploadProgressDialog = false
-                                        }
-                                    }
-                                    inputStream.close()
-                                }
-                            } else {
-                                Log.d("MAIN", "File already exists, not uploading")
-                                scope.launch { snackbarHostState.showSnackbar("File already exists on server") }
-                            }
-                        },
-                        { error ->
-                            Log.d("MAIN", "Error when checking path existence: $error")
-                            scope.launch { snackbarHostState.showSnackbar(error.message.toString()) }
-                        }
-                    )
-                }
-            }
+            ) { uri -> if (uri != null) uploadFile(uri) }
 
             // Helper functions
             /**
@@ -922,7 +1024,7 @@ class MainActivity : ComponentActivity() {
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = "Uploading File",
+                                    text = uploadProgressDialogTitle,
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center
                                 )

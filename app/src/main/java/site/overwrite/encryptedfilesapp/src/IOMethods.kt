@@ -150,6 +150,36 @@ class IOMethods {
          * Creates a file with the specified content.
          *
          * @param filePath Path to the file.
+         * @return File object representing the file, or `null` if the file creation fails.
+         */
+        fun createFile(
+            filePath: String
+        ): File? {
+            val containingDir = createDirectory(getContainingDir(filePath))
+            if (containingDir != null) {
+                // Create the file within the directory
+                val file = File(getItemPath(filePath))
+                try {
+                    if (!file.exists()) {
+                        val fileCreated = file.createNewFile()
+                        if (!fileCreated) {
+                            // Failed to create the file
+                            Log.d("IO METHODS", "Failed to create file")
+                            return null
+                        }
+                    }
+                    return file
+                } catch (e: IOException) {
+                    Log.d("IO METHODS", "Failed to create file: ${e.message}")
+                }
+            }
+            return null
+        }
+
+        /**
+         * Creates a file with the specified content.
+         *
+         * @param filePath Path to the file.
          * @param fileContent Content of the file.
          * @return File object representing the file, or `null` if the file creation fails.
          */
@@ -204,7 +234,7 @@ class IOMethods {
          * @param fileOrDirectory File or directory to delete.
          * @return Status of the deletion: `true` if the item was deleted and `false` if not.
          */
-        private fun deleteItem(fileOrDirectory: File): Boolean {
+        fun deleteItem(fileOrDirectory: File): Boolean {
             var allDeleted = true
             if (fileOrDirectory.isDirectory) {
                 for (child in fileOrDirectory.listFiles()!!) {
