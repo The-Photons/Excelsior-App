@@ -1174,19 +1174,12 @@ class MainActivity : ComponentActivity() {
                             onYes = {
                                 showConfirmLogoutDialog = false
                                 Log.d("MAIN", "Start logout process")
-                                server.handleLogout { success ->
-                                    if (success) {
-                                        loggedIn = false
-                                        Log.d("MAIN", "Deleting all folders")
-                                        IOMethods.deleteItem("")
-                                        Log.d("MAIN", "Logged out")
-                                        finish()
-                                    } else {
-                                        Log.d("MAIN", "Failed to log out")
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Failed to log out")
-                                        }
-                                    }
+                                server.handleLogout { _ ->
+                                    loggedIn = false
+                                    Log.d("MAIN", "Deleting all folders")
+                                    IOMethods.deleteItem("")
+                                    Log.d("MAIN", "Logged out")
+                                    finish()
                                 }
                             },
                             onNo = { showConfirmLogoutDialog = false }
