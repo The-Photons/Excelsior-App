@@ -562,14 +562,13 @@ class MainActivity : ComponentActivity() {
          */
         @Composable
         fun DirectoryItem(name: String, type: String, sizeString: String) {
-            // FIXME: Fix syncing when syncing/deleting the item
-
             // Attributes
             val isPreviousDirectoryItem = type == PREVIOUS_DIRECTORY_TYPE
 
             var isDropdownExpanded by remember { mutableStateOf(false) }
             var showConfirmDeleteDialog by remember { mutableStateOf(false) }
 
+            var hasChangeInSyncStatus by remember { mutableStateOf(false) }
             var isSynced by remember { mutableStateOf(false) }
 
             TextButton(
@@ -686,6 +685,7 @@ class MainActivity : ComponentActivity() {
                                             "Starting sync of '$name'",
                                             Toast.LENGTH_SHORT
                                         ).show()
+                                        hasChangeInSyncStatus = true
                                         handleSync(path, type)
                                         isDropdownExpanded = false
                                     }
@@ -701,6 +701,7 @@ class MainActivity : ComponentActivity() {
                                     enabled = IOMethods.checkIfExists(path),
                                     onClick = {
                                         if (IOMethods.deleteItem(path)) {
+                                            hasChangeInSyncStatus = true
                                             scope.launch {
                                                 val result = snackbarHostState.showSnackbar(
                                                     "Deleted item",
@@ -709,6 +710,7 @@ class MainActivity : ComponentActivity() {
                                                 )
                                                 when (result) {
                                                     SnackbarResult.ActionPerformed -> {
+                                                        hasChangeInSyncStatus = true
                                                         handleSync(path, type)
                                                     }
 
@@ -770,10 +772,11 @@ class MainActivity : ComponentActivity() {
             }
 
             // Check the sync status of the item
-            LaunchedEffect(Unit) {
+            LaunchedEffect(hasChangeInSyncStatus) {
                 checkSync("$dirPath/$name", type) { synced ->
                     isSynced = synced
                 }
+                hasChangeInSyncStatus = false
             }
         }
 
@@ -789,6 +792,7 @@ class MainActivity : ComponentActivity() {
 
             var uploadProgressDialogTitle by remember { mutableStateOf("") }
             var showUploadProgressDialog by remember { mutableStateOf(false) }
+            var isUploadDeterminate by remember { mutableStateOf(true)}
             var uploadProgress by remember { mutableFloatStateOf(0f) }
 
             fun uploadFile(uri: Uri) {
@@ -807,12 +811,14 @@ class MainActivity : ComponentActivity() {
                     { exists ->
                         if (!exists) {
                             // Get the file size
-                            val fileDescriptor =
-                                contentResolver.openAssetFileDescriptor(uri, "r")
-                            var fileSize: Long = -1  // TODO: Handle -1 case
+                            val fileDescriptor = contentResolver.openAssetFileDescriptor(uri, "r")
+                            val fileSize: Long
                             if (fileDescriptor != null) {
                                 fileSize = fileDescriptor.length
                                 fileDescriptor.close()
+                            } else {
+                                fileSize = -1
+                                isUploadDeterminate = false
                             }
 
                             // Get the input stream of the file
@@ -822,8 +828,7 @@ class MainActivity : ComponentActivity() {
                                 uploadProgress = 0f
 
                                 // Create a temporary file to store the encrypted content
-                                val encryptedFile =
-                                    IOMethods.createFile("$filePath.encrypted")
+                                val encryptedFile = IOMethods.createFile("$filePath.encrypted")
                                 if (encryptedFile == null) {
                                     Log.d(
                                         "MAIN",
@@ -846,8 +851,10 @@ class MainActivity : ComponentActivity() {
                                     encryptionKey,
                                     encryptionIV
                                 ) { numBytesEncrypted ->
-                                    uploadProgress =
-                                        numBytesEncrypted.toFloat() / fileSize
+                                    if (isUploadDeterminate) {
+                                        uploadProgress = numBytesEncrypted.toFloat() / fileSize
+                                    }
+                                    Log.d("MAIN", "FSZ: $fileSize, Upload progress $uploadProgress")
                                 }
                                 Log.d("MAIN", "Encrypted file; attempting upload")
 
@@ -896,7 +903,6 @@ class MainActivity : ComponentActivity() {
                                     if (bytesSentTotal == contentLength) {
                                         showUploadProgressDialog = false
                                     }
-//                                            }
                                 }
                                 inputStream.close()
                             } else {
@@ -1028,12 +1034,19 @@ class MainActivity : ComponentActivity() {
                                     fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center
                                 )
-                                Text("${String.format("%.02f", uploadProgress * 100)}%")
-                                LinearProgressIndicator(
-                                    progress = uploadProgress,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
+                                if (isUploadDeterminate) {
+                                    Text("${String.format("%.02f", uploadProgress * 100)}%")
+                                    LinearProgressIndicator(
+                                        progress = uploadProgress,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                } else {
+                                    LinearProgressIndicator(
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
