@@ -26,7 +26,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
-import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import android.window.OnBackInvokedDispatcher
@@ -104,7 +103,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import io.ktor.util.cio.writeChannel
+import io.ktor.utils.io.copyAndClose
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import site.overwrite.encryptedfilesapp.src.Cryptography
 import site.overwrite.encryptedfilesapp.src.DataStoreManager
@@ -236,6 +238,11 @@ class MainActivity : ComponentActivity() {
 
         var isLoadingFiles by remember { mutableStateOf(false) }
 
+        var showDataTransferProgressDialog by remember { mutableStateOf(false) }
+        var dataTransferDialogTitle by remember { mutableStateOf("") }
+        var isDataTransferDeterminate by remember { mutableStateOf(true) }
+        var dataTransferProgress by remember { mutableFloatStateOf(0f) }
+
         var showExtrasMenu by remember { mutableStateOf(false) }
         var showConfirmLogoutDialog by remember { mutableStateOf(false) }
 
@@ -323,17 +330,17 @@ class MainActivity : ComponentActivity() {
         fun syncFile(rawPath: String, displayResult: Boolean = true) {
             val path = rawPath.trimStart('/')
             Log.d("MAIN", "Getting file: '$path'")
+
+            showDataTransferProgressDialog = true
+            isDataTransferDeterminate = true
+            dataTransferDialogTitle = "Downloading File"
+            dataTransferProgress = 0f
+
             server.getFile(
                 path,
-                { json ->
-                    // TODO: Use file processing instead of whatever this is
-                    val encryptedContent = json.getString("content")
-
+                { channel ->
                     // Create a temporary file to store the encrypted content
-                    val encryptedFile = IOMethods.createFile(
-                        "$rawPath.encrypted",
-                        Base64.decode(encryptedContent, Base64.NO_WRAP)
-                    )
+                    val encryptedFile = IOMethods.createFile("$rawPath.encrypted")
                     if (encryptedFile == null) {
                         Log.d(
                             "MAIN",
@@ -344,8 +351,18 @@ class MainActivity : ComponentActivity() {
                                 "Failed to create temporary file"
                             )
                         }
+                        showDataTransferProgressDialog = false
                         return@getFile
                     }
+
+                    // Copy the channel into the encrypted file
+                    runBlocking {
+                        channel.copyAndClose(encryptedFile.writeChannel())
+                    }
+
+                    // Decrypt the file
+                    dataTransferDialogTitle = "Decrypting File"
+                    dataTransferProgress = 0f
 
                     val decryptedFile = IOMethods.createFile(rawPath)
                     if (decryptedFile == null) {
@@ -358,6 +375,7 @@ class MainActivity : ComponentActivity() {
                                 "Failed to create output file"
                             )
                         }
+                        showDataTransferProgressDialog = false
                         return@getFile
                     }
 
@@ -368,7 +386,11 @@ class MainActivity : ComponentActivity() {
                         encryptionKey,
                         encryptionIV
                     ) { numBytesDecrypted ->
-                        // TODO: Do something
+                        if (isDataTransferDeterminate) {
+                            // TODO: Determine a better file size metric
+                            dataTransferProgress =
+                                numBytesDecrypted.toFloat() / encryptedFile.length()
+                        }
                     }
 
                     IOMethods.deleteItem(encryptedFile)
@@ -380,10 +402,7 @@ class MainActivity : ComponentActivity() {
                             getItemsInDir()
                         }
                     }
-                },
-                { status, _ ->
-                    Log.d("MAIN", "Failed file request: $status")
-                    scope.launch { snackbarHostState.showSnackbar(status) }
+                    showDataTransferProgressDialog = false
                 },
                 { error ->
                     Log.d("MAIN", "File request had error: $error")
@@ -396,6 +415,9 @@ class MainActivity : ComponentActivity() {
                         },
                         {}
                     )
+                },
+                { bytesSentTotal, contentLength ->
+                    dataTransferProgress = bytesSentTotal.toFloat() / contentLength
                 }
             )
         }
@@ -790,11 +812,6 @@ class MainActivity : ComponentActivity() {
 
             var showCreateFolderInputDialog by remember { mutableStateOf(false) }
 
-            var uploadProgressDialogTitle by remember { mutableStateOf("") }
-            var showUploadProgressDialog by remember { mutableStateOf(false) }
-            var isUploadDeterminate by remember { mutableStateOf(true)}
-            var uploadProgress by remember { mutableFloatStateOf(0f) }
-
             fun uploadFile(uri: Uri) {
                 val fileName = getFileName(uri)
                 val filePath = "$dirPath/$fileName".trimStart('/')
@@ -818,14 +835,17 @@ class MainActivity : ComponentActivity() {
                                 fileDescriptor.close()
                             } else {
                                 fileSize = -1
-                                isUploadDeterminate = false
+                                isDataTransferDeterminate = false
                             }
 
                             // Get the input stream of the file
                             val inputStream = contentResolver.openInputStream(uri)
+                            val mimeType = contentResolver.getType(uri) ?: "application/octet-stream"
                             if (inputStream != null) {
-                                showUploadProgressDialog = true
-                                uploadProgress = 0f
+                                showDataTransferProgressDialog = true
+                                isDataTransferDeterminate = true
+                                dataTransferDialogTitle = "Encrypting File"
+                                dataTransferProgress = 0f
 
                                 // Create a temporary file to store the encrypted content
                                 val encryptedFile = IOMethods.createFile("$filePath.encrypted")
@@ -839,11 +859,11 @@ class MainActivity : ComponentActivity() {
                                             "Failed to create temporary file"
                                         )
                                     }
+                                    showDataTransferProgressDialog = false
                                     return@pathExists
                                 }
 
                                 // Now encrypt the original file, storing the result in the temporary file
-                                uploadProgressDialogTitle = "Encrypting File"
                                 Cryptography.encryptAES(
                                     inputStream,
                                     encryptedFile.outputStream(),
@@ -851,19 +871,19 @@ class MainActivity : ComponentActivity() {
                                     encryptionKey,
                                     encryptionIV
                                 ) { numBytesEncrypted ->
-                                    if (isUploadDeterminate) {
-                                        uploadProgress = numBytesEncrypted.toFloat() / fileSize
+                                    if (isDataTransferDeterminate) {
+                                        dataTransferProgress = numBytesEncrypted.toFloat() / fileSize
                                     }
-                                    Log.d("MAIN", "FSZ: $fileSize, Upload progress $uploadProgress")
                                 }
                                 Log.d("MAIN", "Encrypted file; attempting upload")
 
                                 // Once encrypted, send file to server
-                                uploadProgressDialogTitle = "Uploading File"
-                                uploadProgress = 0f
+                                dataTransferDialogTitle = "Uploading File"
+                                dataTransferProgress = 0f
                                 server.createFile(
                                     filePath,
                                     encryptedFile,
+                                    mimeType,
                                     { _ ->
                                         Log.d("MAIN", "New file created: $filePath")
                                         scope.launch {
@@ -884,6 +904,7 @@ class MainActivity : ComponentActivity() {
                                             snackbarHostState.showSnackbar("Failed to create file: $reason")
                                         }
                                         IOMethods.deleteItem(encryptedFile)
+                                        showDataTransferProgressDialog = false
                                     },
                                     { error ->
                                         Log.d(
@@ -896,12 +917,12 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                         IOMethods.deleteItem(encryptedFile)
+                                        showDataTransferProgressDialog = false
                                     }
                                 ) { bytesSentTotal, contentLength ->
-                                    uploadProgress =
-                                        bytesSentTotal.toFloat() / contentLength
+                                    dataTransferProgress = bytesSentTotal.toFloat() / contentLength
                                     if (bytesSentTotal == contentLength) {
-                                        showUploadProgressDialog = false
+                                        showDataTransferProgressDialog = false
                                     }
                                 }
                                 inputStream.close()
@@ -1010,46 +1031,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     )
-                }
-
-                if (showUploadProgressDialog) {
-                    Dialog(
-                        onDismissRequest = { showUploadProgressDialog = false },
-                        DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
-                    ) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            shape = RoundedCornerShape(12.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = uploadProgressDialogTitle,
-                                    fontWeight = FontWeight.Bold,
-                                    textAlign = TextAlign.Center
-                                )
-                                if (isUploadDeterminate) {
-                                    Text("${String.format("%.02f", uploadProgress * 100)}%")
-                                    LinearProgressIndicator(
-                                        progress = uploadProgress,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                } else {
-                                    LinearProgressIndicator(
-                                        color = MaterialTheme.colorScheme.secondary,
-                                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -1163,6 +1144,57 @@ class MainActivity : ComponentActivity() {
                             DirectoryItem(name, type, size)
                         }
                     }
+
+                    if (showDataTransferProgressDialog) {
+                        Dialog(
+                            onDismissRequest = { showDataTransferProgressDialog = false },
+                            DialogProperties(
+                                dismissOnBackPress = false,
+                                dismissOnClickOutside = false
+                            )
+                        ) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                shape = RoundedCornerShape(12.dp),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = dataTransferDialogTitle,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    if (isDataTransferDeterminate) {
+                                        Text(
+                                            "${
+                                                String.format(
+                                                    "%.02f",
+                                                    dataTransferProgress * 100
+                                                )
+                                            }%"
+                                        )
+                                        LinearProgressIndicator(
+                                            progress = dataTransferProgress,
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                        )
+                                    } else {
+                                        LinearProgressIndicator(
+                                            color = MaterialTheme.colorScheme.secondary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     if (showConfirmLogoutDialog) {
                         Dialogs.YesNoDialog(
                             icon = Icons.Filled.Logout,

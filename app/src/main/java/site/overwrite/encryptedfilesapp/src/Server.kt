@@ -17,7 +17,6 @@
 
 package site.overwrite.encryptedfilesapp.src
 
-import android.util.Base64
 import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -25,10 +24,16 @@ import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.onDownload
 import io.ktor.client.plugins.onUpload
 import io.ktor.client.request.delete
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitForm
+import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.parameters
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -105,26 +110,26 @@ class Server(val serverURL: String) {
 
         // Otherwise we can send the request to the server
         sendRequest(
-            serverURL,
-            HttpMethod.POST,
-            if (actuallyLogin) LOGIN_PAGE else "$LOGIN_PAGE?actually-login=false",
-            scope,
-            client,
-            {
+            url = serverURL,
+            method = HttpMethod.POST,
+            page = if (actuallyLogin) LOGIN_PAGE else "$LOGIN_PAGE?actually-login=false",
+            scope = scope,
+            client = client,
+            processJSONResponse = {
                 Log.d("SERVER", "Login successful")
                 listener(true, 0)
             },
-            { _, json ->
+            failedResponse = { _, json ->
                 val message = json.getString("message")
                 val errorCode = json.getInt("error_code")
                 Log.d("SERVER", "Login failed: $message")
                 listener(false, errorCode)
             },
-            { error ->
+            errorListener = { error ->
                 Log.d("SERVER", "Error when logging in: $error")
                 listener(false, 1)
             },
-            postData
+            postData = postData
         )
     }
 
@@ -137,21 +142,21 @@ class Server(val serverURL: String) {
         listener: (Boolean) -> Unit
     ) {
         sendRequest(
-            serverURL,
-            HttpMethod.GET,
-            LOGOUT_PAGE,
-            scope,
-            client,
-            {
+            url = serverURL,
+            method = HttpMethod.GET,
+            page = LOGOUT_PAGE,
+            scope = scope,
+            client = client,
+            processJSONResponse = {
                 Log.d("SERVER", "Logout successful")
                 listener(true)
             },
-            { _, json ->
+            failedResponse = { _, json ->
                 val message = json.getString("message")
                 Log.d("SERVER", "Logout failed: $message")
                 listener(false)
             },
-            { error ->
+            errorListener = { error ->
                 Log.d("SERVER", "Error when logging out: $error")
                 listener(false)
             }
@@ -172,14 +177,14 @@ class Server(val serverURL: String) {
         errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
-            serverURL,
-            HttpMethod.GET,
-            GET_ENCRYPTION_PARAMS_PAGE,
-            scope,
-            client,
-            processResponse,
-            failedResponse,
-            errorListener
+            url = serverURL,
+            method = HttpMethod.GET,
+            page = GET_ENCRYPTION_PARAMS_PAGE,
+            scope = scope,
+            client = client,
+            processJSONResponse = processResponse,
+            failedResponse = failedResponse,
+            errorListener = errorListener
         )
     }
 
@@ -206,14 +211,14 @@ class Server(val serverURL: String) {
 
         // Now we can send the request
         sendRequest(
-            serverURL,
-            HttpMethod.GET,
-            page,
-            scope,
-            client,
-            processResponse,
-            failedResponse,
-            errorListener
+            url = serverURL,
+            method = HttpMethod.GET,
+            page = page,
+            scope = scope,
+            client = client,
+            processJSONResponse = processResponse,
+            failedResponse = failedResponse,
+            errorListener = errorListener
         )
     }
 
@@ -240,14 +245,14 @@ class Server(val serverURL: String) {
 
         // Now we can send the request
         sendRequest(
-            serverURL,
-            HttpMethod.GET,
-            page,
-            scope,
-            client,
-            processResponse,
-            failedResponse,
-            errorListener
+            url = serverURL,
+            method = HttpMethod.GET,
+            page = page,
+            scope = scope,
+            client = client,
+            processJSONResponse = processResponse,
+            failedResponse = failedResponse,
+            errorListener = errorListener
         )
     }
 
@@ -264,16 +269,16 @@ class Server(val serverURL: String) {
         errorListener: (Exception) -> Unit
     ) {
         sendRequest(
-            serverURL,
-            HttpMethod.GET,
-            "$PATH_EXISTS_PAGE/$path",
-            scope,
-            client,
-            { json ->
+            url = serverURL,
+            method = HttpMethod.GET,
+            page = "$PATH_EXISTS_PAGE/$path",
+            scope = scope,
+            client = client,
+            processJSONResponse = { json ->
                 listener(json.getBoolean("exists"))
             },
-            { _, _ -> },
-            errorListener
+            failedResponse = { _, _ -> },
+            errorListener = errorListener
         )
     }
 
@@ -282,24 +287,27 @@ class Server(val serverURL: String) {
      *
      * @param path Path to the file.
      * @param processResponse Listener for a successful page request.
-     * @param failedResponse Listener for a failed page request.
      * @param errorListener Listener for an page request that results in an error.
+     * @param downloadHandler Function that takes two parameters, the number of transmitted
+     * bytes (`bytesSentTotal`) and the total bytes to download (`contentLength`), and processes
+     * it.
      */
     fun getFile(
         path: String,
-        processResponse: (JSONObject) -> Unit,
-        failedResponse: (String, JSONObject) -> Unit,
-        errorListener: (Exception) -> Unit
+        processResponse: (ByteReadChannel) -> Unit,
+        errorListener: (Exception) -> Unit,
+        downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> }
     ) {
         sendRequest(
-            serverURL,
-            HttpMethod.GET,
-            "$GET_FILE_PAGE/$path",
-            scope,
-            client,
-            processResponse,
-            failedResponse,
-            errorListener
+            url = serverURL,
+            method = HttpMethod.GET,
+            page = "$GET_FILE_PAGE/$path",
+            scope = scope,
+            client = client,
+            responseIsJSON = false,
+            processRawResponse = processResponse,
+            errorListener = errorListener,
+            downloadHandler = downloadHandler
         )
     }
 
@@ -318,14 +326,14 @@ class Server(val serverURL: String) {
         errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
-            serverURL,
-            HttpMethod.POST,
-            "$CREATE_FOLDER_PAGE/$path",
-            scope,
-            client,
-            processResponse,
-            failedResponse,
-            errorListener
+            url = serverURL,
+            method = HttpMethod.POST,
+            page = "$CREATE_FOLDER_PAGE/$path",
+            scope = scope,
+            client = client,
+            processJSONResponse = processResponse,
+            failedResponse = failedResponse,
+            errorListener = errorListener
         )
     }
 
@@ -334,6 +342,7 @@ class Server(val serverURL: String) {
      *
      * @param path Path to the new file.
      * @param encryptedFile Encrypted file.
+     * @param mimeType MIME type of the original unencrypted file.
      * @param processResponse Listener for a successful page request.
      * @param failedResponse Listener for a failed page request.
      * @param errorListener Listener for an page request that results in an error.
@@ -343,27 +352,23 @@ class Server(val serverURL: String) {
     fun createFile(
         path: String,
         encryptedFile: File,
+        mimeType: String,
         processResponse: (JSONObject) -> Unit,
         failedResponse: (String, JSONObject) -> Unit,
         errorListener: (Exception) -> Unit,
-        uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = {_, _ ->}
+        uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> }
     ) {
-        // Create the POST Data
-        // TODO: Use file uploads instead of whatever this is
-        val postData = HashMap<String, String>()
-        postData["content"] = Base64.encodeToString(encryptedFile.readBytes(), Base64.NO_WRAP)
-
-        // Send the POST data to the page
         sendRequest(
-            serverURL,
-            HttpMethod.POST,
-            "$CREATE_FILE_PAGE/$path",
-            scope,
-            client,
-            processResponse,
-            failedResponse,
-            errorListener,
-            postData,
+            url = serverURL,
+            method = HttpMethod.POST,
+            page = "$CREATE_FILE_PAGE/$path",
+            scope = scope,
+            client = client,
+            processJSONResponse = processResponse,
+            failedResponse = failedResponse,
+            errorListener = errorListener,
+            postFile = encryptedFile,
+            postFileMimeType = mimeType,
             uploadHandler = uploadHandler
         )
     }
@@ -383,14 +388,14 @@ class Server(val serverURL: String) {
         errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
-            serverURL,
-            HttpMethod.DELETE,
-            "$DELETE_ITEM_PAGE/$path",
-            scope,
-            client,
-            processResponse,
-            failedResponse,
-            errorListener
+            url = serverURL,
+            method = HttpMethod.DELETE,
+            page = "$DELETE_ITEM_PAGE/$path",
+            scope = scope,
+            client = client,
+            processJSONResponse = processResponse,
+            failedResponse = failedResponse,
+            errorListener = errorListener
         )
     }
 
@@ -408,14 +413,14 @@ class Server(val serverURL: String) {
         errorListener: (Exception) -> Unit,
     ) {
         sendRequest(
-            serverURL,
-            HttpMethod.GET,
-            GET_VERSION_PAGE,
-            scope,
-            client,
-            processResponse,
-            failedResponse,
-            errorListener
+            url = serverURL,
+            method = HttpMethod.GET,
+            page = GET_VERSION_PAGE,
+            scope = scope,
+            client = client,
+            processJSONResponse = processResponse,
+            failedResponse = failedResponse,
+            errorListener = errorListener
         )
     }
 
@@ -424,15 +429,24 @@ class Server(val serverURL: String) {
         /**
          * Helper method that sends a request to the specified page on the server.
          *
-         * @param serverURL Server's URL.
+         * @param url Server's URL.
          * @param method Request method.
          * @param page   Page (and URL parameters) to send the request to.
          * @param scope Coroutine scope.
          * @param client HTTP client.
-         * @param processResponse Listener for a successful page request.
+         * @param responseIsJSON Whether the response from the server is in JSON format.
+         * @param processRawResponse Processes a raw successful response from the server. Required
+         * if [responseIsJSON] is `false`.
+         * @param processJSONResponse Processes the JSON response from the server. Required if
+         * [responseIsJSON] is `true`.
          * @param failedResponse Listener for a failed page request.
          * @param errorListener Listener for an page request that results in an error.
-         * @param postData Data to included in the POST request. Required if the request is POST.
+         * @param postData Data to included in the POST request. Required if [postFile] is not
+         * provided and if the request is a POST request.
+         * @param postFile File to be included in the POST request. Required if [postData] is not
+         * provided and if the request is a POST request.
+         * @param postFileMimeType MIME type of the file included in the POST request. Required if
+         * [postFile] is provided.
          * @param downloadHandler Function that takes two parameters, the number of transmitted
          * bytes (`bytesSentTotal`) and the total bytes to download (`contentLength`), and processes
          * it.
@@ -441,51 +455,80 @@ class Server(val serverURL: String) {
          * it.
          */
         private fun sendRequest(
-            serverURL: String,
+            url: String,
             method: HttpMethod,
             page: String,
             scope: CoroutineScope,
             client: HttpClient,
-            processResponse: (JSONObject) -> Unit,
-            failedResponse: (String, JSONObject) -> Unit,
-            errorListener: (Exception) -> Unit,
+            responseIsJSON: Boolean = true,
+            processRawResponse: (channel: ByteReadChannel) -> Unit = { _ -> },
+            processJSONResponse: (json: JSONObject) -> Unit = { _ -> },
+            failedResponse: (status: String, json: JSONObject) -> Unit = { _, _ -> },
+            errorListener: (error: Exception) -> Unit = { _ -> },
             postData: HashMap<String, String>? = null,
-            downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = {_, _ ->},
-            uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = {_, _ ->},
+            postFile: File? = null,
+            postFileMimeType: String? = null,
+            downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> },
+            uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> },
         ) {
             // Todo: Handle timeout of server requests
 
             // Form the full URL
-            val url = "$serverURL/$page"
+            val fullURL = "$url/$page"
             scope.launch {
                 try {
                     val response = when (method) {
-                        HttpMethod.GET -> client.get(url) {
+                        HttpMethod.GET -> client.get(fullURL) {
                             onDownload(downloadHandler)
                         }
 
-                        HttpMethod.POST -> client.submitForm(url, formParameters = parameters {
-                            postData?.forEach { (key, value) ->
-                                append(key, value)
+                        HttpMethod.POST ->
+                            if (postFile != null && postFileMimeType != null) {
+                                client.submitFormWithBinaryData(
+                                    url = fullURL,
+                                    formData = formData {
+                                        // FIXME: Is `readBytes()` the best method?
+                                        append("file", postFile.readBytes(), Headers.build {
+                                            append(HttpHeaders.ContentType, postFileMimeType)
+                                            append(
+                                                HttpHeaders.ContentDisposition,
+                                                "filename=\"${postFile.name}\""
+                                            )
+                                        })
+                                    }
+                                ) {
+                                    onUpload(uploadHandler)
+                                }
+                            } else {
+                                client.submitForm(
+                                    url = fullURL,
+                                    formParameters = parameters {
+                                        postData?.forEach { (key, value) ->
+                                            append(key, value)
+                                        }
+                                    }) {
+                                    onUpload(uploadHandler)
+                                }
                             }
-                        }) {
-                            onUpload(uploadHandler)
-                        }
 
-                        HttpMethod.DELETE -> client.delete(url)
+                        HttpMethod.DELETE -> client.delete(fullURL)
                     }
-                    Log.d("SERVER", "Sent $method request to '$url'")
+                    Log.d("SERVER", "Sent $method request to '$fullURL'")
 
                     if (response.status.value == 200) {
-                        val json = JSONObject(response.bodyAsText())
-                        val status = json.getString("status")
-                        if (status == "ok") {
-                            processResponse(json)
+                        if (responseIsJSON) {
+                            val json = JSONObject(response.bodyAsText())
+                            val status = json.getString("status")
+                            if (status == "ok") {
+                                processJSONResponse(json)
+                            } else {
+                                failedResponse(status, json)
+                            }
                         } else {
-                            failedResponse(status, json)
+                            processRawResponse(response.bodyAsChannel())
                         }
                     } else {
-                        Log.d("SERVER", "Error ${response.status.value} for '$url'")
+                        Log.d("SERVER", "Error ${response.status.value} for '$fullURL'")
                     }
                 } catch (e: Exception) {
                     errorListener(e)
@@ -509,12 +552,12 @@ class Server(val serverURL: String) {
         ) {
             Log.d("SERVER", "Checking if '$serverURL' is valid")
             sendRequest(
-                serverURL,
-                HttpMethod.GET,
-                PING_PAGE,
-                scope,
-                client,
-                { json ->
+                url = serverURL,
+                method = HttpMethod.GET,
+                page = PING_PAGE,
+                scope = scope,
+                client = client,
+                processJSONResponse = { json ->
                     val response = json.get("content")
                     if (response == "pong") {
                         Log.d("SERVER", "'$serverURL' is valid")
@@ -524,8 +567,17 @@ class Server(val serverURL: String) {
                         listener(false)
                     }
                 },
-                { _, _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) },
-                { _ -> Log.d("SERVER", "'$serverURL' is not valid"); listener(false) }
+                failedResponse = { _, _ ->
+                    Log.d("SERVER", "'$serverURL' is not valid"); listener(
+                    false
+                )
+                },
+                errorListener = { _ ->
+                    Log.d(
+                        "SERVER",
+                        "'$serverURL' is not valid"
+                    ); listener(false)
+                }
             )
         }
 

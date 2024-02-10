@@ -114,7 +114,7 @@ class Cryptography {
             val cipherOutputStream = CipherOutputStream(outputStream, cipher)
 
             val buffer = ByteArray(bufferSize.size)
-            var numBytesDecrypted = 0  // FIXME: Shouldn't this be long?
+            var numBytesEncrypted = 0  // FIXME: Shouldn't this be long?
             var numReadBytes: Int
             inputStream.use { input ->
                 cipherOutputStream.use { output ->
@@ -125,12 +125,12 @@ class Cryptography {
                             break
                         }
 
-                        Log.d("CRYPTO", "Bytes Dec: $numBytesDecrypted, Bytes Read: $numReadBytes")
+                        Log.d("CRYPTO", "Bytes Enc: $numBytesEncrypted, Bytes Read: $numReadBytes")
                         output.write(buffer, 0, numReadBytes)
 
                         // Update the statuses
-                        numBytesDecrypted += numReadBytes
-                        listener(numBytesDecrypted)
+                        numBytesEncrypted += numReadBytes
+                        listener(numBytesEncrypted)
                     }
                 }
             }
