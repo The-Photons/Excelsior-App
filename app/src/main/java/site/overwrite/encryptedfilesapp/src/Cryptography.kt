@@ -19,7 +19,6 @@ package site.overwrite.encryptedfilesapp.src
 
 import android.util.Base64
 import android.util.Log
-import site.overwrite.encryptedfilesapp.activities.EncryptionBufferSize
 import java.io.FileOutputStream
 import java.io.InputStream
 import javax.crypto.BadPaddingException
@@ -68,41 +67,20 @@ class Cryptography {
         /**
          * Encrypts bytes using AES.
          *
-         * @param plainText Bytes to encrypt
-         * @param key AES encryption/decryption key.
-         * @param iv Initialization vector used to encrypt the data.
-         * @return Encrypted text. This is a Base64 string.
-         */
-        fun encryptAES(
-            plainText: ByteArray,
-            key: ByteArray,
-            iv: String
-        ): String {
-            val cipher = Cipher.getInstance(AES_TRANSFORMATION)
-            val secretKeySpec = SecretKeySpec(key, "AES")
-            val ivParameterSpec = IvParameterSpec(iv.toByteArray())
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, ivParameterSpec)
-            val encryptedBytes = cipher.doFinal(plainText)
-            return Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)
-        }
-
-        /**
-         * Encrypts bytes using AES.
-         *
          * @param inputStream Input stream for the bytes to encrypt.
          * @param outputStream Output stream for encrypted bytes.
-         * @param bufferSize Encryption buffer size value.
          * @param key AES encryption/decryption key.
          * @param iv Initialization vector used to encrypt the data.
+         * @param bufferSize Encryption buffer size.
          * @param listener Listener for changes in the number of bytes encrypted.
          */
         fun encryptAES(
             inputStream: InputStream,
             outputStream: FileOutputStream,
-            bufferSize: EncryptionBufferSize,
             key: ByteArray,
             iv: String,
-            listener: (numBytesEncrypted: Int) -> Unit = {_->}
+            bufferSize: Int = 4096,
+            listener: (numBytesEncrypted: Int) -> Unit = { _ -> }
         ) {
             // Set up cipher
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
@@ -113,7 +91,7 @@ class Cryptography {
             // Then process the encryption
             val cipherOutputStream = CipherOutputStream(outputStream, cipher)
 
-            val buffer = ByteArray(bufferSize.size)
+            val buffer = ByteArray(bufferSize)
             var numBytesEncrypted = 0  // FIXME: Shouldn't this be long?
             var numReadBytes: Int
             inputStream.use { input ->
@@ -169,18 +147,18 @@ class Cryptography {
          * @param inputStream Input stream for the bytes to decrypt. This should *not* be a Base64
          * encrypted string.
          * @param outputStream Output stream for decrypted bytes.
-         * @param bufferSize Encryption buffer size value.
          * @param key AES encryption/decryption key.
          * @param iv Initialization vector used to encrypt the data.
+         * @param bufferSize Encryption buffer size.
          * @param listener Listener for changes in the number of bytes encrypted.
          */
         fun decryptAES(
             inputStream: InputStream,
             outputStream: FileOutputStream,
-            bufferSize: EncryptionBufferSize,
             key: ByteArray,
             iv: String,
-            listener: (numBytesDecrypted: Int) -> Unit = { _->}
+            bufferSize: Int = 4096,
+            listener: (numBytesDecrypted: Int) -> Unit = { _ -> }
         ) {
             // Set up cipher
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
@@ -191,7 +169,7 @@ class Cryptography {
             // Then process the decryption
             val cipherInputStream = CipherInputStream(inputStream, cipher)
 
-            val buffer = ByteArray(bufferSize.size)
+            val buffer = ByteArray(bufferSize)
             var numBytesDecrypted = 0  // FIXME: Shouldn't this be long?
             var numReadBytes: Int
             cipherInputStream.use { input ->

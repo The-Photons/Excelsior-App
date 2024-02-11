@@ -22,13 +22,11 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import site.overwrite.encryptedfilesapp.activities.EncryptionBufferSize
 import java.io.IOException
 
 class DataStoreManager(private val context: Context) {
@@ -38,8 +36,6 @@ class DataStoreManager(private val context: Context) {
 
         val serverURLKey = stringPreferencesKey("server_url")
         val usernameKey = stringPreferencesKey("username")
-
-        val encryptionBufferSizeKey = intPreferencesKey("encryption_buffer_size")
     }
 
     // Helper methods
@@ -83,25 +79,6 @@ class DataStoreManager(private val context: Context) {
         }
     }
 
-    /**
-     * Gets the encryption buffer size from the data store.
-     *
-     * @return Encryption buffer size enum value. If the preferences did not already store an enum
-     * value, then it will return [EncryptionBufferSize.BUFFER_SIZE_1024].
-     */
-    fun getEncryptionBufferSize(): Flow<EncryptionBufferSize> {
-        return getPreferences().map { preferences ->
-            val encryptionBufferSizeIdx = preferences[encryptionBufferSizeKey] ?: -1
-            if (encryptionBufferSizeIdx == -1) {
-                // If cannot find a block size, choose the smallest
-                EncryptionBufferSize.BUFFER_SIZE_1024
-            } else {
-                // Otherwise use the given block size
-                EncryptionBufferSize.entries[encryptionBufferSizeIdx]
-            }
-        }
-    }
-
     // Setters
     /**
      * Sets the server URL in the data store.
@@ -122,17 +99,6 @@ class DataStoreManager(private val context: Context) {
     suspend fun setUsername(username: String) {
         context.dataStore.edit { preferences ->
             preferences[usernameKey] = username
-        }
-    }
-
-    /**
-     * Sets the encryption buffer size ordinal in the data store.
-     *
-     * @param encryptionBufferSize Encryption buffer size to set.
-     */
-    suspend fun setEncryptionBufferSize(encryptionBufferSize: EncryptionBufferSize) {
-        context.dataStore.edit { preferences ->
-            preferences[encryptionBufferSizeKey] = encryptionBufferSize.ordinal
         }
     }
 }

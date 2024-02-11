@@ -61,7 +61,6 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.filled.QuestionMark
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Cloud
@@ -382,12 +381,10 @@ class MainActivity : ComponentActivity() {
                     Cryptography.decryptAES(
                         encryptedFile.inputStream(),
                         decryptedFile.outputStream(),
-                        EncryptionBufferSize.BUFFER_SIZE_4096,
                         encryptionKey,
                         encryptionIV
                     ) { numBytesDecrypted ->
                         if (isDataTransferDeterminate) {
-                            // TODO: Determine a better file size metric
                             dataTransferProgress =
                                 numBytesDecrypted.toFloat() / encryptedFile.length()
                         }
@@ -867,7 +864,6 @@ class MainActivity : ComponentActivity() {
                                 Cryptography.encryptAES(
                                     inputStream,
                                     encryptedFile.outputStream(),
-                                    EncryptionBufferSize.BUFFER_SIZE_4096,
                                     encryptionKey,
                                     encryptionIV
                                 ) { numBytesEncrypted ->
@@ -1063,21 +1059,21 @@ class MainActivity : ComponentActivity() {
                             expanded = showExtrasMenu,
                             onDismissRequest = { showExtrasMenu = false }
                         ) {
-                            DropdownMenuItem(
-                                leadingIcon = { Icon(Icons.Filled.Settings, "Settings") },
-                                text = { Text("Settings") },
-                                onClick = {
-                                    Log.d("MAIN", "Showing settings page")
-                                    val settingsIntent =
-                                        Intent(applicationContext, SettingsActivity::class.java)
-                                    try {
-                                        startActivity(settingsIntent)
-                                    } catch (e: ActivityNotFoundException) {
-                                        Log.d("MAIN", "Failed to show settings: ${e.message}")
-                                    }
-                                    showExtrasMenu = false
-                                }
-                            )
+//                            DropdownMenuItem(
+//                                leadingIcon = { Icon(Icons.Filled.Settings, "Settings") },
+//                                text = { Text("Settings") },
+//                                onClick = {
+//                                    Log.d("MAIN", "Showing settings page")
+//                                    val settingsIntent =
+//                                        Intent(applicationContext, SettingsActivity::class.java)
+//                                    try {
+//                                        startActivity(settingsIntent)
+//                                    } catch (e: ActivityNotFoundException) {
+//                                        Log.d("MAIN", "Failed to show settings: ${e.message}")
+//                                    }
+//                                    showExtrasMenu = false
+//                                }
+//                            )
                             DropdownMenuItem(
                                 leadingIcon = { Icon(Icons.Filled.Info, "About") },
                                 text = { Text("About") },
