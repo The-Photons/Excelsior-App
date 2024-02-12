@@ -28,13 +28,15 @@ import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -52,6 +54,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +64,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.asLiveData
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -75,7 +81,7 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class LoginActivity : ComponentActivity() {
     // Properties
-    private var serverURL by mutableStateOf("http://127.0.0.1:5000")
+    private var serverURL by mutableStateOf("")
     private var username by mutableStateOf("")
 
     private lateinit var client: HttpClient
@@ -104,7 +110,6 @@ class LoginActivity : ComponentActivity() {
 
         setContent {
             EncryptedFilesAppTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -140,7 +145,10 @@ class LoginActivity : ComponentActivity() {
         var isLoading by remember { mutableStateOf(false) }
 
         // Helper functions
-        fun attemptLogin() {
+        /**
+         * Handles a login attempt.
+         */
+        fun handleLogin() {
             Log.d("LOGIN", "Login button clicked")
 
             isErrorServerURL = false
@@ -161,14 +169,12 @@ class LoginActivity : ComponentActivity() {
                         dataStoreManager.setServerURL(Server.cleanUpURL(serverURL))
                     }
 
-                    // Create the server object
-                    server = Server(serverURL)
-
                     // Now check the credentials
+                    server = Server(serverURL)
                     server.handleLogin(
                         username,
                         userPassword,
-                        actuallyLogin = false
+                        false
                     ) { isValidLogin, errorCode ->
                         if (!isValidLogin) {
                             if (errorCode == 1) {
@@ -221,90 +227,109 @@ class LoginActivity : ComponentActivity() {
                     .fillMaxWidth()
                     .padding(innerPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                OutlinedTextField(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    value = serverURL,
-                    singleLine = true,
-                    onValueChange = {
-                        serverURL = it
-                        isErrorServerURL = !URLUtil.isValidUrl(serverURL)
-                    },
-                    isError = isErrorServerURL,
-                    supportingText = {
-                        if (isErrorServerURL) {
-                            Text(
-                                modifier = Modifier.fillMaxWidth(),
-                                text = "Invalid URL",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    label = { Text("Server URL") }
-                )
-                OutlinedTextField(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    value = username,
-                    singleLine = true,
-                    onValueChange = { username = it },
-                    isError = isErrorUsername,
-                    supportingText = {
-                        if (isErrorUsername) {
-                            Text(
-                                modifier = Modifier.fillMaxWidth(),
-                                text = "Invalid Username",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    label = { Text("Username") }
-                )
-                OutlinedTextField(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    value = userPassword,
-                    singleLine = true,
-                    placeholder = { Text("Password") },
-                    onValueChange = { userPassword = it },
-                    isError = isErrorPassword,
-                    supportingText = {
-                        if (isErrorPassword) {
-                            Text(
-                                modifier = Modifier.fillMaxWidth(),
-                                text = "Invalid Password",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    label = { Text("Password") },
-                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    trailingIcon = {
-                        val image =
-                            if (isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                        val description =
-                            if (isPasswordVisible) "Hide Password" else "Show Password"
-
-                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                            Icon(imageVector = image, description)
-                        }
-                    }
-                )
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                Column(
+                    modifier = Modifier.fillMaxWidth(0.75f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
+                    OutlinedTextField(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        value = serverURL,
+                        singleLine = true,
+                        onValueChange = {
+                            serverURL = it
+                            isErrorServerURL = !URLUtil.isValidUrl(serverURL)
+                        },
+                        isError = isErrorServerURL,
+                        supportingText = {
+                            if (isErrorServerURL) {
+                                Text(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    text = "Invalid URL",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        label = { Text("Server URL") }
+                    )
+                    OutlinedTextField(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        value = username,
+                        singleLine = true,
+                        onValueChange = { username = it },
+                        isError = isErrorUsername,
+                        supportingText = {
+                            if (isErrorUsername) {
+                                Text(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    text = "Invalid Username",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        label = { Text("Username") }
+                    )
+                    OutlinedTextField(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        value = userPassword,
+                        singleLine = true,
+                        placeholder = { Text("Password") },
+                        onValueChange = { userPassword = it },
+                        isError = isErrorPassword,
+                        supportingText = {
+                            if (isErrorPassword) {
+                                Text(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    text = "Invalid Password",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        label = { Text("Password") },
+                        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        trailingIcon = {
+                            val image =
+                                if (isPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                            val description =
+                                if (isPasswordVisible) "Hide Password" else "Show Password"
+
+                            IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                                Icon(imageVector = image, description)
+                            }
+                        }
+                    )
                     Button(
-                        onClick = { attemptLogin() }
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        onClick = { handleLogin() }
                     ) {
                         Text("Login")
                     }
+                }
+            }
 
-                    // TODO: Fix spinner
-                    if (isLoading) {
+            // If loading, show spinner
+            if (isLoading) {
+                Dialog(
+                    onDismissRequest = {},
+                    properties = DialogProperties(
+                        dismissOnBackPress = false,
+                        dismissOnClickOutside = false
+                    )
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(100.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                    ) {
                         CircularProgressIndicator(
-                            modifier = Modifier.width(32.dp),
-                            color = MaterialTheme.colorScheme.secondary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -312,18 +337,36 @@ class LoginActivity : ComponentActivity() {
         }
 
         // Immediately close app upon back button press
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            onBackInvokedDispatcher.registerOnBackInvokedCallback(
-                OnBackInvokedDispatcher.PRIORITY_DEFAULT
-            ) {
-                finishAffinity()
-            }
-        } else {
-            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
+        LaunchedEffect(Unit) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT
+                ) {
                     finishAffinity()
                 }
-            })
+            } else {
+                onBackPressedDispatcher.addCallback(
+                    this@LoginActivity,
+                    object : OnBackPressedCallback(true) {
+                        override fun handleOnBackPressed() {
+                            finishAffinity()
+                        }
+                    })
+            }
+        }
+    }
+
+    // Previews
+    @Preview
+    @Composable
+    fun LoginViewPreview() {
+        EncryptedFilesAppTheme {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                LoginView()
+            }
         }
     }
 }
