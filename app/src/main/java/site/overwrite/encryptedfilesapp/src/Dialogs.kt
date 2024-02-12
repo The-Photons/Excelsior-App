@@ -42,10 +42,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
@@ -246,10 +246,8 @@ class Dialogs {
                 )
             ) {
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(
                         modifier = Modifier
@@ -259,7 +257,7 @@ class Dialogs {
                     ) {
                         Text(
                             text = dialogTitle,
-                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
                             textAlign = TextAlign.Center
                         )
                         if (progress != null) {
@@ -273,11 +271,13 @@ class Dialogs {
                             )
                             LinearProgressIndicator(
                                 progress = progress,
+                                modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.secondary,
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         } else {
                             LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.secondary,
                                 trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
@@ -394,7 +394,7 @@ class Dialogs {
     fun ProgressIndicatorDialogPreview1() {
         ProgressIndicatorDialog(
             dialogTitle = "Test Progress Indicator Dialog 1",
-            progress = 0.1234f
+            progress = 0.5678f
         )
     }
 
