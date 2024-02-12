@@ -17,9 +17,17 @@
 
 package site.overwrite.encryptedfilesapp.src
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tablet
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,11 +42,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 /**
  * Class that contains dialogs.
  */
 class Dialogs {
+    // Composables
     companion object {
         /**
          * Creates a new confirmation dialog.
@@ -131,7 +146,8 @@ class Dialogs {
          * @param textFieldErrorText Text to show if the validation fails.
          * @param onConfirmation Function that handles confirmation requests.
          * @param onDismissal Function that handles dismissal requests.
-         * @param textFieldValidator Validation function that validates the input for the text field.
+         * @param textFieldValidator Validation function that validates the input for the text
+         * field.
          * @param icon Optional icon to display on the dialog.
          * @param iconDesc Optional description for the icon. If an icon is provided, then this must
          * be present.
@@ -209,5 +225,185 @@ class Dialogs {
                 focusRequester.requestFocus()
             }
         }
+
+        /**
+         * Creates a new progress indicator dialog.
+         *
+         * @param dialogTitle Title of the dialog.
+         * @param progress Progress to show on the progress indicator. If `null` then the progress
+         * indicator will be indeterminate.
+         */
+        @Composable
+        fun ProgressIndicatorDialog(
+            dialogTitle: String,
+            progress: Float?
+        ) {
+            Dialog(
+                onDismissRequest = {},
+                DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false
+                )
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = dialogTitle,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        if (progress != null) {
+                            Text(
+                                "${
+                                    String.format(
+                                        "%.02f",
+                                        progress * 100
+                                    )
+                                }%"
+                            )
+                            LinearProgressIndicator(
+                                progress = progress,
+                                color = MaterialTheme.colorScheme.secondary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        } else {
+                            LinearProgressIndicator(
+                                color = MaterialTheme.colorScheme.secondary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Previews
+    @Preview
+    @Composable
+    fun ConfirmDialogPreview1() {
+        ConfirmDialog(
+            dialogTitle = "Test Confirm Dialog 1",
+            dialogContent = {
+                Column {
+                    Text("Test 1")
+                    Text("Test 2")
+                }
+            },
+            confirmText = "Confirm",
+            dismissText = "Dismiss",
+            onConfirmation = {},
+            onDismissal = {}
+        )
+    }
+
+    @Preview
+    @Composable
+    fun ConfirmDialogPreview2() {
+        ConfirmDialog(
+            dialogTitle = "Test Confirm Dialog 2",
+            dialogContent = {
+                Column {
+                    Text("Test 1")
+                    Text("Test 2")
+                }
+            },
+            confirmText = "Confirm",
+            dismissText = "Dismiss",
+            onConfirmation = {},
+            onDismissal = {},
+            icon = Icons.Filled.Tablet,
+            iconDesc = "Tablet"
+        )
+    }
+
+    @Preview
+    @Composable
+    fun YesNoDialogPreview1() {
+        YesNoDialog(
+            dialogTitle = "Test Yes No Dialog 1",
+            dialogContent = {
+                Column {
+                    Text("Test 1")
+                    Text("Test 2")
+                }
+            },
+            onYes = {},
+            onNo = {}
+        )
+    }
+
+    @Preview
+    @Composable
+    fun YesNoDialogPreview2() {
+        YesNoDialog(
+            dialogTitle = "Test Yes No Dialog 2",
+            dialogContent = {
+                Column {
+                    Text("Test 1")
+                    Text("Test 2")
+                }
+            },
+            onYes = {},
+            onNo = {},
+            icon = Icons.Filled.Tablet,
+            iconDesc = "Tablet"
+        )
+    }
+
+    @Preview
+    @Composable
+    fun TextInputDialogPreview1() {
+        TextInputDialog(
+            dialogTitle = "Test Text Input Dialog",
+            textFieldLabel = "Test Text Field",
+            onConfirmation = { _ -> },
+            onDismissal = { },
+            textFieldValidator = { _ -> false }
+        )
+    }
+
+    @Preview
+    @Composable
+    fun TextInputDialogPreview2() {
+        TextInputDialog(
+            dialogTitle = "Test Text Input Dialog",
+            textFieldLabel = "Test Text Field",
+            onConfirmation = { _ -> },
+            onDismissal = { },
+            textFieldValidator = { _ -> false },
+            textFieldPlaceholder = "Placeholder",
+            textFieldErrorText = "Error text",
+            icon = Icons.Filled.Tablet,
+            iconDesc = "Tablet"
+        )
+    }
+
+    @Preview
+    @Composable
+    fun ProgressIndicatorDialogPreview1() {
+        ProgressIndicatorDialog(
+            dialogTitle = "Test Progress Indicator Dialog 1",
+            progress = 0.1234f
+        )
+    }
+
+    @Preview
+    @Composable
+    fun ProgressIndicatorDialogPreview2() {
+        ProgressIndicatorDialog(
+            dialogTitle = "Test Progress Indicator Dialog 2",
+            progress = null
+        )
     }
 }
