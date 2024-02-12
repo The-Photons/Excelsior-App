@@ -46,6 +46,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import site.overwrite.encryptedfilesapp.src.Server
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
@@ -54,8 +55,11 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
  * About page for the application.
  */
 class AboutActivity : ComponentActivity() {
+    // Attributes
     private lateinit var server: Server
     private lateinit var username: String
+
+    private var appVersion = ""
 
     // Overridden methods
     @SuppressLint("SourceLockedOrientationActivity")
@@ -70,14 +74,23 @@ class AboutActivity : ComponentActivity() {
         server = Server(intent?.getStringExtra("server_url") ?: "")
         username = intent?.getStringExtra("username") ?: ""
 
+        // Get app version
+        appVersion = packageManager
+            .getPackageInfo(packageName, 0)
+            .versionName
+
         // Then set the content
         setContent {
             EncryptedFilesAppTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    AboutInfo()
+                    AboutInfo(
+                        username = username,
+                        serverURL = server.serverURL,
+                        appVersion = appVersion
+                    )
                 }
             }
         }
@@ -86,10 +99,14 @@ class AboutActivity : ComponentActivity() {
     // Composables
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun AboutInfo() {
+    fun AboutInfo(
+        username: String,
+        serverURL: String,
+        appVersion: String,
+        serVersion: String = ""
+    ) {
         // Attributes
-        val appVersion = packageManager.getPackageInfo(packageName, 0).versionName
-        var serverVersion by remember { mutableStateOf("") }
+        var serverVersion by remember { mutableStateOf(serVersion) }
 
         // Main UI
         Scaffold(
@@ -117,7 +134,7 @@ class AboutActivity : ComponentActivity() {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Text("Logged in as $username into server ${server.serverURL}")
+                Text("Logged in as $username into server $serverURL")
                 Spacer(modifier = Modifier.padding(vertical = 8.dp))
                 Text("Application version: $appVersion")
                 Text("Server version: $serverVersion")
@@ -138,6 +155,20 @@ class AboutActivity : ComponentActivity() {
                 },
                 { _, _ -> Log.d("ABOUT", "Failed to get version of server") },
                 { error -> Log.d("ABOUT", "Error when getting version of server: $error") }
+            )
+        }
+    }
+
+    // Previews
+    @Composable
+    @Preview
+    fun AboutInfoPreview() {
+        EncryptedFilesAppTheme {
+            AboutInfo(
+                "Username123",
+                "https://example.com/",
+                "A.B.C",
+                "D.E.F"
             )
         }
     }
