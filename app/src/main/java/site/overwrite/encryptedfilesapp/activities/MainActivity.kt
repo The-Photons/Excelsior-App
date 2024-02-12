@@ -248,38 +248,46 @@ class MainActivity : ComponentActivity() {
         type: String,
         listener: (Boolean) -> Unit
     ) {
-        if (type == "file") {
-            listener(IOMethods.checkIfFileExists(path))
-        } else {
-            // Get directory contents on the phone
-            val localDirContents = IOMethods.traverseDir(path)
+        when (type) {
+            "file" -> {
+                listener(IOMethods.checkIfFileExists(path))
+            }
 
-            // Then check the server's copy
-            server.recursiveListFiles(
-                path.trimStart('/'),
-                { json ->
-                    val serverDirContents = json.getJSONArray("content")
+            PREVIOUS_DIRECTORY_TYPE -> {
+                // Don't need to do anything
+            }
 
-                    // Check if everything on the server copy is on the local copy
-                    val numItems = serverDirContents.length()
-                    var item: String
-                    for (i in 0..<numItems) {
-                        item = serverDirContents.getString(i)
-                        if (!localDirContents.contains(item)) {
-                            listener(false)
-                            return@recursiveListFiles
+            else -> {
+                // Get directory contents on the phone
+                val localDirContents = IOMethods.traverseDir(path)
+
+                // Then check the server's copy
+                server.recursiveListFiles(
+                    path.trimStart('/'),
+                    { json ->
+                        val serverDirContents = json.getJSONArray("content")
+
+                        // Check if everything on the server copy is on the local copy
+                        val numItems = serverDirContents.length()
+                        var item: String
+                        for (i in 0..<numItems) {
+                            item = serverDirContents.getString(i)
+                            if (!localDirContents.contains(item)) {
+                                listener(false)
+                                return@recursiveListFiles
+                            }
                         }
-                    }
 
-                    // If reached here then everything is synced
-                    listener(true)
-                },
-                { _, _ -> listener(false) },
-                { error ->
-                    Log.d("MAIN", "Error when traversing server copy of '$path': $error")
-                    listener(false)
-                }
-            )
+                        // If reached here then everything is synced
+                        listener(true)
+                    },
+                    { _, _ -> listener(false) },
+                    { error ->
+                        Log.d("MAIN", "Error when traversing server copy of '$path': $error")
+                        listener(false)
+                    }
+                )
+            }
         }
     }
 
