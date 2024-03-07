@@ -22,25 +22,6 @@
         android:largeHeap="true"
         tools:targetApi="31">
         <!-- Activities -->
-        <activity
-            android:name=".activities.MainActivity"
-            android:exported="true"
-            android:theme="@style/Theme.EncryptedFilesApp">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".activities.LoginActivity"
-            android:exported="true"
-            android:theme="@style/Theme.EncryptedFilesApp" />
-
-        <activity
-            android:name=".activities.AboutActivity"
-            android:exported="true"
-            android:theme="@style/Theme.EncryptedFilesApp" />
 
         <!-- Providers -->
         <provider
