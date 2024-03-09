@@ -70,7 +70,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import site.overwrite.encryptedfilesapp.src.Server
+import site.overwrite.encryptedfilesapp.io.Server
 import site.overwrite.encryptedfilesapp.ui.main.MainActivity
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 

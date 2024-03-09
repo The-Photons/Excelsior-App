@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 PhotonicGluon.
+ * Copyright (c) 2023-2024 PhotonicGluon.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.src
+package site.overwrite.encryptedfilesapp.ui.utils
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.src
+package site.overwrite.encryptedfilesapp.misc
 
 import android.content.Intent
 import android.os.Build

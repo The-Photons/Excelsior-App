@@ -28,9 +28,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.runBlocking
-import site.overwrite.encryptedfilesapp.src.DataStoreManager
-import site.overwrite.encryptedfilesapp.src.Server
-import site.overwrite.encryptedfilesapp.src.serializable
+import site.overwrite.encryptedfilesapp.data.DataStoreManager
+import site.overwrite.encryptedfilesapp.io.Server
+import site.overwrite.encryptedfilesapp.misc.serializable
 import site.overwrite.encryptedfilesapp.ui.login.Credentials
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 

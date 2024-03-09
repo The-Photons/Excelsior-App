@@ -25,7 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.asLiveData
 import kotlinx.coroutines.Dispatchers
-import site.overwrite.encryptedfilesapp.src.DataStoreManager
+import site.overwrite.encryptedfilesapp.data.DataStoreManager
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class LoginActivity : ComponentActivity() {
