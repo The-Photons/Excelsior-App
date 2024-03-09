@@ -71,7 +71,7 @@ import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import site.overwrite.encryptedfilesapp.io.Server
-import site.overwrite.encryptedfilesapp.ui.main.MainActivity
+import site.overwrite.encryptedfilesapp.ui.home.HomeActivity
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 // Constants
@@ -185,7 +185,7 @@ fun LoginForm(
                     credentials = credentials.copy(password = "")  // Just clear the password field
                 } else {
                     // Send the credentials onwards
-                    val intent = Intent(context, MainActivity::class.java)
+                    val intent = Intent(context, HomeActivity::class.java)
                     intent.putExtra("credentials", credentials)
                     context.startActivity(intent)
                     (context as Activity).finish()

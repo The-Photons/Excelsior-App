@@ -33,7 +33,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".ui.home.HomeActivity"
             android:exported="false"
             android:theme="@style/Theme.EncryptedFilesApp" />
         <!-- Providers -->

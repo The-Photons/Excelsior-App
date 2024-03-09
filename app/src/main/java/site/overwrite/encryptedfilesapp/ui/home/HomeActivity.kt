@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.ui.main
+package site.overwrite.encryptedfilesapp.ui.home
 
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
@@ -36,7 +36,7 @@ import site.overwrite.encryptedfilesapp.misc.serializable
 import site.overwrite.encryptedfilesapp.ui.login.Credentials
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
-class MainActivity : ComponentActivity() {
+class HomeActivity : ComponentActivity() {
     // Properties
     private lateinit var dataStoreManager: DataStoreManager
 
