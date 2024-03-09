@@ -17,7 +17,10 @@
 
 package site.overwrite.encryptedfilesapp.ui.login
 
+import android.annotation.SuppressLint
+import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
@@ -34,8 +37,13 @@ class LoginActivity : ComponentActivity() {
 
     private lateinit var dataStoreManager: DataStoreManager
 
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("LOGIN", "Login activity onCreate")
         super.onCreate(savedInstanceState)
+
+        // Prevent screen rotate
+        this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         // Get things from the data store
         var serverURL by mutableStateOf("")
@@ -67,5 +75,10 @@ class LoginActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStop() {
+        Log.d("LOGIN", "Login activity onStop")
+        super.onStop()
     }
 }

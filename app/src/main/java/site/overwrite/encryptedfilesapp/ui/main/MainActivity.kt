@@ -17,6 +17,8 @@
 
 package site.overwrite.encryptedfilesapp.ui.main
 
+import android.annotation.SuppressLint
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,8 +43,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var server: Server
     private lateinit var username: String
 
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Prevent screen rotate
+        this.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         // Get the data passed in from the login view
         val credentials: Credentials = intent.serializable("credentials")!!

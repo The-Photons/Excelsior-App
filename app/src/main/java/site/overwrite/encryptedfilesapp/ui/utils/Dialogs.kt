@@ -270,10 +270,10 @@ class Dialogs {
                                 }%"
                             )
                             LinearProgressIndicator(
-                                progress = progress,
+                                progress = { progress },
                                 modifier = Modifier.fillMaxWidth(),
                                 color = MaterialTheme.colorScheme.secondary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
                             )
                         } else {
                             LinearProgressIndicator(
