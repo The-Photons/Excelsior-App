@@ -17,23 +17,54 @@
 
 package site.overwrite.encryptedfilesapp.ui.login
 
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.TextField
-import site.overwrite.encryptedfilesapp.ui.MainActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.asLiveData
+import kotlinx.coroutines.Dispatchers
+import site.overwrite.encryptedfilesapp.src.DataStoreManager
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class LoginActivity : ComponentActivity() {
+    // Properties
+    private val thisActivity = this
+
+    private lateinit var dataStoreManager: DataStoreManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Get things from the data store
+        var serverURL by mutableStateOf("")
+        var gotServerURL by mutableStateOf(false)
+
+        var username by mutableStateOf("")
+        var gotUsername by mutableStateOf(false)
+
+        dataStoreManager = DataStoreManager(applicationContext)
+        dataStoreManager.getServerURL().asLiveData(Dispatchers.Main)
+            .observe(thisActivity) {
+                serverURL = it
+                gotServerURL = true
+            }
+        dataStoreManager.getUsername().asLiveData(Dispatchers.Main)
+            .observe(thisActivity) {
+                username = it
+                gotUsername = true
+            }
+
+        // Then set the content
         setContent {
             EncryptedFilesAppTheme {
-                LoginForm()
+                if (gotUsername && gotServerURL) {
+                    LoginForm(
+                        serverURL = serverURL,
+                        username = username
+                    )
+                }
             }
         }
     }

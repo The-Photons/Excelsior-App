@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.ui
+package site.overwrite.encryptedfilesapp.ui.main
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -27,11 +27,36 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import kotlinx.coroutines.runBlocking
+import site.overwrite.encryptedfilesapp.src.DataStoreManager
+import site.overwrite.encryptedfilesapp.src.Server
+import site.overwrite.encryptedfilesapp.src.serializable
+import site.overwrite.encryptedfilesapp.ui.login.Credentials
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class MainActivity : ComponentActivity() {
+    // Properties
+    private lateinit var dataStoreManager: DataStoreManager
+
+    private lateinit var server: Server
+    private lateinit var username: String
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Get the data passed in from the login view
+        val credentials: Credentials = intent.serializable("credentials")!!
+        server = Server(credentials.serverURL)
+        username = credentials.username
+
+        // Update server URL and username
+        dataStoreManager = DataStoreManager(applicationContext)
+        runBlocking {
+            dataStoreManager.setServerURL(credentials.serverURL)
+            dataStoreManager.setUsername(credentials.username)
+        }
+
+        // Then set the content
         setContent {
             EncryptedFilesAppTheme {
                 // A surface container using the 'background' color from the theme
@@ -39,7 +64,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting("Android")
+                    Greeting("${credentials.username} at ${server.serverURL}")
                 }
             }
         }

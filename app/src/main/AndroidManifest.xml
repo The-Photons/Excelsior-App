@@ -26,7 +26,6 @@
         <activity
             android:name=".ui.login.LoginActivity"
             android:exported="true"
-            android:label="@string/title_activity_login"
             android:theme="@style/Theme.EncryptedFilesApp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -34,9 +33,8 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.main.MainActivity"
             android:exported="false"
-            android:label="@string/title_activity_main"
             android:theme="@style/Theme.EncryptedFilesApp" />
         <!-- Providers -->
         <provider

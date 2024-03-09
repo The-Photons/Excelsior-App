@@ -45,9 +45,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,7 +71,7 @@ import io.ktor.client.engine.cio.CIO
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import site.overwrite.encryptedfilesapp.src.Server
-import site.overwrite.encryptedfilesapp.ui.MainActivity
+import site.overwrite.encryptedfilesapp.ui.main.MainActivity
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 // Constants
@@ -123,8 +123,6 @@ fun checkCredentials(
 
         Log.d("LOGIN", "Good URL: ${credentials.serverURL}")
 
-        // TODO: Update the saved URL
-
         // Now check the username and password
         val server = Server(credentials.serverURL)
         server.handleLogin(
@@ -142,10 +140,8 @@ fun checkCredentials(
                 }
                 return@handleLogin
             }
+
             Log.d("LOGIN", "Credentials valid; logged in as '${credentials.username}'")
-
-            // TODO: Update the saved username
-
             onResult(CredentialCheckResult.VALID)
         }
     }
@@ -154,14 +150,26 @@ fun checkCredentials(
 // Composables
 /**
  * Form to handle the login.
+ *
+ * @param serverURL Default value for the server URL field.
+ * @param username Default value for the username field.
  */
 @Composable
-fun LoginForm() {
+fun LoginForm(
+    serverURL: String = "",
+    username: String = ""
+) {
     Surface {
-        // Attributes
         val context = LocalContext.current
 
-        var credentials by remember { mutableStateOf(Credentials()) }
+        var credentials by remember {
+            mutableStateOf(
+                Credentials(
+                    serverURL = serverURL,
+                    username = username
+                )
+            )
+        }
         var credentialCheckResult by remember { mutableStateOf(CredentialCheckResult.PENDING) }
         var isLoading by remember { mutableStateOf(false) }
 
@@ -176,7 +184,10 @@ fun LoginForm() {
                 if (result != CredentialCheckResult.VALID) {
                     credentials = credentials.copy(password = "")  // Just clear the password field
                 } else {
-                    context.startActivity(Intent(context, MainActivity::class.java))
+                    // Send the credentials onwards
+                    val intent = Intent(context, MainActivity::class.java)
+                    intent.putExtra("credentials", credentials)
+                    context.startActivity(intent)
                     (context as Activity).finish()
                 }
             }
