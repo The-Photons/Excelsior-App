@@ -20,6 +20,7 @@ package site.overwrite.encryptedfilesapp.ui.home
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.runBlocking
+import site.overwrite.encryptedfilesapp.data.Cryptography
 import site.overwrite.encryptedfilesapp.data.DataStoreManager
 import site.overwrite.encryptedfilesapp.io.Server
 import site.overwrite.encryptedfilesapp.misc.serializable
@@ -38,11 +40,17 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class HomeActivity : ComponentActivity() {
     // Properties
+    private var loggedIn = false
     private lateinit var dataStoreManager: DataStoreManager
 
     private lateinit var server: Server
     private lateinit var username: String
 
+    private lateinit var encryptionIV: String
+    private lateinit var encryptionSalt: String
+    private lateinit var encryptionKey: ByteArray
+
+    @OptIn(ExperimentalStdlibApi::class)
     @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +68,47 @@ class HomeActivity : ComponentActivity() {
         runBlocking {
             dataStoreManager.setServerURL(credentials.serverURL)
             dataStoreManager.setUsername(credentials.username)
+        }
+
+        // Actually log into the server
+        server.handleLogin(
+            username,
+            credentials.password
+        ) { _, _ ->
+            server.getEncryptionParameters(
+                { json ->
+                    // Set the IV and salt
+                    encryptionIV = json.getString("iv")
+                    encryptionSalt = json.getString("salt")
+
+                    // Convert the given password into the AES
+                    val userAESKey = Cryptography.genAESKey(credentials.password, encryptionSalt)
+                    encryptionKey = Cryptography.decryptAES(
+                        json.getString("encrypted_key"),
+                        userAESKey,
+                        encryptionIV
+                    )
+
+                    // Mark that we are logged in
+                    loggedIn = true
+                    Log.d(
+                        "MAIN",
+                        "Got server URL '${credentials.serverURL}'," +
+                                " initialization vector '$encryptionIV'," +
+                                " salt '$encryptionSalt', and encryption key (as hex string)" +
+                                " '${encryptionKey.toHexString()}'"
+                    )
+                },
+                { _, json ->
+                    Log.d(
+                        "MAIN",
+                        "Failed to get encryption parameters: ${json.getString("message")}"
+                    )
+                },
+                { error ->
+                    Log.d("MAIN", "Error when getting encryption parameters: $error")
+                }
+            )
         }
 
         // Then set the content
