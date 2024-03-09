@@ -92,23 +92,12 @@ class Server(val serverURL: String) {
         actuallyLogin: Boolean = true,
         listener: (Boolean, Int) -> Unit
     ) {
-        // We need to ensure that a username and password are provided
-        if (username.isBlank()) {
-            Log.d("SERVER", "Provided username is blank")
-            listener(false, 1)
-            return
-        } else if (password.isBlank()) {
-            Log.d("SERVER", "Provided password is blank")
-            listener(false, 2)
-            return
-        }
-
         // Create the POST Data
         val postData = HashMap<String, String>()
         postData["username"] = username
         postData["password"] = password
 
-        // Otherwise we can send the request to the server
+        // Send the request to the server
         sendRequest(
             url = serverURL,
             method = HttpMethod.POST,

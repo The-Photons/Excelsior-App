@@ -25,8 +25,29 @@ data class Credentials(
     var password: String = ""
 ) : Serializable {
     fun isNotEmpty(): Boolean {
-        return serverURL.isNotEmpty()
-                && username.isNotEmpty()
+        return serverURL.isNotBlank()
+                && username.isNotBlank()
                 && password.isNotEmpty()
     }
+
+    fun isNotEmptyWithResult(): CredentialCheckResult {
+        if (serverURL.isBlank()) {
+            return CredentialCheckResult.INVALID_URL
+        }
+        if (username.isBlank()) {
+            return CredentialCheckResult.INVALID_USERNAME
+        }
+        if (password.isEmpty()) {
+            return CredentialCheckResult.INVALID_PASSWORD
+        }
+        return CredentialCheckResult.VALID
+    }
+}
+
+enum class CredentialCheckResult {
+    PENDING,
+    INVALID_URL,
+    INVALID_USERNAME,
+    INVALID_PASSWORD,
+    VALID
 }

@@ -87,15 +87,6 @@ const val PASSWORD_FIELD_LABEL = "Password"
 const val PASSWORD_FIELD_PLACEHOLDER = "Password"
 const val PASSWORD_FIELD_ERROR_TEXT = "Invalid Password"
 
-// Helper enums
-enum class CredentialCheckResult {
-    PENDING,
-    INVALID_URL,
-    INVALID_USERNAME,
-    INVALID_PASSWORD,
-    VALID
-}
-
 // Helper functions
 /**
  * Helper function that checks the validity of the passed credentials.
@@ -107,6 +98,14 @@ fun checkCredentials(
     credentials: Credentials,
     onResult: (CredentialCheckResult) -> Unit,
 ) {
+    // Check that all fields are non-empty
+    val emptyCheckResult = credentials.isNotEmptyWithResult()
+    if (emptyCheckResult != CredentialCheckResult.VALID) {
+        Log.d("LOGIN", "A field is empty")
+        onResult(emptyCheckResult)
+        return
+    }
+
     // Initialize the HTTP client to use
     val client = HttpClient(CIO)
 
