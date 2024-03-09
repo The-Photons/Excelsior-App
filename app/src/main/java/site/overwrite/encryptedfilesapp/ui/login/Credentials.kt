@@ -18,10 +18,13 @@
 package site.overwrite.encryptedfilesapp.ui.login
 
 data class Credentials(
+    var serverURL: String = "",
     var username: String = "",
     var password: String = ""
 ) {
     fun isNotEmpty(): Boolean {
-        return username.isNotEmpty() && password.isNotEmpty()
+        return serverURL.isNotEmpty()
+                && username.isNotEmpty()
+                && password.isNotEmpty()
     }
 }
