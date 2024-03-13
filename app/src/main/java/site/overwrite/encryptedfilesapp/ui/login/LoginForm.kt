@@ -17,10 +17,7 @@
 
 package site.overwrite.encryptedfilesapp.ui.login
 
-import android.app.Activity
-import android.content.Intent
 import android.content.res.Configuration
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +46,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,12 +64,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import site.overwrite.encryptedfilesapp.io.Server
-import site.overwrite.encryptedfilesapp.ui.home.HomeActivity
+import androidx.lifecycle.viewmodel.compose.viewModel
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 // Constants
@@ -87,112 +80,27 @@ const val PASSWORD_FIELD_LABEL = "Password"
 const val PASSWORD_FIELD_PLACEHOLDER = "Password"
 const val PASSWORD_FIELD_ERROR_TEXT = "Invalid Password"
 
-// Helper functions
-/**
- * Helper function that checks the validity of the passed credentials.
- *
- * @param credentials Credentials to check.
- * @param onResult Result of the credential check.
- */
-fun checkCredentials(
-    credentials: Credentials,
-    onResult: (CredentialCheckResult) -> Unit,
-) {
-    // Check that all fields are non-empty
-    val emptyCheckResult = credentials.isNotEmptyWithResult()
-    if (emptyCheckResult != CredentialCheckResult.VALID) {
-        Log.d("LOGIN", "A field is empty")
-        onResult(emptyCheckResult)
-        return
-    }
-
-    // Initialize the HTTP client to use
-    val client = HttpClient(CIO)
-
-    Server.isValidURL(
-        credentials.serverURL,
-        CoroutineScope(Job()),
-        client
-    ) { isValidURL ->
-        if (!isValidURL) {
-            Log.d("LOGIN", "Invalid server URL: ${credentials.serverURL}")
-            onResult(CredentialCheckResult.INVALID_URL)
-            return@isValidURL
-        }
-
-        Log.d("LOGIN", "Good URL: ${credentials.serverURL}")
-
-        // Now check the username and password
-        val server = Server(credentials.serverURL)
-        server.handleLogin(
-            credentials.username,
-            credentials.password,
-            false
-        ) { isValidLogin, errorCode ->
-            if (!isValidLogin) {
-                if (errorCode == 1) {
-                    Log.d("LOGIN", "Invalid username: ${credentials.username}")
-                    onResult(CredentialCheckResult.INVALID_USERNAME)
-                } else {
-                    Log.d("LOGIN", "Invalid password")
-                    onResult(CredentialCheckResult.INVALID_PASSWORD)
-                }
-                return@handleLogin
-            }
-
-            Log.d("LOGIN", "Credentials valid; logged in as '${credentials.username}'")
-            onResult(CredentialCheckResult.VALID)
-        }
-    }
-}
-
 // Composables
 /**
  * Form to handle the login.
  *
  * @param serverURL Default value for the server URL field.
  * @param username Default value for the username field.
+ * @param loginViewModel Login view model that for the login activity.
  */
 @Composable
 fun LoginForm(
     serverURL: String = "",
-    username: String = ""
+    username: String = "",
+    loginViewModel: LoginViewModel = viewModel()
 ) {
+    val loginUIState by loginViewModel.uiState.collectAsState()
+    loginViewModel.updateServerURL(serverURL)
+    loginViewModel.updateUsername(username)
+
     Surface {
         val context = LocalContext.current
 
-        var credentials by remember {
-            mutableStateOf(
-                Credentials(
-                    serverURL = serverURL,
-                    username = username
-                )
-            )
-        }
-        var credentialCheckResult by remember { mutableStateOf(CredentialCheckResult.PENDING) }
-        var isLoading by remember { mutableStateOf(false) }
-
-        // Helper functions
-        fun submit() {
-            isLoading = true
-
-            checkCredentials(credentials) { result ->
-                isLoading = false
-                credentialCheckResult = result
-
-                if (result != CredentialCheckResult.VALID) {
-                    credentials = credentials.copy(password = "")  // Just clear the password field
-                } else {
-                    // Send the credentials onwards
-                    val intent = Intent(context, HomeActivity::class.java)
-                    intent.putExtra("credentials", credentials)
-                    context.startActivity(intent)
-                    (context as Activity).finish()
-                }
-            }
-        }
-
-        // UI
         Column(
             verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -203,37 +111,31 @@ fun LoginForm(
             Text(text = "Login", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.padding(vertical = 5.dp))
             ServerURLField(
-                value = credentials.serverURL,
-                onChange = {
-                    credentials = credentials.copy(serverURL = it)
-                    credentialCheckResult = CredentialCheckResult.PENDING
-                },
+                value = loginViewModel.serverURL,
+                onChange = { loginViewModel.updateServerURL(it) },
                 modifier = Modifier.fillMaxWidth(),
-                isError = (credentialCheckResult == CredentialCheckResult.INVALID_URL)
+                isError = !loginViewModel.hasUpdatedValues &&
+                        loginUIState.credentialCheckResult == CredentialCheckResult.INVALID_URL
             )
             UsernameField(
-                value = credentials.username,
-                onChange = {
-                    credentials = credentials.copy(username = it)
-                    credentialCheckResult = CredentialCheckResult.PENDING
-                },
+                value = loginViewModel.username,
+                onChange = { loginViewModel.updateUsername(it) },
                 modifier = Modifier.fillMaxWidth(),
-                isError = (credentialCheckResult == CredentialCheckResult.INVALID_USERNAME)
+                isError = !loginViewModel.hasUpdatedValues &&
+                        loginUIState.credentialCheckResult == CredentialCheckResult.INVALID_USERNAME
             )
             PasswordField(
-                value = credentials.password,
-                onChange = {
-                    credentials = credentials.copy(password = it)
-                    credentialCheckResult = CredentialCheckResult.PENDING
-                },
-                submit = { submit() },
+                value = loginViewModel.password,
+                onChange = { loginViewModel.updatePassword(it) },
+                submit = { loginViewModel.submit(context) },
                 modifier = Modifier.fillMaxWidth(),
-                isError = (credentialCheckResult == CredentialCheckResult.INVALID_PASSWORD)
+                isError = !loginViewModel.hasUpdatedValues &&
+                        loginUIState.credentialCheckResult == CredentialCheckResult.INVALID_PASSWORD
             )
             Spacer(modifier = Modifier.height(20.dp))
             Button(
-                onClick = { submit() },
-                enabled = credentials.isNotEmpty(),
+                onClick = { loginViewModel.submit(context) },
+                enabled = loginViewModel.allFieldsFilled(),
                 shape = RoundedCornerShape(5.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -241,7 +143,7 @@ fun LoginForm(
             }
         }
 
-        if (isLoading) {
+        if (loginViewModel.isLoading) {
             Dialog(
                 onDismissRequest = {},
                 properties = DialogProperties(

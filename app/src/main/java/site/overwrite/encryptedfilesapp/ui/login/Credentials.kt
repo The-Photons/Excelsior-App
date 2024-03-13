@@ -24,13 +24,7 @@ data class Credentials(
     var username: String = "",
     var password: String = ""
 ) : Serializable {
-    fun isNotEmpty(): Boolean {
-        return serverURL.isNotBlank()
-                && username.isNotBlank()
-                && password.isNotEmpty()
-    }
-
-    fun isNotEmptyWithResult(): CredentialCheckResult {
+    fun checkCredentialsIsEmpty(): CredentialCheckResult {
         if (serverURL.isBlank()) {
             return CredentialCheckResult.INVALID_URL
         }
