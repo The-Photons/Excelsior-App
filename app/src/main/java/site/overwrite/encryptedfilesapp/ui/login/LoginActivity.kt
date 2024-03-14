@@ -34,7 +34,6 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 class LoginActivity : ComponentActivity() {
     // Properties
     private val thisActivity = this
-
     private lateinit var dataStoreManager: DataStoreManager
 
     @SuppressLint("SourceLockedOrientationActivity")

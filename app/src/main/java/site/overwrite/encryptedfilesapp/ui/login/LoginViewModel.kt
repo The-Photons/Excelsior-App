@@ -32,6 +32,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import site.overwrite.encryptedfilesapp.io.Server
 import site.overwrite.encryptedfilesapp.ui.home.HomeActivity
 
@@ -129,22 +130,26 @@ class LoginViewModel : ViewModel() {
         return serverURL.isNotBlank() && username.isNotBlank() && password.isNotEmpty()
     }
 
-    fun submit(context:Context) {
+    fun submit(context: Context) {
         isLoading = true
 
         // Update the login UI state
-        _uiState.value = LoginViewUIState(
-            credentials = Credentials(
-                serverURL, username, password
-            ),
-            credentialCheckResult = CredentialCheckResult.PENDING
-        )
+        _uiState.update {
+            it.copy(
+                credentials = Credentials(
+                    serverURL, username, password
+                ),
+                credentialCheckResult = CredentialCheckResult.PENDING
+            )
+        }
         hasUpdatedValues = false
 
         // Then check the credentials
         _uiState.value.checkCredentials { result ->
             isLoading = false
-            _uiState.value = _uiState.value.copy(credentialCheckResult = result)
+            _uiState.update {
+                it.copy(credentialCheckResult = result)
+            }
 
             if (result != CredentialCheckResult.VALID) {
                 // Just clear the password field
