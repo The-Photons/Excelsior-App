@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import site.overwrite.encryptedfilesapp.data.CredentialCheckResult
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 // Constants

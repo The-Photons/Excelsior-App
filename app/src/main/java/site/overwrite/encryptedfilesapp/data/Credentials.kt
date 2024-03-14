@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.ui.login
+package site.overwrite.encryptedfilesapp.data
 
 import java.io.Serializable
 

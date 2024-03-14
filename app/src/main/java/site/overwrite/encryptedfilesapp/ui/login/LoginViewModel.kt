@@ -33,7 +33,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import site.overwrite.encryptedfilesapp.io.Server
+import site.overwrite.encryptedfilesapp.Server
+import site.overwrite.encryptedfilesapp.data.CredentialCheckResult
+import site.overwrite.encryptedfilesapp.data.Credentials
 import site.overwrite.encryptedfilesapp.ui.home.HomeActivity
 
 data class LoginViewUIState(

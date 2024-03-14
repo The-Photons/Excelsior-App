@@ -27,48 +27,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import site.overwrite.encryptedfilesapp.data.Cryptography
-import site.overwrite.encryptedfilesapp.io.Server
+import site.overwrite.encryptedfilesapp.Server
+import site.overwrite.encryptedfilesapp.data.EncryptionParameters
 
 data class HomeViewUIState(
-    // Login credentials
     val server: Server = Server(""),
     val username: String = "",
     val password: String = "",
-
-    // Encryption parameters
-    val encryptionIV: String = "",
-    val encryptionSalt: String = "",
-    val encryptionKey: ByteArray? = null,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as HomeViewUIState
-
-        if (server != other.server) return false
-        if (username != other.username) return false
-        if (password != other.password) return false
-        if (encryptionIV != other.encryptionIV) return false
-        if (encryptionSalt != other.encryptionSalt) return false
-        if (encryptionKey != null) {
-            if (other.encryptionKey == null) return false
-            if (!encryptionKey.contentEquals(other.encryptionKey)) return false
-        } else if (other.encryptionKey != null) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = server.hashCode()
-        result = 31 * result + username.hashCode()
-        result = 31 * result + password.hashCode()
-        result = 31 * result + encryptionIV.hashCode()
-        result = 31 * result + encryptionSalt.hashCode()
-        result = 31 * result + (encryptionKey?.contentHashCode() ?: 0)
-        return result
-    }
-}
+    val encryptionParameters: EncryptionParameters = EncryptionParameters()
+)
 
 class HomeViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(HomeViewUIState())
@@ -124,9 +91,11 @@ class HomeViewModel : ViewModel() {
                     // Update the UI state's version of the parameters
                     _uiState.update {
                         it.copy(
-                            encryptionIV = encryptionIV,
-                            encryptionSalt = encryptionSalt,
-                            encryptionKey = encryptionKey
+                            encryptionParameters = EncryptionParameters(
+                                iv = encryptionIV,
+                                salt = encryptionSalt,
+                                key = encryptionKey
+                            )
                         )
                     }
 

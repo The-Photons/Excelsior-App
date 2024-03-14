@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.io
+package site.overwrite.encryptedfilesapp
 
 import android.util.Log
 import io.ktor.client.HttpClient
