@@ -19,6 +19,14 @@ package site.overwrite.encryptedfilesapp.data
 
 import android.util.Log
 
+// Enums
+enum class ItemType {
+    FILE,
+    DIRECTORY,
+    PREVIOUS_DIRECTORY_MARKER
+}
+
+// Classes
 abstract class RemoteItem(name: String, path: String) {
     // Attributes
     var name: String = name
