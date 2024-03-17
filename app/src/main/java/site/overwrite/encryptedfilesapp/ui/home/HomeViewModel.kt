@@ -29,12 +29,14 @@ import kotlinx.coroutines.flow.update
 import site.overwrite.encryptedfilesapp.data.Cryptography
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.EncryptionParameters
+import site.overwrite.encryptedfilesapp.data.RemoteFolder
 
 data class HomeViewUIState(
     val server: Server = Server(""),
     val username: String = "",
     val password: String = "",
-    val encryptionParameters: EncryptionParameters = EncryptionParameters()
+    val encryptionParameters: EncryptionParameters = EncryptionParameters(),
+    val rootFolder: RemoteFolder = RemoteFolder()
 )
 
 class HomeViewModel : ViewModel() {
@@ -73,7 +75,7 @@ class HomeViewModel : ViewModel() {
         var encryptionKey: ByteArray
 
         // Now actually perform the login operation
-        _uiState.value.server.handleLogin(username, password) { _, _ ->
+        _uiState.value.server.handleLogin(username, password) { _ ->
             _uiState.value.server.getEncryptionParameters(
                 { json ->
                     // Set the IV and salt

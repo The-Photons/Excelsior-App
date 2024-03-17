@@ -61,6 +61,18 @@ enum class HttpMethod {
     GET, POST, DELETE
 }
 
+enum class LoginResult {
+    SUCCESS,
+    INVALID_USERNAME,
+    INVALID_PASSWORD;
+
+    companion object {
+        fun codeToEnumVal(value: Int): LoginResult {
+            return entries[value]
+        }
+    }
+}
+
 /**
  * Class that handles the communication with the encrypted files server.
  *
@@ -80,17 +92,13 @@ class Server(val serverURL: String) {
      *
      * @param username Username to check.
      * @param password Password to check.
-     * @param listener Listener to process the result. The first element is whether the login was
-     * successful. The second is the failure code.
-     * - 0: No error
-     * - 1: Invalid username
-     * - 2: Invalid password
+     * @param listener Listener to process the result.
      */
     fun handleLogin(
         username: String,
         password: String,
         actuallyLogin: Boolean = true,
-        listener: (Boolean, Int) -> Unit
+        listener: (LoginResult) -> Unit
     ) {
         // Create the POST Data
         val postData = HashMap<String, String>()
@@ -106,17 +114,17 @@ class Server(val serverURL: String) {
             client = client,
             processJSONResponse = {
                 Log.d("SERVER", "Login successful")
-                listener(true, 0)
+                listener(LoginResult.SUCCESS)
             },
             failedResponse = { _, json ->
                 val message = json.getString("message")
                 val errorCode = json.getInt("error_code")
                 Log.d("SERVER", "Login failed: $message")
-                listener(false, errorCode)
+                listener(LoginResult.codeToEnumVal(errorCode))
             },
             errorListener = { error ->
                 Log.d("SERVER", "Error when logging in: $error")
-                listener(false, 1)
+                listener(LoginResult.INVALID_USERNAME)
             },
             postData = postData
         )

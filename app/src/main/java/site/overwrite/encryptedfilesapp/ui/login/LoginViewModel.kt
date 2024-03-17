@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import site.overwrite.encryptedfilesapp.LoginResult
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.CredentialCheckResult
 import site.overwrite.encryptedfilesapp.data.Credentials
@@ -73,20 +74,23 @@ data class LoginViewUIState(
                 credentials.username,
                 credentials.password,
                 false
-            ) { isValidLogin, errorCode ->
-                if (!isValidLogin) {
-                    if (errorCode == 1) {
+            ) { loginResult ->
+                when (loginResult) {
+                    LoginResult.SUCCESS -> {
+                        Log.d("LOGIN", "Credentials valid; logged in as '${credentials.username}'")
+                        onResult(CredentialCheckResult.VALID)
+                    }
+
+                    LoginResult.INVALID_USERNAME -> {
                         Log.d("LOGIN", "Invalid username: ${credentials.username}")
                         onResult(CredentialCheckResult.INVALID_USERNAME)
-                    } else {
+                    }
+
+                    LoginResult.INVALID_PASSWORD -> {
                         Log.d("LOGIN", "Invalid password")
                         onResult(CredentialCheckResult.INVALID_PASSWORD)
                     }
-                    return@handleLogin
                 }
-
-                Log.d("LOGIN", "Credentials valid; logged in as '${credentials.username}'")
-                onResult(CredentialCheckResult.VALID)
             }
         }
     }
