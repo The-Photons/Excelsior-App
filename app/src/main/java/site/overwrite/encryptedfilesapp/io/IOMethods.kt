@@ -21,6 +21,7 @@ import android.os.Environment
 import android.util.Log
 import java.io.File
 import java.io.IOException
+import java.math.RoundingMode
 
 // CONSTANTS
 const val APP_DIR_NAME = "Excelsior"
@@ -322,8 +323,8 @@ class IOMethods {
          */
         fun formatFileSize(rawSize: Long, precision: Int = 2): String {
             val unit = FileUnit.chooseUnit(rawSize, altUnits = false)
-            val reducedSize = rawSize.toBigDecimal() / unit.value.toBigDecimal()
-            val roundedSize = reducedSize.setScale(precision)
+            val reducedSize = rawSize.toBigDecimal().divide(unit.value.toBigDecimal())
+            val roundedSize = reducedSize.setScale(precision, RoundingMode.HALF_EVEN)
             return "$roundedSize ${unit.symbol}"
         }
     }

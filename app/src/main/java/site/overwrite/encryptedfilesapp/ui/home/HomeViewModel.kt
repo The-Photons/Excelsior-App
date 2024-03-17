@@ -29,14 +29,14 @@ import kotlinx.coroutines.flow.update
 import site.overwrite.encryptedfilesapp.data.Cryptography
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.EncryptionParameters
-import site.overwrite.encryptedfilesapp.data.RemoteFolder
+import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 
 data class HomeViewUIState(
     val server: Server = Server(""),
     val username: String = "",
     val password: String = "",
     val encryptionParameters: EncryptionParameters = EncryptionParameters(),
-    val rootFolder: RemoteFolder = RemoteFolder()
+    val rootFolder: RemoteDirectory = RemoteDirectory()
 )
 
 class HomeViewModel : ViewModel() {
@@ -101,6 +101,9 @@ class HomeViewModel : ViewModel() {
                         )
                     }
 
+                    // Get the root folder's items
+                    getRootFolderItems()
+
                     // Mark that we are logged in
                     loggedIn = true
                     Log.d(
@@ -122,5 +125,27 @@ class HomeViewModel : ViewModel() {
                 }
             )
         }
+    }
+
+    private fun getRootFolderItems() {
+        _uiState.value.server.listDir(
+            "",
+            { json ->
+                // Get the content as a JSON array
+                val rootFolder = RemoteDirectory.fromJSON(json)
+                _uiState.update {
+                    it.copy(
+                        rootFolder = rootFolder
+                    )
+                }
+            },
+            { _, json ->
+                Log.d(
+                    "MAIN",
+                    "Failed to get root folder items: ${json.getString("message")}"
+                )
+            },
+            { error -> Log.d("MAIN", "Error when getting folder items: $error") }
+        )
     }
 }

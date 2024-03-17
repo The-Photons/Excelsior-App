@@ -18,6 +18,7 @@
 package site.overwrite.encryptedfilesapp.data
 
 import android.util.Log
+import org.json.JSONObject
 import site.overwrite.encryptedfilesapp.io.IOMethods
 
 // Enums
@@ -28,14 +29,18 @@ enum class ItemType {
 }
 
 // Classes
-abstract class RemoteItem(name: String, path: String, size: Long) {
+abstract class RemoteItem(name: String, path: String, val size: Long, val type: ItemType) {
     // Attributes
     var name: String = name
         private set
     var path: String = path
         private set
-    var size: Long = size
-        private set
+
+    // Custom fields
+    val dirPath: String
+        get() {
+            return path.split("/").dropLast(1).joinToString("/")
+        }
 
     // Setters
     /**
@@ -74,24 +79,6 @@ abstract class RemoteItem(name: String, path: String, size: Long) {
         return true
     }
 
-    /**
-     * Sets the new size of the remote item.
-     *
-     * @param newSize New size of the file.
-     * @return Status of the file size update. Is `true` if successful and `false` otherwise.
-     */
-    fun setSize(newSize: Long): Boolean {
-        if (newSize == 0L) {
-            Log.d("REMOTE ITEMS", "Cannot set file size to be 0")
-            return false
-        }
-        size = newSize
-
-        // TODO: Handle updating size on the server
-
-        return true
-    }
-
     // Methods
     /**
      * Nicely formats the file size.
@@ -99,7 +86,7 @@ abstract class RemoteItem(name: String, path: String, size: Long) {
      * @param precision Number of decimal places to format the file size.
      * @return Formatted file size.
      */
-    fun formattedSize(precision: Int): String {
+    fun formattedSize(precision: Int = 2): String {
         return IOMethods.formatFileSize(size, precision = precision)
     }
 
@@ -109,47 +96,6 @@ abstract class RemoteItem(name: String, path: String, size: Long) {
      * @return Boolean whether the item is synced or not.
      */
     abstract fun isSynced(): Boolean
-}
-
-/**
- * Represents a remote folder that is present on the server.
- *
- * @property name Name of the folder.
- * @property path Relative path to the folder, with respect to the base directory.
- * @property size Total size of the folder.
- * @property subfolders Array of subfolders that this folder contains.
- * @property files Array of files that this folder contains.
- */
-class RemoteFolder(
-    name: String = "",
-    path: String = "",
-    size: Long = 0,
-    var subfolders: Array<RemoteFolder> = emptyArray(),
-    var files: Array<RemoteFile> = emptyArray()
-) : RemoteItem(name, path, size) {
-    override fun isSynced(): Boolean {
-        // If the folder is empty then we will call it synced
-        if (files.isEmpty() && subfolders.isEmpty()) {
-            return true
-        }
-
-        // Check whether the files are synced
-        for (file: RemoteFile in files) {
-            if (!file.isSynced()) {
-                return false
-            }
-        }
-
-        // Then check whether the folders are synced
-        for (folder: RemoteFolder in subfolders) {
-            if (!folder.isSynced()) {
-                return false
-            }
-        }
-
-        // All items are synced, so the folder is synced
-        return true
-    }
 }
 
 /**
@@ -163,10 +109,122 @@ class RemoteFile(
     name: String = "",
     path: String = "",
     size: Long = 0
-) : RemoteItem(name, path, size) {
-    // Methods
+) : RemoteItem(name, path, size, ItemType.FILE) {
     override fun isSynced(): Boolean {
-        // TODO: Implement
+        TODO()
+    }
+
+    companion object {
+        /**
+         * Converts an obtained JSON object.
+         *
+         * @param json JSON object that represents the item.
+         * @return Representative object.
+         */
+        fun fromJSON(json: JSONObject): RemoteFile {
+            return RemoteFile(
+                json.getString("name"),
+                json.getString("path"),
+                json.getLong("size")
+            )
+        }
+    }
+}
+
+
+/**
+ * Represents a remote folder that is present on the server.
+ *
+ * @property name Name of the folder.
+ * @property path Relative path to the folder, with respect to the base directory.
+ * @property size Total size of the folder.
+ * @property subdirs Array of subfolders that this folder contains.
+ * @property files Array of files that this folder contains.
+ */
+class RemoteDirectory(
+    name: String = "",
+    path: String = "",
+    size: Long = 0,
+    var subdirs: Array<RemoteDirectory> = emptyArray(),
+    var files: Array<RemoteFile> = emptyArray()
+) : RemoteItem(name, path, size, ItemType.DIRECTORY) {
+    val items: Array<RemoteItem>
+        get() {
+            val items = ArrayList<RemoteItem>()
+            for (folder in subdirs) {
+                items.add(folder)
+            }
+            for (file in files) {
+                items.add(file)
+            }
+            return items.toTypedArray()
+        }
+
+    override fun isSynced(): Boolean {
+        // If the folder is empty then we will call it synced
+        if (files.isEmpty() && subdirs.isEmpty()) {
+            return true
+        }
+
+        // Check whether the files are synced
+        for (file: RemoteFile in files) {
+            if (!file.isSynced()) {
+                return false
+            }
+        }
+
+        // Then check whether the folders are synced
+        for (folder: RemoteDirectory in subdirs) {
+            if (!folder.isSynced()) {
+                return false
+            }
+        }
+
+        // All items are synced, so the folder is synced
         return true
+    }
+
+    companion object {
+        /**
+         * Converts an obtained JSON object.
+         *
+         * @param json JSON object that represents the folder.
+         * @return Representative object.
+         */
+        fun fromJSON(json: JSONObject): RemoteDirectory {
+            // Get any items that the folder may contain
+            val items = json.getJSONArray("items")
+            val numItems = items.length()
+
+            val subfolders = ArrayList<RemoteDirectory>()
+            val files = ArrayList<RemoteFile>()
+
+            var item: JSONObject
+            var itemType: String
+            for (i in 0..<numItems) {
+                item = items.getJSONObject(i)
+                itemType = item.getString("type")
+                if (itemType == "file") {
+                    files.add(RemoteFile.fromJSON(item))
+                } else {
+                    subfolders.add(fromJSON(item))
+                }
+            }
+
+            // Then create the final object
+            return RemoteDirectory(
+                json.getString("name"),
+                json.getString("path"),
+                json.getLong("size"),
+                subfolders.toTypedArray(),
+                files.toTypedArray()
+            )
+        }
+    }
+}
+
+class RemotePreviousDirectory() : RemoteItem("", "", 0, ItemType.PREVIOUS_DIRECTORY_MARKER) {
+    override fun isSynced(): Boolean {
+        return false
     }
 }

@@ -24,8 +24,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -53,11 +53,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.ItemType
+import site.overwrite.encryptedfilesapp.data.RemoteFile
+import site.overwrite.encryptedfilesapp.data.RemoteItem
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 import site.overwrite.encryptedfilesapp.ui.utils.Dialogs
 
@@ -74,15 +77,17 @@ fun HomeScreen(
     Column(
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 30.dp)
+        modifier = Modifier.fillMaxSize()
     ) {
         Text("Hello ${homeViewUIState.username}!")
         Text("Using server ${homeViewUIState.server.serverURL}.")
         if (homeViewModel.loggedIn) {
-            Text("You are logged in!")
+            // Get the items in the root directory
+            for (item in homeViewUIState.rootFolder.items) {
+                DirectoryItem(item)
+            }
         } else {
+            // TODO: Replace with something else, maybe a loading screen?
             Text("Logging you in...")
         }
     }
@@ -100,15 +105,7 @@ fun HomeScreen(
 }
 
 @Composable
-fun DirectoryItem(
-    dirPath: String,
-    prevDir: String,
-    name: String,
-    type: ItemType,
-    sizeString: String,
-) {
-    val isPreviousDirectoryItem = type == ItemType.PREVIOUS_DIRECTORY_MARKER
-
+fun DirectoryItem(item: RemoteItem) {
     var isDropdownExpanded by remember { mutableStateOf(false) }
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
 
@@ -119,7 +116,7 @@ fun DirectoryItem(
         // Get the correct icon and description to display
         val icon: ImageVector
         val description: String
-        when (type) {
+        when (item.type) {
             ItemType.FILE -> {
                 icon = Icons.AutoMirrored.Default.InsertDriveFile
                 description = "File"
@@ -152,12 +149,17 @@ fun DirectoryItem(
             Spacer(Modifier.size(10.dp))
             Icon(icon, description)
             Spacer(Modifier.size(4.dp))
-            Text(name)
+            Text(
+                item.name,
+                modifier = Modifier.width(200.dp),
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
+            )
             Spacer(Modifier.weight(1f))
-            Text(sizeString)
+            Text(item.formattedSize())
             Spacer(Modifier.size(4.dp))
             Box {
-                if (isPreviousDirectoryItem) {
+                if (item.type==ItemType.PREVIOUS_DIRECTORY_MARKER) {
                     Spacer(Modifier.size(24.dp))
                 } else {
                     IconButton(
@@ -170,7 +172,6 @@ fun DirectoryItem(
                         expanded = isDropdownExpanded,
                         onDismissRequest = { isDropdownExpanded = false }
                     ) {
-                        val path = "$dirPath/$name"
                         DropdownMenuItem(
                             leadingIcon = { Icon(Icons.Default.Sync, "Sync") },
                             text = { Text("Sync") },
@@ -222,10 +223,10 @@ fun DirectoryItem(
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Text(
-                            "Are you sure that you want to delete the $type '$name' " +
+                            "Are you sure that you want to delete the ${item.type} '${item.name}' " +
                                     "from the server?"
                         )
-                        if (type == ItemType.DIRECTORY) {
+                        if (item.type == ItemType.DIRECTORY) {
                             Text("This action also deletes all files within the directory.")
                         }
                         Text("This action is irreversible!", fontWeight = FontWeight.Bold)
@@ -247,11 +248,11 @@ fun DirectoryItem(
 fun DirectoryItemPreviewLight() {
     EncryptedFilesAppTheme {
         DirectoryItem(
-            dirPath = "",
-            prevDir = "",
-            name = "Test File 1",
-            ItemType.FILE,
-            "1.23 kB"
+            RemoteFile(
+                "Test File 1",
+                "dir1/dir2/subdir3",
+                123456
+            )
         )
     }
 }
@@ -261,11 +262,11 @@ fun DirectoryItemPreviewLight() {
 fun DirectoryItemPreviewDark() {
     EncryptedFilesAppTheme {
         DirectoryItem(
-            dirPath = "",
-            prevDir = "",
-            name = "Test File 2",
-            ItemType.FILE,
-            "4.56 MB"
+            RemoteFile(
+                "Test File 2",
+                "dir1/dir2/subdir3",
+                456789101112
+            )
         )
     }
 }
