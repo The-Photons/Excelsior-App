@@ -27,6 +27,45 @@ const val APP_DIR_NAME = "Excelsior"
 val DOWNLOADS_DIR: File =
     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
 
+// ENUMS
+enum class FileUnit(val symbol: String, val value: Long) {
+    KILOBYTE("KB", 1_000),
+    MEGABYTE("MB", 1_000_000),
+    GIGABYTE("GB", 1_000_000_000),
+    KIBIBYTE("KiB", 1_024),
+    MEBIBYTE("MiB", 1_048_576),
+    GIBIBYTE("GiB", 1_073_741_824);
+
+    companion object {
+        /**
+         * Chooses the appropriate file unit for formatting the file size.
+         *
+         * @param rawSize Raw file size.
+         * @param altUnits Use IEC 80000-13:2008 format instead of SI format (i.e., kibibytes,
+         * mebibytes, gibibytes instead of kilobytes, megabytes, gigabytes)
+         */
+        fun chooseUnit(rawSize: Long, altUnits: Boolean = false): FileUnit {
+            if (altUnits) {
+                if (rawSize >= GIBIBYTE.value) {
+                    return GIBIBYTE
+                }
+                if (rawSize >= MEBIBYTE.value) {
+                    return MEBIBYTE
+                }
+                return KIBIBYTE
+            } else {
+                if (rawSize >= GIGABYTE.value) {
+                    return GIGABYTE
+                }
+                if (rawSize >= MEGABYTE.value) {
+                    return MEGABYTE
+                }
+                return KILOBYTE
+            }
+        }
+    }
+}
+
 // CLASSES
 /**
  * Class that contains input/output operations.
@@ -271,6 +310,21 @@ class IOMethods {
         fun deleteItem(itemPath: String): Boolean {
             val fileOrDirectory = File(getItemPath(itemPath))
             return deleteItem(fileOrDirectory)
+        }
+
+        // Other methods
+        /**
+         * Nicely formats the file size.
+         *
+         * @param rawSize Size of the item as a long.
+         * @param precision Number of decimal places to format the file size.
+         * @return Formatted file size.
+         */
+        fun formatFileSize(rawSize: Long, precision: Int = 2): String {
+            val unit = FileUnit.chooseUnit(rawSize, altUnits = false)
+            val reducedSize = rawSize.toBigDecimal() / unit.value.toBigDecimal()
+            val roundedSize = reducedSize.setScale(precision)
+            return "$roundedSize ${unit.symbol}"
         }
     }
 }

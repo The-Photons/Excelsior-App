@@ -18,6 +18,7 @@
 package site.overwrite.encryptedfilesapp.data
 
 import android.util.Log
+import site.overwrite.encryptedfilesapp.io.IOMethods
 
 // Enums
 enum class ItemType {
@@ -27,11 +28,13 @@ enum class ItemType {
 }
 
 // Classes
-abstract class RemoteItem(name: String, path: String) {
+abstract class RemoteItem(name: String, path: String, size: Long) {
     // Attributes
     var name: String = name
         private set
     var path: String = path
+        private set
+    var size: Long = size
         private set
 
     // Setters
@@ -66,12 +69,40 @@ abstract class RemoteItem(name: String, path: String) {
         }
         path = newPath
 
-        // TODO: Handle updating name on the server
+        // TODO: Handle updating path on the server
+
+        return true
+    }
+
+    /**
+     * Sets the new size of the remote item.
+     *
+     * @param newSize New size of the file.
+     * @return Status of the file size update. Is `true` if successful and `false` otherwise.
+     */
+    fun setSize(newSize: Long): Boolean {
+        if (newSize == 0L) {
+            Log.d("REMOTE ITEMS", "Cannot set file size to be 0")
+            return false
+        }
+        size = newSize
+
+        // TODO: Handle updating size on the server
 
         return true
     }
 
     // Methods
+    /**
+     * Nicely formats the file size.
+     *
+     * @param precision Number of decimal places to format the file size.
+     * @return Formatted file size.
+     */
+    fun formattedSize(precision: Int): String {
+        return IOMethods.formatFileSize(size, precision = precision)
+    }
+
     /**
      * Determines whether the item is synced or not.
      *
@@ -85,15 +116,17 @@ abstract class RemoteItem(name: String, path: String) {
  *
  * @property name Name of the folder.
  * @property path Relative path to the folder, with respect to the base directory.
+ * @property size Total size of the folder.
  * @property subfolders Array of subfolders that this folder contains.
  * @property files Array of files that this folder contains.
  */
 class RemoteFolder(
     name: String = "",
     path: String = "",
+    size: Long = 0,
     var subfolders: Array<RemoteFolder> = emptyArray(),
     var files: Array<RemoteFile> = emptyArray()
-) : RemoteItem(name, path) {
+) : RemoteItem(name, path, size) {
     override fun isSynced(): Boolean {
         // If the folder is empty then we will call it synced
         if (files.isEmpty() && subfolders.isEmpty()) {
@@ -124,11 +157,13 @@ class RemoteFolder(
  *
  * @property name Name of the file.
  * @property path Relative path to the file, with respect to the base directory.
+ * @property size Size of the file.
  */
 class RemoteFile(
     name: String = "",
-    path: String = ""
-) : RemoteItem(name, path) {
+    path: String = "",
+    size: Long = 0
+) : RemoteItem(name, path, size) {
     // Methods
     override fun isSynced(): Boolean {
         // TODO: Implement
