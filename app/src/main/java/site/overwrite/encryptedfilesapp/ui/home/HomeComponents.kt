@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,10 +39,12 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -78,26 +81,32 @@ fun HomeScreen(
     val homeViewUIState by homeViewModel.uiState.collectAsState()
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxSize()
     ) {
-        Text("Hello ${homeViewUIState.username}!")
-        Text("Using server ${homeViewUIState.server.serverURL}.")
-        if (homeViewModel.loggedIn) {
-            val items = homeViewUIState.activeDirectory.items.toCollection(ArrayList())
-            if (homeViewUIState.activeDirectory.parentDir != null) {
-                items.add(0, RemotePreviousDirectory())
-            }
-            for (item in items) {
-                DirectoryItem(
-                    item = item,
-                    onClick = { homeViewModel.directoryItemOnClick(item) }
+        if (!homeViewModel.loggedIn) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.width(48.dp),
+                    color = MaterialTheme.colorScheme.secondary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 )
             }
-        } else {
-            // TODO: Replace with something else, maybe a loading screen?
-            Text("Logging you in...")
+        }
+
+        val items = homeViewUIState.activeDirectory.items.toCollection(ArrayList())
+        if (homeViewUIState.activeDirectory.parentDir != null) {
+            items.add(0, RemotePreviousDirectory())
+        }
+        for (item in items) {
+            DirectoryItem(
+                item = item,
+                onClick = { homeViewModel.directoryItemOnClick(item) }
+            )
         }
     }
 
@@ -129,6 +138,7 @@ fun DirectoryItem(
 
     TextButton(
         shape = RoundedCornerShape(0),
+        modifier=Modifier.height(50.dp),
         onClick = { onClick(item) }
     ) {
         // Get the correct icon and description to display
@@ -158,12 +168,7 @@ fun DirectoryItem(
                 Spacer(Modifier.size(34.dp))
                 Icon(icon, description)
                 Spacer(Modifier.size(4.dp))
-                Text(
-                    item.name,
-                    modifier = Modifier.width(200.dp),
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 1
-                )
+                Text("Previous Directory")
                 Spacer(Modifier.weight(1f))
                 return@TextButton
             }

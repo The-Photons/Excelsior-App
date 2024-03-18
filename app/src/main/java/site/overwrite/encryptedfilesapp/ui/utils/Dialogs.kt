@@ -17,15 +17,19 @@
 
 package site.overwrite.encryptedfilesapp.ui.utils
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tablet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -227,6 +232,35 @@ class Dialogs {
         }
 
         /**
+         * Shows a dialog that looks like a circular progress indicator. Indicates some process
+         * that may take an indefinite amount of time to complete.
+         */
+        @Composable
+        fun LoadingIndicatorDialog() {
+            Dialog(
+                onDismissRequest = {},
+                properties = DialogProperties(
+                    dismissOnBackPress = false,
+                    dismissOnClickOutside = false
+                )
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(100.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+        }
+
+        /**
          * Creates a new progress indicator dialog.
          *
          * @param dialogTitle Title of the dialog.
@@ -287,123 +321,129 @@ class Dialogs {
             }
         }
     }
+}
 
-    // Previews
-    @Preview
-    @Composable
-    fun ConfirmDialogPreview1() {
-        ConfirmDialog(
-            dialogTitle = "Test Confirm Dialog 1",
-            dialogContent = {
-                Column {
-                    Text("Test 1")
-                    Text("Test 2")
-                }
-            },
-            confirmText = "Confirm",
-            dismissText = "Dismiss",
-            onConfirmation = {},
-            onDismissal = {}
-        )
-    }
+// Previews
+@Preview
+@Composable
+fun ConfirmDialogPreview1() {
+    Dialogs.ConfirmDialog(
+        dialogTitle = "Test Confirm Dialog 1",
+        dialogContent = {
+            Column {
+                Text("Test 1")
+                Text("Test 2")
+            }
+        },
+        confirmText = "Confirm",
+        dismissText = "Dismiss",
+        onConfirmation = {},
+        onDismissal = {}
+    )
+}
 
-    @Preview
-    @Composable
-    fun ConfirmDialogPreview2() {
-        ConfirmDialog(
-            dialogTitle = "Test Confirm Dialog 2",
-            dialogContent = {
-                Column {
-                    Text("Test 1")
-                    Text("Test 2")
-                }
-            },
-            confirmText = "Confirm",
-            dismissText = "Dismiss",
-            onConfirmation = {},
-            onDismissal = {},
-            icon = Icons.Filled.Tablet,
-            iconDesc = "Tablet"
-        )
-    }
+@Preview
+@Composable
+fun ConfirmDialogPreview2() {
+    Dialogs.ConfirmDialog(
+        dialogTitle = "Test Confirm Dialog 2",
+        dialogContent = {
+            Column {
+                Text("Test 1")
+                Text("Test 2")
+            }
+        },
+        confirmText = "Confirm",
+        dismissText = "Dismiss",
+        onConfirmation = {},
+        onDismissal = {},
+        icon = Icons.Filled.Tablet,
+        iconDesc = "Tablet"
+    )
+}
 
-    @Preview
-    @Composable
-    fun YesNoDialogPreview1() {
-        YesNoDialog(
-            dialogTitle = "Test Yes No Dialog 1",
-            dialogContent = {
-                Column {
-                    Text("Test 1")
-                    Text("Test 2")
-                }
-            },
-            onYes = {},
-            onNo = {}
-        )
-    }
+@Preview
+@Composable
+fun YesNoDialogPreview1() {
+    Dialogs.YesNoDialog(
+        dialogTitle = "Test Yes No Dialog 1",
+        dialogContent = {
+            Column {
+                Text("Test 1")
+                Text("Test 2")
+            }
+        },
+        onYes = {},
+        onNo = {}
+    )
+}
 
-    @Preview
-    @Composable
-    fun YesNoDialogPreview2() {
-        YesNoDialog(
-            dialogTitle = "Test Yes No Dialog 2",
-            dialogContent = {
-                Column {
-                    Text("Test 1")
-                    Text("Test 2")
-                }
-            },
-            onYes = {},
-            onNo = {},
-            icon = Icons.Filled.Tablet,
-            iconDesc = "Tablet"
-        )
-    }
+@Preview
+@Composable
+fun YesNoDialogPreview2() {
+    Dialogs.YesNoDialog(
+        dialogTitle = "Test Yes No Dialog 2",
+        dialogContent = {
+            Column {
+                Text("Test 1")
+                Text("Test 2")
+            }
+        },
+        onYes = {},
+        onNo = {},
+        icon = Icons.Filled.Tablet,
+        iconDesc = "Tablet"
+    )
+}
 
-    @Preview
-    @Composable
-    fun TextInputDialogPreview1() {
-        TextInputDialog(
-            dialogTitle = "Test Text Input Dialog",
-            textFieldLabel = "Test Text Field",
-            onConfirmation = { _ -> },
-            onDismissal = { },
-            textFieldValidator = { _ -> false }
-        )
-    }
+@Preview
+@Composable
+fun TextInputDialogPreview1() {
+    Dialogs.TextInputDialog(
+        dialogTitle = "Test Text Input Dialog",
+        textFieldLabel = "Test Text Field",
+        onConfirmation = { _ -> },
+        onDismissal = { },
+        textFieldValidator = { _ -> false }
+    )
+}
 
-    @Preview
-    @Composable
-    fun TextInputDialogPreview2() {
-        TextInputDialog(
-            dialogTitle = "Test Text Input Dialog",
-            textFieldLabel = "Test Text Field",
-            onConfirmation = { _ -> },
-            onDismissal = { },
-            textFieldValidator = { _ -> false },
-            textFieldPlaceholder = "Placeholder",
-            textFieldErrorText = "Error text",
-            icon = Icons.Filled.Tablet,
-            iconDesc = "Tablet"
-        )
-    }
+@Preview
+@Composable
+fun TextInputDialogPreview2() {
+    Dialogs.TextInputDialog(
+        dialogTitle = "Test Text Input Dialog",
+        textFieldLabel = "Test Text Field",
+        onConfirmation = { _ -> },
+        onDismissal = { },
+        textFieldValidator = { _ -> false },
+        textFieldPlaceholder = "Placeholder",
+        textFieldErrorText = "Error text",
+        icon = Icons.Filled.Tablet,
+        iconDesc = "Tablet"
+    )
+}
 
-    @Preview
-    @Composable
-    fun ProgressIndicatorDialogPreview1() {
-        ProgressIndicatorDialog(
-            dialogTitle = "Test Progress Indicator Dialog 1",
-            progress = 0.5678f
-        )
-    }
+@Preview
+@Composable
+fun LoadingIndicatorDialogPreview() {
+    Dialogs.LoadingIndicatorDialog()
+}
 
-    @Preview
-    @Composable
-    fun ProgressIndicatorDialogPreview2() {
-        ProgressIndicatorDialog(
-            dialogTitle = "Test Progress Indicator Dialog 2",
-            progress = null
-        )
-    }
+@Preview
+@Composable
+fun ProgressIndicatorDialogPreview1() {
+    Dialogs.ProgressIndicatorDialog(
+        dialogTitle = "Test Progress Indicator Dialog 1",
+        progress = 0.5678f
+    )
+}
+
+@Preview
+@Composable
+fun ProgressIndicatorDialogPreview2() {
+    Dialogs.ProgressIndicatorDialog(
+        dialogTitle = "Test Progress Indicator Dialog 2",
+        progress = null
+    )
 }
