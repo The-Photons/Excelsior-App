@@ -249,7 +249,7 @@ open class RemoteDirectory(
 }
 
 class RemotePreviousDirectory :
-    RemoteDirectory("", "", 0, emptyArray(), emptyArray(), null) {
+    RemoteItem("Previous Directory", "", 0, ItemType.PREVIOUS_DIRECTORY_MARKER, null) {
     override fun isSynced(): Boolean {
         return false
     }

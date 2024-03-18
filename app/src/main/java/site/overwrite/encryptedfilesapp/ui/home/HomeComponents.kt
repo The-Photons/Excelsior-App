@@ -63,6 +63,7 @@ import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
+import site.overwrite.encryptedfilesapp.data.RemotePreviousDirectory
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 import site.overwrite.encryptedfilesapp.ui.utils.Dialogs
 
@@ -84,9 +85,15 @@ fun HomeScreen(
         Text("Hello ${homeViewUIState.username}!")
         Text("Using server ${homeViewUIState.server.serverURL}.")
         if (homeViewModel.loggedIn) {
-            // Get the items in the root directory
-            for (item in homeViewUIState.activeDirectory.items) {
-                DirectoryItem(item)
+            val items = homeViewUIState.activeDirectory.items.toCollection(ArrayList())
+            if (homeViewUIState.activeDirectory.parentDir != null) {
+                items.add(0, RemotePreviousDirectory())
+            }
+            for (item in items) {
+                DirectoryItem(
+                    item = item,
+                    onClick = { homeViewModel.directoryItemOnClick(item) }
+                )
             }
         } else {
             // TODO: Replace with something else, maybe a loading screen?
@@ -106,14 +113,23 @@ fun HomeScreen(
     }
 }
 
+/**
+ * Composable that represents an item that is in the active directory.
+ *
+ * @param item Remote item that this composable is representing.
+ * @param onClick Function to run when the item is clicked.
+ */
 @Composable
-fun DirectoryItem(item: RemoteItem) {
+fun DirectoryItem(
+    item: RemoteItem,
+    onClick: (RemoteItem) -> Unit
+) {
     var isDropdownExpanded by remember { mutableStateOf(false) }
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
 
     TextButton(
         shape = RoundedCornerShape(0),
-        onClick = { /*TODO*/ }
+        onClick = { onClick(item) }
     ) {
         // Get the correct icon and description to display
         val icon: ImageVector
@@ -135,15 +151,27 @@ fun DirectoryItem(item: RemoteItem) {
             }
         }
 
-        Row {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             if (item.type == ItemType.PREVIOUS_DIRECTORY_MARKER) {
-                Spacer(Modifier.size(24.dp))
+                Spacer(Modifier.size(34.dp))
+                Icon(icon, description)
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    item.name,
+                    modifier = Modifier.width(200.dp),
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1
+                )
+                Spacer(Modifier.weight(1f))
+                return@TextButton
+            }
+
+            if (item.synced) {
+                Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
             } else {
-                if (item.synced) {
-                    Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
-                } else {
-                    Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
-                }
+                Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
             }
 
             Spacer(Modifier.size(10.dp))
@@ -159,56 +187,52 @@ fun DirectoryItem(item: RemoteItem) {
             Text(item.formattedSize())
             Spacer(Modifier.size(4.dp))
             Box {
-                if (item.type==ItemType.PREVIOUS_DIRECTORY_MARKER) {
-                    Spacer(Modifier.size(24.dp))
-                } else {
-                    IconButton(
-                        modifier = Modifier.size(24.dp),
-                        onClick = { isDropdownExpanded = !isDropdownExpanded }
-                    ) {
-                        Icon(Icons.Default.MoreVert, "More")
-                    }
-                    DropdownMenu(
-                        expanded = isDropdownExpanded,
-                        onDismissRequest = { isDropdownExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            leadingIcon = { Icon(Icons.Default.Sync, "Sync") },
-                            text = { Text("Sync") },
-                            enabled = true,  // TODO: Change condition
-                            onClick = {
-                                /* TODO */
-                                isDropdownExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    "Delete From Device"
-                                )
-                            },
-                            text = { Text("Delete From Device") },
-                            enabled = true,  // TODO: Change condition
-                            onClick = {
-                                /* TODO */
-                                isDropdownExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    "Delete From Server"
-                                )
-                            },
-                            text = { Text("Delete From Server") },
-                            onClick = {
-                                showConfirmDeleteDialog = true
-                                isDropdownExpanded = false
-                            }
-                        )
-                    }
+                IconButton(
+                    modifier = Modifier.size(24.dp),
+                    onClick = { isDropdownExpanded = !isDropdownExpanded }
+                ) {
+                    Icon(Icons.Default.MoreVert, "More")
+                }
+                DropdownMenu(
+                    expanded = isDropdownExpanded,
+                    onDismissRequest = { isDropdownExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        leadingIcon = { Icon(Icons.Default.Sync, "Sync") },
+                        text = { Text("Sync") },
+                        enabled = true,  // TODO: Change condition
+                        onClick = {
+                            /* TODO */
+                            isDropdownExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Delete,
+                                "Delete From Device"
+                            )
+                        },
+                        text = { Text("Delete From Device") },
+                        enabled = true,  // TODO: Change condition
+                        onClick = {
+                            /* TODO */
+                            isDropdownExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Clear,
+                                "Delete From Server"
+                            )
+                        },
+                        text = { Text("Delete From Server") },
+                        onClick = {
+                            showConfirmDeleteDialog = true
+                            isDropdownExpanded = false
+                        }
+                    )
                 }
             }
         }
@@ -245,7 +269,7 @@ fun DirectoryItem(item: RemoteItem) {
 // Previews
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
 @Composable
-fun DirectoryItemPreviewLight() {
+fun DirectoryItemPreview() {
     EncryptedFilesAppTheme {
         DirectoryItem(
             RemoteFile(
@@ -254,21 +278,16 @@ fun DirectoryItemPreviewLight() {
                 123456,
                 null
             )
-        )
+        ) {}
     }
 }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
 @Composable
-fun DirectoryItemPreviewDark() {
+fun DirectoryItemPreviousDirectoryPreview() {
     EncryptedFilesAppTheme {
         DirectoryItem(
-            RemoteFile(
-                "Test File 2",
-                "dir1/dir2/subdir3",
-                456789101112,
-                null
-            )
-        )
+            RemotePreviousDirectory()
+        ) {}
     }
 }

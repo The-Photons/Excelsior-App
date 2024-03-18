@@ -18,6 +18,7 @@
 package site.overwrite.encryptedfilesapp.ui.home
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -29,7 +30,9 @@ import kotlinx.coroutines.flow.update
 import site.overwrite.encryptedfilesapp.data.Cryptography
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.EncryptionParameters
+import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
+import site.overwrite.encryptedfilesapp.data.RemoteItem
 import site.overwrite.encryptedfilesapp.data.RemotePreviousDirectory
 
 data class HomeViewUIState(
@@ -37,7 +40,14 @@ data class HomeViewUIState(
     val username: String = "",
     val password: String = "",
     val encryptionParameters: EncryptionParameters = EncryptionParameters(),
-    val activeDirectory: RemoteDirectory = RemotePreviousDirectory()
+    val activeDirectory: RemoteDirectory = RemoteDirectory(
+        "",
+        "",
+        0,
+        emptyArray(),
+        emptyArray(),
+        null
+    )
 )
 
 class HomeViewModel : ViewModel() {
@@ -53,6 +63,40 @@ class HomeViewModel : ViewModel() {
         private set
 
     // Setters
+
+    // Directory item methods
+    fun directoryItemOnClick(item: RemoteItem) {
+        when (item.type) {
+            ItemType.FILE -> {
+                // TODO: Implement
+                // FIXME: Use better toasts...
+                //Toast.makeText(null, "To be implemented", Toast.LENGTH_LONG).show()
+            }
+
+            ItemType.DIRECTORY -> {
+                _uiState.update {
+                    it.copy(
+                        activeDirectory = (item as RemoteDirectory)
+                    )
+                }
+            }
+
+            ItemType.PREVIOUS_DIRECTORY_MARKER -> {
+                if (_uiState.value.activeDirectory.parentDir != null) {
+                    _uiState.update {
+                        it.copy(
+                            activeDirectory = _uiState.value.activeDirectory.parentDir!!
+                        )
+                    }
+                } else {
+                    // FIXME: Use better toasts...
+                    Log.d("HOME", "Cannot go back to previous directory")
+//                    Toast.makeText(null, "Cannot go back to previous directory", Toast.LENGTH_LONG)
+//                        .show()
+                }
+            }
+        }
+    }
 
     // Other methods
     @OptIn(ExperimentalStdlibApi::class)
