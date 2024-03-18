@@ -30,13 +30,14 @@ import site.overwrite.encryptedfilesapp.data.Cryptography
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.EncryptionParameters
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
+import site.overwrite.encryptedfilesapp.data.RemotePreviousDirectory
 
 data class HomeViewUIState(
     val server: Server = Server(""),
     val username: String = "",
     val password: String = "",
     val encryptionParameters: EncryptionParameters = EncryptionParameters(),
-    val rootFolder: RemoteDirectory = RemoteDirectory()
+    val activeDirectory: RemoteDirectory = RemotePreviousDirectory()
 )
 
 class HomeViewModel : ViewModel() {
@@ -135,7 +136,7 @@ class HomeViewModel : ViewModel() {
                 val rootFolder = RemoteDirectory.fromJSON(json)
                 _uiState.update {
                     it.copy(
-                        rootFolder = rootFolder
+                        activeDirectory = rootFolder
                     )
                 }
             },

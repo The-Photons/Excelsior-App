@@ -29,7 +29,13 @@ enum class ItemType {
 }
 
 // Classes
-abstract class RemoteItem(name: String, path: String, val size: Long, val type: ItemType) {
+abstract class RemoteItem(
+    name: String,
+    path: String,
+    val size: Long,
+    val type: ItemType,
+    var parentDir: RemoteDirectory?,
+) {
     // Attributes
     var name: String = name
         private set
@@ -104,12 +110,14 @@ abstract class RemoteItem(name: String, path: String, val size: Long, val type: 
  * @property name Name of the file.
  * @property path Relative path to the file, with respect to the base directory.
  * @property size Size of the file.
+ * @property parentDir Directory that contains this file.
  */
 class RemoteFile(
-    name: String = "",
-    path: String = "",
-    size: Long = 0
-) : RemoteItem(name, path, size, ItemType.FILE) {
+    name: String,
+    path: String,
+    size: Long,
+    parentDir: RemoteDirectory?
+) : RemoteItem(name, path, size, ItemType.FILE, parentDir) {
     override fun isSynced(): Boolean {
         TODO()
     }
@@ -122,10 +130,12 @@ class RemoteFile(
          * @return Representative object.
          */
         fun fromJSON(json: JSONObject): RemoteFile {
+            val path = json.getString("path")
             return RemoteFile(
                 json.getString("name"),
-                json.getString("path"),
-                json.getLong("size")
+                path,
+                json.getLong("size"),
+                null  // Will update when the file is placed in a directory
             )
         }
     }
@@ -140,14 +150,16 @@ class RemoteFile(
  * @property size Total size of the folder.
  * @property subdirs Array of subfolders that this folder contains.
  * @property files Array of files that this folder contains.
+ * @property parentDir Directory that contains this folder.
  */
-class RemoteDirectory(
-    name: String = "",
-    path: String = "",
-    size: Long = 0,
-    var subdirs: Array<RemoteDirectory> = emptyArray(),
-    var files: Array<RemoteFile> = emptyArray()
-) : RemoteItem(name, path, size, ItemType.DIRECTORY) {
+open class RemoteDirectory(
+    name: String,
+    path: String,
+    size: Long,
+    var subdirs: Array<RemoteDirectory>,
+    var files: Array<RemoteFile>,
+    parentDir: RemoteDirectory?
+) : RemoteItem(name, path, size, ItemType.DIRECTORY, parentDir) {
     val items: Array<RemoteItem>
         get() {
             val items = ArrayList<RemoteItem>()
@@ -192,11 +204,21 @@ class RemoteDirectory(
          * @return Representative object.
          */
         fun fromJSON(json: JSONObject): RemoteDirectory {
+            // First create the directory object that we will return
+            val directory = RemoteDirectory(
+                json.getString("name"),
+                json.getString("path"),
+                json.getLong("size"),
+                emptyArray(),
+                emptyArray(),
+                null
+            )
+
             // Get any items that the folder may contain
             val items = json.getJSONArray("items")
             val numItems = items.length()
 
-            val subfolders = ArrayList<RemoteDirectory>()
+            val subdirs = ArrayList<RemoteDirectory>()
             val files = ArrayList<RemoteFile>()
 
             var item: JSONObject
@@ -205,25 +227,26 @@ class RemoteDirectory(
                 item = items.getJSONObject(i)
                 itemType = item.getString("type")
                 if (itemType == "file") {
-                    files.add(RemoteFile.fromJSON(item))
+                    val file = RemoteFile.fromJSON(item)
+                    file.parentDir = directory
+                    files.add(file)
                 } else {
-                    subfolders.add(fromJSON(item))
+                    val subdir = fromJSON(item)
+                    subdir.parentDir = directory
+                    subdirs.add(subdir)
                 }
             }
 
-            // Then create the final object
-            return RemoteDirectory(
-                json.getString("name"),
-                json.getString("path"),
-                json.getLong("size"),
-                subfolders.toTypedArray(),
-                files.toTypedArray()
-            )
+            // Finally we can update the arrays for the files and subdirectories
+            directory.files = files.toTypedArray()
+            directory.subdirs = subdirs.toTypedArray()
+            return directory
         }
     }
 }
 
-class RemotePreviousDirectory() : RemoteItem("", "", 0, ItemType.PREVIOUS_DIRECTORY_MARKER) {
+class RemotePreviousDirectory :
+    RemoteDirectory("", "", 0, emptyArray(), emptyArray(), null) {
     override fun isSynced(): Boolean {
         return false
     }

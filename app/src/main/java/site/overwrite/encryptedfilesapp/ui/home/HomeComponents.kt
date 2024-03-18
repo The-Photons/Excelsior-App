@@ -83,7 +83,7 @@ fun HomeScreen(
         Text("Using server ${homeViewUIState.server.serverURL}.")
         if (homeViewModel.loggedIn) {
             // Get the items in the root directory
-            for (item in homeViewUIState.rootFolder.items) {
+            for (item in homeViewUIState.activeDirectory.items) {
                 DirectoryItem(item)
             }
         } else {
@@ -251,7 +251,8 @@ fun DirectoryItemPreviewLight() {
             RemoteFile(
                 "Test File 1",
                 "dir1/dir2/subdir3",
-                123456
+                123456,
+                null
             )
         )
     }
@@ -265,7 +266,8 @@ fun DirectoryItemPreviewDark() {
             RemoteFile(
                 "Test File 2",
                 "dir1/dir2/subdir3",
-                456789101112
+                456789101112,
+                null
             )
         )
     }
