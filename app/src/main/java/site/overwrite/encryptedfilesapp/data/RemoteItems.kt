@@ -34,13 +34,15 @@ abstract class RemoteItem(
     path: String,
     val size: Long,
     val type: ItemType,
-    var parentDir: RemoteDirectory?,
+    var parentDir: RemoteDirectory?
 ) {
     // Attributes
     var name: String = name
         private set
     var path: String = path
         private set
+    val synced: Boolean
+        get() = isSynced()  // TODO: Is this efficient?
 
     // Custom fields
     val dirPath: String
@@ -119,7 +121,8 @@ class RemoteFile(
     parentDir: RemoteDirectory?
 ) : RemoteItem(name, path, size, ItemType.FILE, parentDir) {
     override fun isSynced(): Boolean {
-        TODO()
+        // TODO: Implement
+        return false
     }
 
     companion object {

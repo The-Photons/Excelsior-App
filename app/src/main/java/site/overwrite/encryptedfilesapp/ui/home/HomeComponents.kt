@@ -31,11 +31,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -134,17 +136,15 @@ fun DirectoryItem(item: RemoteItem) {
         }
 
         Row {
-            // TODO: Handle synced status
-//            if (isPreviousDirectoryItem) {
-//                Spacer(Modifier.size(24.dp))
-//            } else {
-//                if (isSynced) {
-//                    Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
-//                } else {
-//                    Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
-//                }
-//            }
-            Spacer(Modifier.size(24.dp))
+            if (item.type == ItemType.PREVIOUS_DIRECTORY_MARKER) {
+                Spacer(Modifier.size(24.dp))
+            } else {
+                if (item.synced) {
+                    Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
+                } else {
+                    Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
+                }
+            }
 
             Spacer(Modifier.size(10.dp))
             Icon(icon, description)
