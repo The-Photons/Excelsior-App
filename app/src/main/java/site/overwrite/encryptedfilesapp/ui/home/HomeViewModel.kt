@@ -25,15 +25,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import io.ktor.util.cio.writeChannel
+import io.ktor.utils.io.copyAndClose
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.runBlocking
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.Cryptography
 import site.overwrite.encryptedfilesapp.data.EncryptionParameters
 import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
+import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
 import site.overwrite.encryptedfilesapp.io.IOMethods
 
@@ -73,7 +77,15 @@ class HomeViewModel : ViewModel() {
     // Mutable values
     var loggedIn by mutableStateOf(false)
         private set
-    var showConfirmLogoutDialog by mutableStateOf(false)
+
+    var showConfirmLogoutDialog by mutableStateOf(false)  // TODO: This name is a bit unwieldy
+
+    var showProcessingDialog by mutableStateOf(false)
+        private set
+    var processingDialogTitle by mutableStateOf("")
+        private set
+    var processingDialogProgress: Float? by mutableStateOf(null)
+        private set
 
     // Auth methods
     @OptIn(ExperimentalStdlibApi::class)
@@ -201,13 +213,8 @@ class HomeViewModel : ViewModel() {
         _uiState.value.server.listDir(
             "",
             { json ->
-                // Get the content as a JSON array
                 val rootFolder = RemoteDirectory.fromJSON(json)
-                _uiState.update {
-                    it.copy(
-                        activeDirectory = rootFolder
-                    )
-                }
+                changeActiveDirectory(rootFolder)
             },
             { _, json ->
                 Log.d(
@@ -217,6 +224,104 @@ class HomeViewModel : ViewModel() {
             },
             { error -> Log.d("MAIN", "Error when getting folder items: $error") }
         )
+    }
+
+    private fun syncFile(
+        file: RemoteFile,
+        onComplete: () -> Unit
+    ) {
+        initProcessingDialog("Downloading...")
+        _uiState.value.server.getFile(
+            file.path,
+            { channel ->
+                // Create a temporary file to store the encrypted content
+                val encryptedFile = IOMethods.createFile("${file.path}.encrypted")
+                if (encryptedFile == null) {
+                    Log.d(
+                        "MAIN",
+                        "Error when making file: failed to create temporary file"
+                    )
+//                    scope.launch {
+//                        snackbarHostState.showSnackbar(
+//                            "Failed to create temporary file"
+//                        )
+//                    }
+                    hideProcessingDialog()
+                    return@getFile
+                }
+
+                // Copy the channel into the encrypted file
+                runBlocking {
+                    channel.copyAndClose(encryptedFile.writeChannel())
+                }
+
+                // Decrypt the file
+                initProcessingDialog("Decrypting...")
+
+                val decryptedFile = IOMethods.createFile(file.path)
+                if (decryptedFile == null) {
+                    Log.d(
+                        "MAIN",
+                        "Error when making file: failed to create output file"
+                    )
+//                    scope.launch {
+//                        snackbarHostState.showSnackbar(
+//                            "Failed to create output file"
+//                        )
+//                    }
+                    hideProcessingDialog()
+                    return@getFile
+                }
+
+                Cryptography.decryptAES(
+                    encryptedFile.inputStream(),
+                    decryptedFile.outputStream(),
+                    _uiState.value.encryptionParameters.key!!,
+                    _uiState.value.encryptionParameters.iv
+                ) { numBytesDecrypted ->
+                    processingDialogProgress = numBytesDecrypted.toFloat() / encryptedFile.length()
+                }
+
+                IOMethods.deleteItem(encryptedFile)
+                hideProcessingDialog()
+                onComplete()
+            },
+            { error ->
+                Log.d("MAIN", "File request had error: $error")
+                // TODO: Allow for retry
+            },
+            { bytesSentTotal: Long, contentLength: Long ->
+                processingDialogProgress = bytesSentTotal.toFloat() / contentLength
+            }
+        )
+    }
+
+    fun syncItem(item: RemoteItem) {
+        if (item.type == ItemType.FILE) {
+            val theFile = item as RemoteFile
+            Log.d("MAIN", "Syncing file '${theFile.path}'")
+            syncFile(theFile) {
+                Log.d("MAIN", "Synced file '${theFile.path}'")
+            }
+            return
+        }
+
+        // TODO: Implement syncing of directories
+        //       (Specifically, handling the dialog displays)
+        setToastMessage("To be implemented", Toast.LENGTH_SHORT)
+
+//        val theDirectory = item as RemoteDirectory
+//        Log.d("MAIN", "Syncing directory '${theDirectory.path}'")
+//
+//        for (directory in theDirectory.subdirs) {
+//            syncItem(directory)
+//        }
+//        for (file in theDirectory.files) {
+//            syncFile(file) {}  // No need to output anything for this sync
+//        }
+//
+//        Log.d("MAIN", "Synced directory '${theDirectory.path}'")
+//        // TODO: Use snackbar to report status
     }
 
     // Other methods
@@ -235,5 +340,27 @@ class HomeViewModel : ViewModel() {
                 toastDuration = duration
             )
         }
+    }
+
+    /**
+     * Initializes the processing dialog.
+     *
+     * @param newTitle New title for the processing dialog.
+     * @param newProgress New progress value for the processing dialog. Put `null` if the dialog is
+     * meant to be indefinite.
+     */
+    private fun initProcessingDialog(newTitle: String, newProgress: Float? = 0f) {
+        showProcessingDialog = true
+        processingDialogTitle = newTitle
+        processingDialogProgress = newProgress
+    }
+
+    /**
+     * Hides the processing dialog.
+     */
+    private fun hideProcessingDialog() {
+        showProcessingDialog = false
+        processingDialogTitle = ""
+        processingDialogProgress = null
     }
 }

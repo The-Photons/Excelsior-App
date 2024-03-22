@@ -146,13 +146,14 @@ fun HomeScreen(
             for (item in homeViewUIState.activeDirectory.items) {
                 DirectoryItem(
                     item = item,
-                    onClick = { homeViewModel.directoryItemOnClick(item) }
+                    onClick = { homeViewModel.directoryItemOnClick(item) },
+                    onSyncRequest = { homeViewModel.syncItem(item) }
                 )
             }
         }
     }
 
-    // Show the logout dialog if necessary
+    // Dialogs
     if (homeViewModel.showConfirmLogoutDialog) {
         LogoutDialog(
             hideDialog = { homeViewModel.showConfirmLogoutDialog = false }
@@ -161,8 +162,15 @@ fun HomeScreen(
         }
     }
 
+    if (homeViewModel.showProcessingDialog) {
+        ProcessingDialog(
+            title = homeViewModel.processingDialogTitle,
+            progress = homeViewModel.processingDialogProgress
+        )
+    }
+
     // Set up back button handling
-    BackHandler{
+    BackHandler {
         if (homeViewUIState.atRootDirectory) {
             homeViewModel.showConfirmLogoutDialog = true
         } else {
@@ -281,6 +289,7 @@ fun AddItemActionButton() {
     }
 }
 
+// Dialogs
 @Composable
 fun LogoutDialog(
     hideDialog: () -> Unit,
@@ -300,17 +309,31 @@ fun LogoutDialog(
         onNo = { hideDialog() }
     )
 }
+
+@Composable
+fun ProcessingDialog(
+    title: String,
+    progress: Float?
+) {
+    Dialogs.ProgressIndicatorDialog(
+        dialogTitle = title,
+        progress = progress
+    )
+}
+
 // Main composables
 /**
  * Composable that represents an item that is in the active directory.
  *
  * @param item Remote item that this composable is representing.
  * @param onClick Function to run when the item is clicked.
+ * @param onSyncRequest Function to run when the sync button is clicked.
  */
 @Composable
 fun DirectoryItem(
     item: RemoteItem,
-    onClick: (RemoteItem) -> Unit
+    onClick: (RemoteItem) -> Unit,
+    onSyncRequest: () -> Unit
 ) {
     var isDropdownExpanded by remember { mutableStateOf(false) }
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
@@ -372,7 +395,7 @@ fun DirectoryItem(
                         text = { Text("Sync") },
                         enabled = !item.synced,
                         onClick = {
-                            /* TODO */
+                            onSyncRequest()
                             isDropdownExpanded = false
                         }
                     )
@@ -471,8 +494,10 @@ fun DirectoryFilePreview() {
                 "dir1/dir2/subdir3/Test File.txt",
                 1234,
                 null
-            )
-        ) {}
+            ),
+            {},
+            {}
+        )
     }
 }
 
@@ -488,7 +513,9 @@ fun DirectoryFolderPreview() {
                 emptyArray(),
                 emptyArray(),
                 null
-            )
-        ) {}
+            ),
+            {},
+            {}
+        )
     }
 }
