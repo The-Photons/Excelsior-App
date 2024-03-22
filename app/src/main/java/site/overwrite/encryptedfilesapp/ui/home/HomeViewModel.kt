@@ -33,9 +33,9 @@ import site.overwrite.encryptedfilesapp.data.EncryptionParameters
 import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteItem
-import site.overwrite.encryptedfilesapp.data.RemotePreviousDirectory
 
 data class HomeViewUIState(
+    // Main fields
     val server: Server = Server(""),
     val username: String = "",
     val password: String = "",
@@ -47,7 +47,11 @@ data class HomeViewUIState(
         emptyArray(),
         emptyArray(),
         null
-    )
+    ),
+
+    // Toast message fields
+    val toastMessage: String = "",
+    val toastDuration: Int = Toast.LENGTH_LONG
 )
 
 class HomeViewModel : ViewModel() {
@@ -69,8 +73,7 @@ class HomeViewModel : ViewModel() {
         when (item.type) {
             ItemType.FILE -> {
                 // TODO: Implement
-                // FIXME: Use better toasts...
-                //Toast.makeText(null, "To be implemented", Toast.LENGTH_LONG).show()
+                setToastMessage("To be implemented", Toast.LENGTH_SHORT)
             }
 
             ItemType.DIRECTORY -> {
@@ -89,16 +92,28 @@ class HomeViewModel : ViewModel() {
                         )
                     }
                 } else {
-                    // FIXME: Use better toasts...
                     Log.d("HOME", "Cannot go back to previous directory")
-//                    Toast.makeText(null, "Cannot go back to previous directory", Toast.LENGTH_LONG)
-//                        .show()
+                    setToastMessage("Cannot go back to previous directory")
                 }
             }
         }
     }
 
     // Other methods
+    /**
+     * Shows a toast message to the screen.
+     * @param message Message of the toast.
+     * @param duration How long the toast should show on the screen.
+     */
+    fun setToastMessage(message: String, duration: Int = Toast.LENGTH_LONG) {
+        _uiState.update {
+            it.copy(
+                toastMessage = message,
+                toastDuration = duration
+            )
+        }
+    }
+
     @OptIn(ExperimentalStdlibApi::class)
     fun loginToServer(
         server: Server,

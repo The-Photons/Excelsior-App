@@ -18,6 +18,7 @@
 package site.overwrite.encryptedfilesapp.ui.home
 
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -78,6 +80,7 @@ fun HomeScreen(
     password: String = "",
     homeViewModel: HomeViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val homeViewUIState by homeViewModel.uiState.collectAsState()
 
     Column(
@@ -119,6 +122,12 @@ fun HomeScreen(
                 password = password
             )
         }
+    }
+
+    // If there is a toast message to show, show it
+    if (homeViewUIState.toastMessage != "") {
+        Toast.makeText(context, homeViewUIState.toastMessage, Toast.LENGTH_LONG).show()
+        homeViewModel.setToastMessage("")
     }
 }
 
