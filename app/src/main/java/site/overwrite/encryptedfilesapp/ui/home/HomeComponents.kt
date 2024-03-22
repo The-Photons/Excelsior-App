@@ -26,16 +26,24 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Warning
@@ -43,11 +51,19 @@ import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.ItemType
+import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
 import site.overwrite.encryptedfilesapp.data.RemotePreviousDirectory
@@ -82,14 +99,19 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val homeViewUIState by homeViewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Scaffold(
+        topBar = { HomeTopBar(homeViewModel) },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        floatingActionButton = { AddItemActionButton() },
+        floatingActionButtonPosition = FabPosition.End
+    ) { innerPadding ->
         if (!homeViewModel.loggedIn) {
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -99,17 +121,26 @@ fun HomeScreen(
                     trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 )
             }
+            return@Scaffold
         }
 
-        val items = homeViewUIState.activeDirectory.items.toCollection(ArrayList())
-        if (homeViewUIState.activeDirectory.parentDir != null) {
-            items.add(0, RemotePreviousDirectory())
-        }
-        for (item in items) {
-            DirectoryItem(
-                item = item,
-                onClick = { homeViewModel.directoryItemOnClick(item) }
-            )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            val items = homeViewUIState.activeDirectory.items.toCollection(ArrayList())
+            if (homeViewUIState.activeDirectory.parentDir != null) {
+                items.add(0, RemotePreviousDirectory())
+            }
+            for (item in items) {
+                DirectoryItem(
+                    item = item,
+                    onClick = { homeViewModel.directoryItemOnClick(item) }
+                )
+            }
         }
     }
 
@@ -131,6 +162,105 @@ fun HomeScreen(
     }
 }
 
+// Scaffold composables
+@Composable
+fun HomeTopBar(
+    homeViewModel: HomeViewModel
+) {
+    val homeViewUIState by homeViewModel.uiState.collectAsState()
+
+    var topBarName = homeViewUIState.activeDirectory.path
+    if (topBarName == "") {
+        topBarName = "Home"
+    }
+
+    HomeTopBar(
+        name = topBarName,
+        setShowConfirmLogoutDialog = { homeViewModel.showConfirmLogoutDialog = it }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeTopBar(
+    name: String,
+    setShowConfirmLogoutDialog: (Boolean) -> Unit
+) {
+    // TODO: Incorporate previous directory action here
+
+    var showExtrasMenu by remember { mutableStateOf(false) }
+    TopAppBar(
+        colors = topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            titleContentColor = MaterialTheme.colorScheme.primary,
+        ),
+        title = {
+            Text(
+                name,
+                overflow = TextOverflow.Visible,
+                maxLines = 1
+            )
+        },
+        actions = {
+            IconButton(onClick = { showExtrasMenu = true }) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "More"
+                )
+            }
+            DropdownMenu(
+                expanded = showExtrasMenu,
+                onDismissRequest = { showExtrasMenu = false }
+            ) {
+                DropdownMenuItem(
+                    leadingIcon = { Icon(Icons.AutoMirrored.Default.Logout, "Logout") },
+                    text = { Text("Logout") },
+                    onClick = { setShowConfirmLogoutDialog(true) }
+                )
+                DropdownMenuItem(
+                    leadingIcon = { Icon(Icons.Default.Info, "About") },
+                    text = { Text("About") },
+                    onClick = { /*TODO*/ }
+                )
+            }
+        }
+    )
+}
+
+@Composable
+fun AddItemActionButton() {
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
+    FloatingActionButton(
+        modifier = Modifier.padding(all = 16.dp),
+        onClick = { dropdownExpanded = !dropdownExpanded },
+    ) {
+        Icon(Icons.Default.Add, "Add")
+        DropdownMenu(
+            expanded = dropdownExpanded,
+            onDismissRequest = { dropdownExpanded = false }
+        ) {
+            DropdownMenuItem(
+                leadingIcon = { Icon(Icons.AutoMirrored.Default.NoteAdd, "Add File") },
+                text = { Text("Add File") },
+                onClick = {
+                    /* TODO */
+//                    pickFileLauncher.launch("*/*")
+                }
+            )
+            DropdownMenuItem(
+                leadingIcon = { Icon(Icons.Default.CreateNewFolder, "Create Folder") },
+                text = { Text("Create Folder") },
+                onClick = {
+                    /* TODO */
+//                    showCreateFolderInputDialog = true
+                }
+            )
+        }
+    }
+}
+
+// Main composables
 /**
  * Composable that represents an item that is in the active directory.
  *
@@ -147,7 +277,7 @@ fun DirectoryItem(
 
     TextButton(
         shape = RoundedCornerShape(0),
-        modifier=Modifier.height(50.dp),
+        modifier = Modifier.height(50.dp),
         onClick = { onClick(item) }
     ) {
         // Get the correct icon and description to display
@@ -214,7 +344,7 @@ fun DirectoryItem(
                     DropdownMenuItem(
                         leadingIcon = { Icon(Icons.Default.Sync, "Sync") },
                         text = { Text("Sync") },
-                        enabled = true,  // TODO: Change condition
+                        enabled = !item.synced,
                         onClick = {
                             /* TODO */
                             isDropdownExpanded = false
@@ -228,7 +358,7 @@ fun DirectoryItem(
                             )
                         },
                         text = { Text("Delete From Device") },
-                        enabled = true,  // TODO: Change condition
+                        enabled = item.synced,
                         onClick = {
                             /* TODO */
                             isDropdownExpanded = false
@@ -271,8 +401,8 @@ fun DirectoryItem(
                     }
                 },
                 onYes = {
-                    showConfirmDeleteDialog = false
                     /* TODO */
+                    showConfirmDeleteDialog = false
                 },
                 onNo = { showConfirmDeleteDialog = false }
             )
@@ -281,15 +411,31 @@ fun DirectoryItem(
 }
 
 // Previews
+@Preview
+@Composable
+fun HomeTopBarPreview() {
+    EncryptedFilesAppTheme {
+        HomeTopBar("Testing Name") {}
+    }
+}
+
+@Preview
+@Composable
+fun AddItemButtonPreview() {
+    EncryptedFilesAppTheme {
+        AddItemActionButton()
+    }
+}
+
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
 @Composable
-fun DirectoryItemPreview() {
+fun DirectoryFilePreview() {
     EncryptedFilesAppTheme {
         DirectoryItem(
             RemoteFile(
-                "Test File 1",
-                "dir1/dir2/subdir3",
-                123456,
+                "Test File.txt",
+                "dir1/dir2/subdir3/Test File.txt",
+                1234,
                 null
             )
         ) {}
@@ -298,7 +444,24 @@ fun DirectoryItemPreview() {
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
 @Composable
-fun DirectoryItemPreviousDirectoryPreview() {
+fun DirectoryFolderPreview() {
+    EncryptedFilesAppTheme {
+        DirectoryItem(
+            RemoteDirectory(
+                "Test Folder",
+                "dir1/dir2/subdir3",
+                7891011,
+                emptyArray(),
+                emptyArray(),
+                null
+            )
+        ) {}
+    }
+}
+
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
+@Composable
+fun PreviousDirectoryItemPreview() {
     EncryptedFilesAppTheme {
         DirectoryItem(
             RemotePreviousDirectory()

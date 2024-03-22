@@ -65,6 +65,7 @@ class HomeViewModel : ViewModel() {
     // Mutable values
     var loggedIn by mutableStateOf(false)
         private set
+    var showConfirmLogoutDialog by mutableStateOf(false)
 
     // Setters
 
@@ -105,7 +106,10 @@ class HomeViewModel : ViewModel() {
      * @param message Message of the toast.
      * @param duration How long the toast should show on the screen.
      */
-    fun setToastMessage(message: String, duration: Int = Toast.LENGTH_LONG) {
+    fun setToastMessage(
+        message: String,
+        duration: Int = Toast.LENGTH_LONG
+    ) {
         _uiState.update {
             it.copy(
                 toastMessage = message,
