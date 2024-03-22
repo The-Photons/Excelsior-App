@@ -19,6 +19,7 @@ package site.overwrite.encryptedfilesapp.ui.home
 
 import android.content.res.Configuration
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -151,10 +152,28 @@ fun HomeScreen(
         }
     }
 
+    // Show the logout dialog if necessary
+    if (homeViewModel.showConfirmLogoutDialog) {
+        LogoutDialog(
+            hideDialog = { homeViewModel.showConfirmLogoutDialog = false }
+        ) {
+            homeViewModel.logout(homeViewUIState.server, context)
+        }
+    }
+
+    // Set up back button handling
+    BackHandler{
+        if (homeViewUIState.activeDirectory.parentDir == null) {
+            homeViewModel.showConfirmLogoutDialog = true
+        } else {
+            homeViewModel.goToPreviousDirectory()
+        }
+    }
+
     // On first showing, login
     LaunchedEffect(Unit) {
         if (server != null) {
-            homeViewModel.loginToServer(
+            homeViewModel.login(
                 server = server,
                 username = username,
                 password = password
@@ -262,6 +281,25 @@ fun AddItemActionButton() {
     }
 }
 
+@Composable
+fun LogoutDialog(
+    hideDialog: () -> Unit,
+    handleLogout: () -> Unit
+) {
+    Dialogs.YesNoDialog(
+        icon = Icons.AutoMirrored.Default.Logout,
+        iconDesc = "Logout",
+        dialogTitle = "Confirm Logout",
+        dialogContent = {
+            Text("Are you sure that you want to log out?")
+        },
+        onYes = {
+            hideDialog()
+            handleLogout()
+        },
+        onNo = { hideDialog() }
+    )
+}
 // Main composables
 /**
  * Composable that represents an item that is in the active directory.
@@ -412,6 +450,14 @@ fun HomeTopBarPreview() {
 fun AddItemButtonPreview() {
     EncryptedFilesAppTheme {
         AddItemActionButton()
+    }
+}
+
+@Preview
+@Composable
+fun LogoutDialogPreview() {
+    EncryptedFilesAppTheme {
+        LogoutDialog({}, {})
     }
 }
 

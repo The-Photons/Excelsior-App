@@ -17,6 +17,8 @@
 
 package site.overwrite.encryptedfilesapp.ui.home
 
+import android.app.Activity
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.getValue
@@ -27,12 +29,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import site.overwrite.encryptedfilesapp.data.Cryptography
 import site.overwrite.encryptedfilesapp.Server
+import site.overwrite.encryptedfilesapp.data.Cryptography
 import site.overwrite.encryptedfilesapp.data.EncryptionParameters
 import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteItem
+import site.overwrite.encryptedfilesapp.io.IOMethods
 
 data class HomeViewUIState(
     // Main fields
@@ -67,60 +70,15 @@ class HomeViewModel : ViewModel() {
         private set
     var showConfirmLogoutDialog by mutableStateOf(false)
 
-    // Setters
-
-    // Directory item methods
-    private fun changeActiveDirectory(newActiveDirectory: RemoteDirectory) {
-        _uiState.update {
-            it.copy(
-                activeDirectory = newActiveDirectory
-            )
-        }
-    }
-
-    fun goToPreviousDirectory() {
-        if (_uiState.value.activeDirectory.parentDir != null) {
-            changeActiveDirectory(_uiState.value.activeDirectory.parentDir!!)
-        } else {
-            Log.d("HOME", "Cannot go back to previous directory")
-            setToastMessage("Cannot go back to previous directory")
-        }
-    }
-
-    fun directoryItemOnClick(item: RemoteItem) {
-        if (item.type == ItemType.DIRECTORY) {
-            changeActiveDirectory(item as RemoteDirectory)
-            return
-        }
-
-        // TODO: Implement file click
-        setToastMessage("To be implemented", Toast.LENGTH_SHORT)
-    }
-
-    // Other methods
-    /**
-     * Shows a toast message to the screen.
-     * @param message Message of the toast.
-     * @param duration How long the toast should show on the screen.
-     */
-    fun setToastMessage(
-        message: String,
-        duration: Int = Toast.LENGTH_LONG
-    ) {
-        _uiState.update {
-            it.copy(
-                toastMessage = message,
-                toastDuration = duration
-            )
-        }
-    }
-
+    // Auth methods
     @OptIn(ExperimentalStdlibApi::class)
-    fun loginToServer(
+    fun login(
         server: Server,
         username: String,
         password: String
     ) {
+        Log.d("MAIN", "Start login process")
+
         // Update the UI state's version of the parameters
         _uiState.update {
             it.copy(
@@ -169,8 +127,11 @@ class HomeViewModel : ViewModel() {
                     loggedIn = true
                     Log.d(
                         "MAIN",
-                        "Got server URL '${_uiState.value.server.serverURL}'," +
-                                " initialization vector '$encryptionIV'," +
+                        "Logged in as '$username' into ${_uiState.value.server.serverURL}"
+                    )
+                    Log.d(
+                        "MAIN",
+                        "Got initialization vector '$encryptionIV'," +
                                 " salt '$encryptionSalt', and encryption key (as hex string)" +
                                 " '${encryptionKey.toHexString()}'"
                     )
@@ -188,6 +149,49 @@ class HomeViewModel : ViewModel() {
         }
     }
 
+    fun logout(
+        server: Server,
+        context: Context
+    ) {
+        Log.d("MAIN", "Start logout process")
+        server.handleLogout {
+            loggedIn = false
+            Log.d("MAIN", "Deleting all folders")
+            IOMethods.deleteItem("")  // TODO: Use a progress bar for deletion
+            Log.d("MAIN", "Logged out")
+            (context as Activity).finish()
+        }
+    }
+
+    // Directory item methods
+    private fun changeActiveDirectory(newActiveDirectory: RemoteDirectory) {
+        _uiState.update {
+            it.copy(
+                activeDirectory = newActiveDirectory
+            )
+        }
+    }
+
+    fun goToPreviousDirectory() {
+        if (_uiState.value.activeDirectory.parentDir != null) {
+            changeActiveDirectory(_uiState.value.activeDirectory.parentDir!!)
+        } else {
+            Log.d("HOME", "Cannot go back to previous directory")
+            setToastMessage("Cannot go back to previous directory")
+        }
+    }
+
+    fun directoryItemOnClick(item: RemoteItem) {
+        if (item.type == ItemType.DIRECTORY) {
+            changeActiveDirectory(item as RemoteDirectory)
+            return
+        }
+
+        // TODO: Implement file click
+        setToastMessage("To be implemented", Toast.LENGTH_SHORT)
+    }
+
+    // CRUD methods
     private fun getRootFolderItems() {
         _uiState.value.server.listDir(
             "",
@@ -208,5 +212,23 @@ class HomeViewModel : ViewModel() {
             },
             { error -> Log.d("MAIN", "Error when getting folder items: $error") }
         )
+    }
+
+    // Other methods
+    /**
+     * Shows a toast message to the screen.
+     * @param message Message of the toast.
+     * @param duration How long the toast should show on the screen.
+     */
+    fun setToastMessage(
+        message: String,
+        duration: Int = Toast.LENGTH_LONG
+    ) {
+        _uiState.update {
+            it.copy(
+                toastMessage = message,
+                toastDuration = duration
+            )
+        }
     }
 }
