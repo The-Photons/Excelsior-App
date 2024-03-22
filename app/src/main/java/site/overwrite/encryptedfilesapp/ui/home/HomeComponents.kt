@@ -110,7 +110,7 @@ fun HomeScreen(
         topBar = {
             HomeTopBar(
                 name = topBarName,
-                hasPreviousDirectory = homeViewUIState.activeDirectory.parentDir != null,
+                hasPreviousDirectory = !homeViewUIState.atRootDirectory,
                 previousDirectoryOnClick = { homeViewModel.goToPreviousDirectory() },
                 setShowConfirmLogoutDialog = { homeViewModel.showConfirmLogoutDialog = it }
             )
@@ -163,7 +163,7 @@ fun HomeScreen(
 
     // Set up back button handling
     BackHandler{
-        if (homeViewUIState.activeDirectory.parentDir == null) {
+        if (homeViewUIState.atRootDirectory) {
             homeViewModel.showConfirmLogoutDialog = true
         } else {
             homeViewModel.goToPreviousDirectory()

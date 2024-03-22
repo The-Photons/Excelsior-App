@@ -55,7 +55,12 @@ data class HomeViewUIState(
     // Toast message fields
     val toastMessage: String = "",
     val toastDuration: Int = Toast.LENGTH_LONG
-)
+) {
+    val parentDirectory: RemoteDirectory?
+        get() = activeDirectory.parentDir
+    val atRootDirectory: Boolean
+        get() = parentDirectory == null
+}
 
 class HomeViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(HomeViewUIState())
@@ -173,8 +178,8 @@ class HomeViewModel : ViewModel() {
     }
 
     fun goToPreviousDirectory() {
-        if (_uiState.value.activeDirectory.parentDir != null) {
-            changeActiveDirectory(_uiState.value.activeDirectory.parentDir!!)
+        if (!_uiState.value.atRootDirectory) {
+            changeActiveDirectory(_uiState.value.parentDirectory!!)
         } else {
             Log.d("HOME", "Cannot go back to previous directory")
             setToastMessage("Cannot go back to previous directory")
