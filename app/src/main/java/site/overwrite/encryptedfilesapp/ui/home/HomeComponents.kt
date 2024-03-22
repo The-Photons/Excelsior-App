@@ -88,7 +88,7 @@ import site.overwrite.encryptedfilesapp.data.RemoteItem
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 import site.overwrite.encryptedfilesapp.ui.utils.Dialogs
 
-// Composables
+// Main composable
 @Composable
 fun HomeScreen(
     server: Server? = null,
@@ -163,8 +163,9 @@ fun HomeScreen(
     }
 
     // If there is a toast message to show, show it
-    if (homeViewUIState.toastMessage != "") {
-        Toast.makeText(context, homeViewUIState.toastMessage, Toast.LENGTH_LONG).show()
+    LaunchedEffect(homeViewUIState.toastMessage) {
+        if (homeViewUIState.toastMessage == "") return@LaunchedEffect
+        Toast.makeText(context, homeViewUIState.toastMessage, homeViewUIState.toastDuration).show()
         homeViewModel.setToastMessage("")
     }
 }
