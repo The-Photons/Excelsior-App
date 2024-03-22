@@ -85,7 +85,6 @@ import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
-import site.overwrite.encryptedfilesapp.data.RemotePreviousDirectory
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 import site.overwrite.encryptedfilesapp.ui.utils.Dialogs
 
@@ -101,8 +100,20 @@ fun HomeScreen(
     val homeViewUIState by homeViewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    var topBarName = homeViewUIState.activeDirectory.name
+    if (topBarName == "") {
+        topBarName = "Home"
+    }
+
     Scaffold(
-        topBar = { HomeTopBar(homeViewModel) },
+        topBar = {
+            HomeTopBar(
+                name = topBarName,
+                hasPreviousDirectory = homeViewUIState.activeDirectory.parentDir != null,
+                previousDirectoryOnClick = { homeViewModel.goToPreviousDirectory() },
+                setShowConfirmLogoutDialog = { homeViewModel.showConfirmLogoutDialog = it }
+            )
+        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = { AddItemActionButton() },
         floatingActionButtonPosition = FabPosition.End
@@ -131,11 +142,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            val items = homeViewUIState.activeDirectory.items.toCollection(ArrayList())
-            if (homeViewUIState.activeDirectory.parentDir != null) {
-                items.add(0, RemotePreviousDirectory())
-            }
-            for (item in items) {
+            for (item in homeViewUIState.activeDirectory.items) {
                 DirectoryItem(
                     item = item,
                     onClick = { homeViewModel.directoryItemOnClick(item) }
@@ -163,37 +170,31 @@ fun HomeScreen(
 }
 
 // Scaffold composables
-@Composable
-fun HomeTopBar(
-    homeViewModel: HomeViewModel
-) {
-    val homeViewUIState by homeViewModel.uiState.collectAsState()
-
-    var topBarName = homeViewUIState.activeDirectory.path
-    if (topBarName == "") {
-        topBarName = "Home"
-    }
-
-    HomeTopBar(
-        name = topBarName,
-        setShowConfirmLogoutDialog = { homeViewModel.showConfirmLogoutDialog = it }
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeTopBar(
     name: String,
+    hasPreviousDirectory: Boolean,
+    previousDirectoryOnClick: () -> Unit,
     setShowConfirmLogoutDialog: (Boolean) -> Unit
 ) {
-    // TODO: Incorporate previous directory action here
-
     var showExtrasMenu by remember { mutableStateOf(false) }
     TopAppBar(
         colors = topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             titleContentColor = MaterialTheme.colorScheme.primary,
         ),
+        navigationIcon = {
+            if (!hasPreviousDirectory) return@TopAppBar
+            IconButton(
+                onClick = previousDirectoryOnClick
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+        },
         title = {
             Text(
                 name,
@@ -293,25 +294,11 @@ fun DirectoryItem(
                 icon = Icons.Default.Folder
                 description = "Folder"
             }
-
-            ItemType.PREVIOUS_DIRECTORY_MARKER -> {
-                icon = Icons.AutoMirrored.Default.ArrowBack
-                description = "Back"
-            }
         }
 
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (item.type == ItemType.PREVIOUS_DIRECTORY_MARKER) {
-                Spacer(Modifier.size(34.dp))
-                Icon(icon, description)
-                Spacer(Modifier.size(4.dp))
-                Text("Previous Directory")
-                Spacer(Modifier.weight(1f))
-                return@TextButton
-            }
-
             if (item.synced) {
                 Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
             } else {
@@ -415,7 +402,7 @@ fun DirectoryItem(
 @Composable
 fun HomeTopBarPreview() {
     EncryptedFilesAppTheme {
-        HomeTopBar("Testing Name") {}
+        HomeTopBar("Testing Name", true, {}) {}
     }
 }
 
@@ -455,16 +442,6 @@ fun DirectoryFolderPreview() {
                 emptyArray(),
                 null
             )
-        ) {}
-    }
-}
-
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
-@Composable
-fun PreviousDirectoryItemPreview() {
-    EncryptedFilesAppTheme {
-        DirectoryItem(
-            RemotePreviousDirectory()
         ) {}
     }
 }

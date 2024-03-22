@@ -24,8 +24,7 @@ import site.overwrite.encryptedfilesapp.io.IOMethods
 // Enums
 enum class ItemType {
     FILE,
-    DIRECTORY,
-    PREVIOUS_DIRECTORY_MARKER
+    DIRECTORY
 }
 
 // Classes
@@ -245,12 +244,5 @@ open class RemoteDirectory(
             directory.subdirs = subdirs.toTypedArray()
             return directory
         }
-    }
-}
-
-class RemotePreviousDirectory :
-    RemoteItem("Previous Directory", "", 0, ItemType.PREVIOUS_DIRECTORY_MARKER, null) {
-    override fun isSynced(): Boolean {
-        return false
     }
 }

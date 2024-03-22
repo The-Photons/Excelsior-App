@@ -70,34 +70,31 @@ class HomeViewModel : ViewModel() {
     // Setters
 
     // Directory item methods
-    fun directoryItemOnClick(item: RemoteItem) {
-        when (item.type) {
-            ItemType.FILE -> {
-                // TODO: Implement
-                setToastMessage("To be implemented", Toast.LENGTH_SHORT)
-            }
-
-            ItemType.DIRECTORY -> {
-                _uiState.update {
-                    it.copy(
-                        activeDirectory = (item as RemoteDirectory)
-                    )
-                }
-            }
-
-            ItemType.PREVIOUS_DIRECTORY_MARKER -> {
-                if (_uiState.value.activeDirectory.parentDir != null) {
-                    _uiState.update {
-                        it.copy(
-                            activeDirectory = _uiState.value.activeDirectory.parentDir!!
-                        )
-                    }
-                } else {
-                    Log.d("HOME", "Cannot go back to previous directory")
-                    setToastMessage("Cannot go back to previous directory")
-                }
-            }
+    private fun changeActiveDirectory(newActiveDirectory: RemoteDirectory) {
+        _uiState.update {
+            it.copy(
+                activeDirectory = newActiveDirectory
+            )
         }
+    }
+
+    fun goToPreviousDirectory() {
+        if (_uiState.value.activeDirectory.parentDir != null) {
+            changeActiveDirectory(_uiState.value.activeDirectory.parentDir!!)
+        } else {
+            Log.d("HOME", "Cannot go back to previous directory")
+            setToastMessage("Cannot go back to previous directory")
+        }
+    }
+
+    fun directoryItemOnClick(item: RemoteItem) {
+        if (item.type == ItemType.DIRECTORY) {
+            changeActiveDirectory(item as RemoteDirectory)
+            return
+        }
+
+        // TODO: Implement file click
+        setToastMessage("To be implemented", Toast.LENGTH_SHORT)
     }
 
     // Other methods
