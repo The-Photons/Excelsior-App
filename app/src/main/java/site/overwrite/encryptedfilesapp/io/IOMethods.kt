@@ -23,12 +23,10 @@ import java.io.File
 import java.io.IOException
 import java.math.RoundingMode
 
-// CONSTANTS
 const val APP_DIR_NAME = "Excelsior"
 val DOWNLOADS_DIR: File =
     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
 
-// ENUMS
 enum class FileUnit(val symbol: String, val value: Long) {
     KILOBYTE("KB", 1_000),
     MEGABYTE("MB", 1_000_000),
@@ -67,7 +65,6 @@ enum class FileUnit(val symbol: String, val value: Long) {
     }
 }
 
-// CLASSES
 /**
  * Class that contains input/output operations.
  */
@@ -77,7 +74,7 @@ class IOMethods {
         /**
          * @return The application directory that is within the downloads directory.
          */
-        fun getAppDir(): String {
+        private fun getAppDir(): String {
             return "${DOWNLOADS_DIR.path}/$APP_DIR_NAME"
         }
 
@@ -86,7 +83,7 @@ class IOMethods {
          *
          * @param itemPath Path to the file/directory, with reference to the application directory.
          */
-        fun getItemPath(itemPath: String): String {
+        private fun getItemPath(itemPath: String): String {
             return "${getAppDir()}/$itemPath".trimEnd('/')
         }
 
@@ -111,53 +108,29 @@ class IOMethods {
             return split.subList(0, split.size - 1).joinToString("/")
         }
 
+        // Existence methods
         /**
          * Checks if an item exists at the specified path.
          *
          * @param itemPath Path to the item to check.
-         * @return A boolean; `true` if there is an item at the specified path and `false`
-         * otherwise.
+         * @return Boolean whether there is an item at the specified path.
          */
-        fun checkIfExists(itemPath: String): Boolean {
+        fun doesItemExist(itemPath: String): Boolean {
             return File(getItemPath(itemPath)).exists()
         }
 
         /**
          * Checks if a file exists at the specified path.
          *
-         * @param itemPath Path to the file to check.
-         * @return A boolean; `true` if there is an item at the specified path and `false`
-         * otherwise. If the path specifies a folder this always returns `false`.
+         * @param filePath Path to the file to check.
+         * @return Boolean whether there is a file at the specified path.
          */
-        fun checkIfFileExists(itemPath: String): Boolean {
-            val possibleFile = File(getItemPath(itemPath))
+        fun doesFileExist(filePath: String): Boolean {
+            val possibleFile = File(getItemPath(filePath))
             if (possibleFile.isFile) {
                 return possibleFile.exists()
             }
             return false
-        }
-
-        /**
-         * Recursively list the items in the directory.
-         *
-         * @param dirPath Path to the directory.
-         * @return
-         */
-        fun traverseDir(dirPath: String): List<String> {
-            val paths = mutableListOf<String>()
-            val appDir = getAppDir()
-
-            File(getItemPath(dirPath)).walkTopDown().forEach {
-                // We only want to add files and non-empty directories
-                if (it.isFile || (it.isDirectory && (it.list()?.size ?: 0) != 0)) {
-                    paths.add(it.path.substring(appDir.length))
-                }
-            }
-            // Remove the empty app directory
-            paths.remove("")
-
-            // Now sort the paths
-            return paths.sorted()
         }
 
         // CRUD methods
@@ -260,7 +233,7 @@ class IOMethods {
          * @return The file object, or `null` if the file does not exist.
          */
         fun getFile(filePath: String): File? {
-            if (checkIfFileExists(filePath)) {
+            if (doesFileExist(filePath)) {
                 return File(getItemPath(filePath))
             }
             return null
@@ -314,6 +287,39 @@ class IOMethods {
         }
 
         // Other methods
+        /**
+         * Recursively list the items in the directory.
+         *
+         * @param dirPath Path to the directory.
+         * @return
+         */
+        fun traverseDir(dirPath: String): List<String> {
+            val paths = mutableListOf<String>()
+            val appDir = getAppDir()
+
+            File(getItemPath(dirPath)).walkTopDown().forEach {
+                // We only want to add files and non-empty directories
+                if (it.isFile || (it.isDirectory && (it.list()?.size ?: 0) != 0)) {
+                    paths.add(it.path.substring(appDir.length))
+                }
+            }
+            // Remove the empty app directory
+            paths.remove("")
+
+            // Now sort the paths
+            return paths.sorted()
+        }
+
+        /**
+         * Gets the size of the item at the specified path.
+         *
+         * @param itemPath Path to the item. Assumed to be valid.
+         * @return Size of the item.
+         */
+        fun getItemSize(itemPath: String): Long {
+            return File(getItemPath(itemPath)).length()
+        }
+
         /**
          * Nicely formats the file size.
          *

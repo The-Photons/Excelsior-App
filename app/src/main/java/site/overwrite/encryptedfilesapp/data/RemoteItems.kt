@@ -41,7 +41,7 @@ abstract class RemoteItem(
     var path: String = path
         private set
     val synced: Boolean
-        get() = isSynced()  // TODO: Is this efficient?
+        get() = isSynced()
 
     // Custom fields
     val dirPath: String
@@ -102,7 +102,7 @@ abstract class RemoteItem(
      *
      * @return Boolean whether the item is synced or not.
      */
-    abstract fun isSynced(): Boolean
+    protected abstract fun isSynced(): Boolean
 }
 
 /**
@@ -120,8 +120,7 @@ class RemoteFile(
     parentDir: RemoteDirectory?
 ) : RemoteItem(name, path, size, ItemType.FILE, parentDir) {
     override fun isSynced(): Boolean {
-        // TODO: Implement
-        return false
+        return IOMethods.doesFileExist(path)
     }
 
     companion object {
@@ -182,7 +181,7 @@ open class RemoteDirectory(
 
         // Check whether the files are synced
         for (file: RemoteFile in files) {
-            if (!file.isSynced()) {
+            if (!file.synced) {
                 return false
             }
         }
