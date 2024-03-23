@@ -78,7 +78,7 @@ class HomeViewModel : ViewModel() {
     var loggedIn by mutableStateOf(false)
         private set
 
-    var showConfirmLogoutDialog by mutableStateOf(false)  // TODO: This name is a bit unwieldy
+    var showLogoutDialog by mutableStateOf(false)
 
     var showProcessingDialog by mutableStateOf(false)
         private set
@@ -194,7 +194,7 @@ class HomeViewModel : ViewModel() {
             changeActiveDirectory(_uiState.value.parentDirectory!!)
         } else {
             Log.d("HOME", "Cannot go back to previous directory")
-            setToastMessage("Cannot go back to previous directory")
+            showToast("Cannot go back to previous directory")
         }
     }
 
@@ -205,7 +205,7 @@ class HomeViewModel : ViewModel() {
         }
 
         // TODO: Implement file click
-        setToastMessage("To be implemented", Toast.LENGTH_SHORT)
+        showToast("To be implemented", Toast.LENGTH_SHORT)
     }
 
     // CRUD methods
@@ -308,7 +308,7 @@ class HomeViewModel : ViewModel() {
 
         // TODO: Implement syncing of directories
         //       (Specifically, handling the dialog displays)
-        setToastMessage("To be implemented", Toast.LENGTH_SHORT)
+        showToast("To be implemented", Toast.LENGTH_SHORT)
 
 //        val theDirectory = item as RemoteDirectory
 //        Log.d("MAIN", "Syncing directory '${theDirectory.path}'")
@@ -330,7 +330,7 @@ class HomeViewModel : ViewModel() {
      * @param message Message of the toast.
      * @param duration How long the toast should show on the screen.
      */
-    fun setToastMessage(
+    fun showToast(
         message: String,
         duration: Int = Toast.LENGTH_LONG
     ) {

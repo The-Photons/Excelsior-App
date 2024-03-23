@@ -112,7 +112,7 @@ fun HomeScreen(
                 name = topBarName,
                 hasPreviousDirectory = !homeViewUIState.atRootDirectory,
                 previousDirectoryOnClick = { homeViewModel.goToPreviousDirectory() },
-                setShowConfirmLogoutDialog = { homeViewModel.showConfirmLogoutDialog = it }
+                setShowConfirmLogoutDialog = { homeViewModel.showLogoutDialog = it }
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -154,9 +154,9 @@ fun HomeScreen(
     }
 
     // Dialogs
-    if (homeViewModel.showConfirmLogoutDialog) {
+    if (homeViewModel.showLogoutDialog) {
         LogoutDialog(
-            hideDialog = { homeViewModel.showConfirmLogoutDialog = false }
+            hideDialog = { homeViewModel.showLogoutDialog = false }
         ) {
             homeViewModel.logout(homeViewUIState.server, context)
         }
@@ -172,7 +172,7 @@ fun HomeScreen(
     // Set up back button handling
     BackHandler {
         if (homeViewUIState.atRootDirectory) {
-            homeViewModel.showConfirmLogoutDialog = true
+            homeViewModel.showLogoutDialog = true
         } else {
             homeViewModel.goToPreviousDirectory()
         }
@@ -193,7 +193,7 @@ fun HomeScreen(
     LaunchedEffect(homeViewUIState.toastMessage) {
         if (homeViewUIState.toastMessage == "") return@LaunchedEffect
         Toast.makeText(context, homeViewUIState.toastMessage, homeViewUIState.toastDuration).show()
-        homeViewModel.setToastMessage("")
+        homeViewModel.showToast("")
     }
 }
 
