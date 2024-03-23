@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import io.ktor.util.cio.writeChannel
 import io.ktor.utils.io.copyAndClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -393,6 +394,14 @@ class HomeViewModel : ViewModel() {
      * meant to be indefinite.
      */
     private fun initProcessingDialog(newTitle: String, newProgress: Float? = 0f) {
+        if (showProcessingDialog) {
+            hideProcessingDialog()
+            runBlocking {
+                delay(100)
+                // FIXME: This is quite hacky to fix the issue of the non-updating of the title.
+                //        Is there a better way?
+            }
+        }
         showProcessingDialog = true
         processingDialogTitle = newTitle
         processingDialogProgress = newProgress
