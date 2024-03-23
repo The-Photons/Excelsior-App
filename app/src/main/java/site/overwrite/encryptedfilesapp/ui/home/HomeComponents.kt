@@ -87,8 +87,8 @@ import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
-import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 import site.overwrite.encryptedfilesapp.ui.Dialogs
+import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 // Main composable
 @Composable
@@ -145,11 +145,14 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             for (item in homeViewUIState.activeDirectory.items) {
-                DirectoryItem(
-                    item = item,
-                    onClick = { homeViewModel.directoryItemOnClick(item) },
-                    onSyncRequest = { homeViewModel.syncItem(item) }
-                )
+                if (!item.markedForDeletion) {
+                    DirectoryItem(
+                        item = item,
+                        onClick = { homeViewModel.directoryItemOnClick(item) },
+                        onSyncRequest = { homeViewModel.syncItem(item) },
+                        onDeleteRequest = { homeViewModel.deleteItem(item) }
+                    )
+                }
             }
         }
     }
@@ -363,12 +366,14 @@ fun ProcessingDialog(
  * @param item Remote item that this composable is representing.
  * @param onClick Function to run when the item is clicked.
  * @param onSyncRequest Function to run when the sync button is clicked.
+ * @param onDeleteRequest Function to run when the delete button is clicked.
  */
 @Composable
 fun DirectoryItem(
     item: RemoteItem,
     onClick: (RemoteItem) -> Unit,
-    onSyncRequest: () -> Unit
+    onSyncRequest: () -> Unit,
+    onDeleteRequest: () -> Unit
 ) {
     var isDropdownExpanded by remember { mutableStateOf(false) }
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
@@ -444,7 +449,7 @@ fun DirectoryItem(
                         text = { Text("Delete From Device") },
                         enabled = item.synced,
                         onClick = {
-                            /* TODO */
+                            onDeleteRequest()
                             isDropdownExpanded = false
                         }
                     )
@@ -531,6 +536,7 @@ fun DirectoryFilePreview() {
                 null
             ),
             {},
+            {},
             {}
         )
     }
@@ -549,6 +555,7 @@ fun DirectoryFolderPreview() {
                 emptyArray(),
                 null
             ),
+            {},
             {},
             {}
         )

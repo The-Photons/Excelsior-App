@@ -321,6 +321,27 @@ class HomeViewModel : ViewModel() {
 //        // TODO: Use snackbar to report status
     }
 
+    fun deleteItem(item: RemoteItem) {
+        item.markedForDeletion = true
+        Log.d("HOME", "Marked '${item.path}' for deletion")
+
+        showSnackbar(
+            "Deleted '${item.name}'",
+            "Undo",
+            duration = SnackbarDuration.Short,
+            onAction = {
+                item.markedForDeletion = false
+                Log.d("HOME", "Unmarked '${item.path}' for deletion")
+            },
+            onDismiss = {
+                if (!IOMethods.deleteItem(item.path)) {
+                    Log.d("HOME", "Failed to delete '${item.path}'")
+                    showToast("Failed to delete '${item.name}'")
+                }
+            }
+        )
+    }
+
     // Displayables methods
     /**
      * Shows a toast message to the screen.

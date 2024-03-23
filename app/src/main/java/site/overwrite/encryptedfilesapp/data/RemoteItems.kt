@@ -33,7 +33,8 @@ abstract class RemoteItem(
     path: String,
     val size: Long,
     val type: ItemType,
-    var parentDir: RemoteDirectory?
+    var parentDir: RemoteDirectory?,
+    var markedForDeletion: Boolean = false
 ) {
     // Attributes
     var name: String = name
