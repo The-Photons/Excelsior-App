@@ -34,7 +34,9 @@ abstract class RemoteItem(
     val size: Long,
     val type: ItemType,
     var parentDir: RemoteDirectory?,
-    var markedForDeletion: Boolean = false
+
+    markedForLocalDeletion: Boolean = false,
+    markedForServerDeletion: Boolean = false
 ) {
     // Attributes
     var name: String = name
@@ -42,12 +44,17 @@ abstract class RemoteItem(
     var path: String = path
         private set
     val synced: Boolean
-        get() = isSynced()
+        get() = !markedForLocalDeletion && isSynced()
+
+    var markedForLocalDeletion: Boolean = markedForLocalDeletion
+        private set
+    var markedForServerDeletion: Boolean = markedForServerDeletion
+        private set
 
     // Custom fields
     val dirPath: String
         get() {
-            return path.split("/").dropLast(1).joinToString("/")
+            return IOMethods.getContainingDir(path)
         }
 
     // Setters
@@ -85,6 +92,22 @@ abstract class RemoteItem(
         // TODO: Handle updating path on the server
 
         return true
+    }
+
+    open fun markForLocalDeletion(state: Boolean = true) {
+        markedForLocalDeletion = state
+    }
+
+    fun unmarkForLocalDeletion() {
+        markForLocalDeletion(false)
+    }
+
+    open fun markForServerDeletion(state: Boolean = true) {
+        markedForServerDeletion = state
+    }
+
+    fun unmarkForServerDeletion() {
+        markForServerDeletion(false)
     }
 
     // Methods
@@ -213,6 +236,26 @@ open class RemoteDirectory(
 
         // All items are synced, so the folder is synced
         return true
+    }
+
+    override fun markForLocalDeletion(state: Boolean) {
+        super.markForLocalDeletion(state)
+        for (file in files) {
+            file.markForLocalDeletion(state)
+        }
+        for (folder in subdirs) {
+            folder.markForLocalDeletion(state)
+        }
+    }
+
+    override fun markForServerDeletion(state: Boolean) {
+        super.markForServerDeletion(state)
+        for (file in files) {
+            file.markForServerDeletion(state)
+        }
+        for (folder in subdirs) {
+            folder.markForServerDeletion(state)
+        }
     }
 
     companion object {

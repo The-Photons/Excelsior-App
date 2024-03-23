@@ -145,7 +145,7 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             for (item in homeViewUIState.activeDirectory.items) {
-                if (!item.markedForDeletion) {
+                if (!item.markedForServerDeletion) {
                     DirectoryItem(
                         item = item,
                         onClick = { homeViewModel.directoryItemOnClick(item) },

@@ -307,6 +307,11 @@ class HomeViewModel : ViewModel() {
     }
 
     fun syncItem(item: RemoteItem) {
+        if (item.markedForLocalDeletion) {
+            showToast("Cannot sync when attempting to delete")
+            return
+        }
+
         if (item.type == ItemType.FILE) {
             val theFile = item as RemoteFile
             Log.d("MAIN", "Syncing file '${theFile.path}'")
@@ -344,21 +349,24 @@ class HomeViewModel : ViewModel() {
     }
 
     fun deleteItem(item: RemoteItem) {
-        item.markedForDeletion = true
-        Log.d("HOME", "Marked '${item.path}' for deletion")
+        item.markForLocalDeletion()
+        Log.d("HOME", "Marked '${item.path}' for local deletion")
 
         showSnackbar(
-            "Deleted '${item.name}'",
+            "Deleted '${item.name}' locally",
             "Undo",
             duration = SnackbarDuration.Short,
             onAction = {
-                item.markedForDeletion = false
-                Log.d("HOME", "Unmarked '${item.path}' for deletion")
+                item.unmarkForLocalDeletion()
+                Log.d("HOME", "Unmarked '${item.path}' for local deletion")
+                showSnackbar("Restored '${item.name}'", duration = SnackbarDuration.Short)
             },
             onDismiss = {
                 if (!IOMethods.deleteItem(item.path)) {
-                    Log.d("HOME", "Failed to delete '${item.path}'")
-                    showToast("Failed to delete '${item.name}'")
+                    Log.d("HOME", "Failed to delete '${item.path}' locally")
+                    showToast("Failed to delete '${item.name}' locally")
+                } else {
+                    item.unmarkForLocalDeletion()
                 }
             }
         )
