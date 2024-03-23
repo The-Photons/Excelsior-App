@@ -21,6 +21,7 @@ import android.app.Activity
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -40,6 +41,8 @@ import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
 import site.overwrite.encryptedfilesapp.io.IOMethods
+import site.overwrite.encryptedfilesapp.ui.SnackbarData
+import site.overwrite.encryptedfilesapp.ui.ToastData
 
 data class HomeViewUIState(
     // Main fields
@@ -56,9 +59,9 @@ data class HomeViewUIState(
         null
     ),
 
-    // Toast message fields
-    val toastMessage: String = "",
-    val toastDuration: Int = Toast.LENGTH_LONG
+    // Displayables' fields
+    val toastData: ToastData = ToastData(),
+    val snackbarData: SnackbarData = SnackbarData()
 ) {
     val parentDirectory: RemoteDirectory?
         get() = activeDirectory.parentDir
@@ -241,11 +244,7 @@ class HomeViewModel : ViewModel() {
                         "MAIN",
                         "Error when making file: failed to create temporary file"
                     )
-//                    scope.launch {
-//                        snackbarHostState.showSnackbar(
-//                            "Failed to create temporary file"
-//                        )
-//                    }
+                    showSnackbar("Failed to create temporary file")
                     hideProcessingDialog()
                     return@getFile
                 }
@@ -264,11 +263,7 @@ class HomeViewModel : ViewModel() {
                         "MAIN",
                         "Error when making file: failed to create output file"
                     )
-//                    scope.launch {
-//                        snackbarHostState.showSnackbar(
-//                            "Failed to create output file"
-//                        )
-//                    }
+                    showSnackbar("Failed to create output file")
                     hideProcessingDialog()
                     return@getFile
                 }
@@ -302,6 +297,7 @@ class HomeViewModel : ViewModel() {
             Log.d("MAIN", "Syncing file '${theFile.path}'")
             syncFile(theFile) {
                 Log.d("MAIN", "Synced file '${theFile.path}'")
+                showSnackbar("File Synced")
             }
             return
         }
@@ -324,24 +320,71 @@ class HomeViewModel : ViewModel() {
 //        // TODO: Use snackbar to report status
     }
 
-    // Other methods
+    // Displayables methods
     /**
      * Shows a toast message to the screen.
      * @param message Message of the toast.
      * @param duration How long the toast should show on the screen.
      */
-    fun showToast(
+    private fun showToast(
         message: String,
         duration: Int = Toast.LENGTH_LONG
     ) {
         _uiState.update {
             it.copy(
-                toastMessage = message,
-                toastDuration = duration
+                toastData = ToastData(message, duration)
             )
         }
     }
 
+    /**
+     * Clears the toast data.
+     */
+    fun clearToast() {
+        showToast("")
+    }
+
+    /**
+     * Shows a snackbar.
+     *
+     * @param message Message of the snackbar.
+     * @param actionLabel Action label to shown as a button in the snackbar.
+     * @param withDismissAction Whether to show a dismiss action in the snackbar.
+     * @param duration How long the snackbar will be shown.
+     * @param onAction Action to take when the action button is pressed.
+     * @param onDismiss Action to take when the snackbar is dismissed.
+     */
+    private fun showSnackbar(
+        message: String,
+        actionLabel: String? = null,
+        withDismissAction: Boolean = false,
+        duration: SnackbarDuration = if (actionLabel == null) SnackbarDuration.Short else
+            SnackbarDuration.Indefinite,
+        onAction: (() -> Unit)? = null,
+        onDismiss: (() -> Unit)? = null
+    ) {
+        _uiState.update {
+            it.copy(
+                snackbarData = SnackbarData(
+                    message = message,
+                    actionLabel = actionLabel,
+                    withDismissAction = withDismissAction,
+                    duration = duration,
+                    onAction = onAction,
+                    onDismiss = onDismiss
+                )
+            )
+        }
+    }
+
+    /**
+     * Clears the snackbar data.
+     */
+    fun clearSnackbar() {
+        showSnackbar("")
+    }
+
+    // Other methods
     /**
      * Initializes the processing dialog.
      *

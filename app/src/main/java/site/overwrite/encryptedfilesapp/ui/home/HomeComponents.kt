@@ -61,6 +61,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -87,7 +88,7 @@ import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
-import site.overwrite.encryptedfilesapp.ui.utils.Dialogs
+import site.overwrite.encryptedfilesapp.ui.Dialogs
 
 // Main composable
 @Composable
@@ -189,11 +190,39 @@ fun HomeScreen(
         }
     }
 
-    // If there is a toast message to show, show it
-    LaunchedEffect(homeViewUIState.toastMessage) {
-        if (homeViewUIState.toastMessage == "") return@LaunchedEffect
-        Toast.makeText(context, homeViewUIState.toastMessage, homeViewUIState.toastDuration).show()
-        homeViewModel.showToast("")
+    // Show any displayables
+    LaunchedEffect(homeViewUIState.toastData) {
+        if (homeViewUIState.toastData.isEmpty) return@LaunchedEffect
+        Toast.makeText(
+            context,
+            homeViewUIState.toastData.message,
+            homeViewUIState.toastData.duration
+        ).show()
+        homeViewModel.clearToast()
+    }
+
+    LaunchedEffect(homeViewUIState.snackbarData) {
+        if (homeViewUIState.snackbarData.isEmpty) return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            homeViewUIState.snackbarData.message,
+            homeViewUIState.snackbarData.actionLabel,
+            homeViewUIState.snackbarData.withDismissAction,
+            homeViewUIState.snackbarData.duration
+        )
+        when (result) {
+            SnackbarResult.Dismissed -> {
+                if (homeViewUIState.snackbarData.onDismiss != null) {
+                    homeViewUIState.snackbarData.onDismiss!!()
+                }
+            }
+
+            SnackbarResult.ActionPerformed -> {
+                if (homeViewUIState.snackbarData.onAction != null) {
+                    homeViewUIState.snackbarData.onAction!!()
+                }
+            }
+        }
+        homeViewModel.clearSnackbar()
     }
 }
 
@@ -244,12 +273,18 @@ fun HomeTopBar(
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.AutoMirrored.Default.Logout, "Logout") },
                     text = { Text("Logout") },
-                    onClick = { setShowConfirmLogoutDialog(true) }
+                    onClick = {
+                        setShowConfirmLogoutDialog(true)
+                        showExtrasMenu = false
+                    }
                 )
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Default.Info, "About") },
                     text = { Text("About") },
-                    onClick = { /*TODO*/ }
+                    onClick = {
+                        /*TODO*/
+                        showExtrasMenu = false
+                    }
                 )
             }
         }

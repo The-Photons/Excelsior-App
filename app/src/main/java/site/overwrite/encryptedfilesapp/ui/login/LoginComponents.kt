@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import site.overwrite.encryptedfilesapp.data.CredentialCheckResult
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
-import site.overwrite.encryptedfilesapp.ui.utils.Dialogs
+import site.overwrite.encryptedfilesapp.ui.Dialogs
 
 // Constants
 const val SERVER_FIELD_LABEL = "Server URL"
