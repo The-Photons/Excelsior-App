@@ -169,6 +169,7 @@ fun HomeScreen(
     if (homeViewModel.showProcessingDialog) {
         ProcessingDialog(
             title = homeViewModel.processingDialogTitle,
+            subtitle = homeViewModel.processingDialogSubtitle,
             progress = homeViewModel.processingDialogProgress
         )
     }
@@ -177,6 +178,7 @@ fun HomeScreen(
     BackHandler {
         if (homeViewUIState.atRootDirectory) {
             homeViewModel.showLogoutDialog = true
+            // TODO: Enforce logout. Perhaps through persistent notification?
         } else {
             homeViewModel.goToPreviousDirectory()
         }
@@ -351,10 +353,12 @@ fun LogoutDialog(
 @Composable
 fun ProcessingDialog(
     title: String,
+    subtitle: String = "",
     progress: Float?
 ) {
     Dialogs.ProgressIndicatorDialog(
         dialogTitle = title,
+        dialogSubtitle = subtitle,
         progress = progress
     )
 }

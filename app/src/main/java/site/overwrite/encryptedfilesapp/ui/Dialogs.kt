@@ -21,7 +21,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -264,12 +267,14 @@ class Dialogs {
          * Creates a new progress indicator dialog.
          *
          * @param dialogTitle Title of the dialog.
+         * @param dialogSubtitle Subtitle of the dialog.
          * @param progress Progress to show on the progress indicator. If `null` then the progress
          * indicator will be indeterminate.
          */
         @Composable
         fun ProgressIndicatorDialog(
             dialogTitle: String,
+            dialogSubtitle: String = "",
             progress: Float?
         ) {
             Dialog(
@@ -294,6 +299,13 @@ class Dialogs {
                             fontSize = 18.sp,
                             textAlign = TextAlign.Center
                         )
+                        if (dialogSubtitle.isNotEmpty()) {
+                            Text(
+                                text = dialogSubtitle,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                         if (progress != null) {
                             Text(
                                 "${
@@ -301,7 +313,8 @@ class Dialogs {
                                         "%.02f",
                                         progress * 100
                                     )
-                                }%"
+                                }%",
+                                fontSize = 12.sp
                             )
                             LinearProgressIndicator(
                                 progress = { progress },
@@ -444,6 +457,26 @@ fun ProgressIndicatorDialogPreview1() {
 fun ProgressIndicatorDialogPreview2() {
     Dialogs.ProgressIndicatorDialog(
         dialogTitle = "Test Progress Indicator Dialog 2",
+        dialogSubtitle = "Some subtitle",
+        progress = 0.6789f
+    )
+}
+
+@Preview
+@Composable
+fun ProgressIndicatorDialogPreview3() {
+    Dialogs.ProgressIndicatorDialog(
+        dialogTitle = "Test Progress Indicator Dialog 3",
+        progress = null
+    )
+}
+
+@Preview
+@Composable
+fun ProgressIndicatorDialogPreview4() {
+    Dialogs.ProgressIndicatorDialog(
+        dialogTitle = "Test Progress Indicator Dialog 4",
+        dialogSubtitle = "Some subtitle",
         progress = null
     )
 }

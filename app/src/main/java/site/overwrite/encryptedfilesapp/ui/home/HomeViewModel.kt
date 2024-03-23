@@ -88,6 +88,8 @@ class HomeViewModel : ViewModel() {
         private set
     var processingDialogTitle by mutableStateOf("")
         private set
+    var processingDialogSubtitle by mutableStateOf("")
+        private set
     var processingDialogProgress: Float? by mutableStateOf(null)
         private set
 
@@ -232,9 +234,18 @@ class HomeViewModel : ViewModel() {
 
     private fun syncFile(
         file: RemoteFile,
+        fileNum: Int? = null,
+        totalNumFiles: Int? = null,
         onComplete: () -> Unit
     ) {
-        initProcessingDialog("Downloading...")
+        if (file.synced) return
+
+        val processingDialogSubtitle = if (fileNum == null) "" else "$fileNum of $totalNumFiles"
+        initProcessingDialog(
+            "Downloading '${file.name}'",
+            processingDialogSubtitle
+        )
+
         _uiState.value.server.getFile(
             file.path,
             { channel ->
@@ -256,7 +267,10 @@ class HomeViewModel : ViewModel() {
                 }
 
                 // Decrypt the file
-                initProcessingDialog("Decrypting...")
+                initProcessingDialog(
+                    "Decrypting '${file.name}'",
+                    processingDialogSubtitle
+                )
 
                 val decryptedFile = IOMethods.createFile(file.path)
                 if (decryptedFile == null) {
@@ -298,27 +312,35 @@ class HomeViewModel : ViewModel() {
             Log.d("MAIN", "Syncing file '${theFile.path}'")
             syncFile(theFile) {
                 Log.d("MAIN", "Synced file '${theFile.path}'")
-                showSnackbar("File Synced")
+                showSnackbar("File synced")
             }
             return
         }
 
-        // TODO: Implement syncing of directories
-        //       (Specifically, handling the dialog displays)
-        showToast("To be implemented", Toast.LENGTH_SHORT)
+        val theDirectory = item as RemoteDirectory
+        Log.d("MAIN", "Syncing directory '${theDirectory.path}'")
 
-//        val theDirectory = item as RemoteDirectory
-//        Log.d("MAIN", "Syncing directory '${theDirectory.path}'")
-//
-//        for (directory in theDirectory.subdirs) {
-//            syncItem(directory)
-//        }
-//        for (file in theDirectory.files) {
-//            syncFile(file) {}  // No need to output anything for this sync
-//        }
-//
-//        Log.d("MAIN", "Synced directory '${theDirectory.path}'")
-//        // TODO: Use snackbar to report status
+        val filesToSync = theDirectory.constituentFiles
+        val numFilesToSync = filesToSync.size
+        var numSyncedFiles = 0
+
+        // This is kind of an ugly workaround... but it works
+        fun helper() {
+            if (numSyncedFiles == numFilesToSync) {
+                Log.d("MAIN", "Synced directory '${theDirectory.path}'")
+                showSnackbar("Directory synced")
+                return
+            }
+            syncFile(
+                filesToSync[numSyncedFiles],
+                numSyncedFiles + 1,
+                numFilesToSync
+            ) {
+                numSyncedFiles += 1
+                helper()
+            }
+        }
+        helper()
     }
 
     fun deleteItem(item: RemoteItem) {
@@ -411,20 +433,21 @@ class HomeViewModel : ViewModel() {
      * Initializes the processing dialog.
      *
      * @param newTitle New title for the processing dialog.
+     * @param newSubtitle New subtitle for the processing dialog.
      * @param newProgress New progress value for the processing dialog. Put `null` if the dialog is
      * meant to be indefinite.
      */
-    private fun initProcessingDialog(newTitle: String, newProgress: Float? = 0f) {
+    private fun initProcessingDialog(
+        newTitle: String,
+        newSubtitle: String = "",
+        newProgress: Float? = 0f
+    ) {
         if (showProcessingDialog) {
             hideProcessingDialog()
-            runBlocking {
-                delay(100)
-                // FIXME: This is quite hacky to fix the issue of the non-updating of the title.
-                //        Is there a better way?
-            }
         }
         showProcessingDialog = true
         processingDialogTitle = newTitle
+        processingDialogSubtitle = newSubtitle
         processingDialogProgress = newProgress
     }
 
@@ -434,6 +457,12 @@ class HomeViewModel : ViewModel() {
     private fun hideProcessingDialog() {
         showProcessingDialog = false
         processingDialogTitle = ""
+        processingDialogSubtitle = ""
         processingDialogProgress = null
+        runBlocking {
+            delay(100)
+            // FIXME: This is quite hacky to fix the issue of the non-updating of the title.
+            //        Is there a better way?
+        }
     }
 }
