@@ -40,5 +40,5 @@ data class SnackbarData(
 ) {
     val isEmpty: Boolean
         get() = message.isBlank()
-                || (actionLabel != null && (onAction == null || onDismiss == null))
+                || (actionLabel != null && onAction == null && onDismiss == null)
 }

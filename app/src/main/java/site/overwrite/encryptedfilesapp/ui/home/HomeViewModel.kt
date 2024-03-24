@@ -327,7 +327,21 @@ class HomeViewModel : ViewModel() {
             },
             { error ->
                 Log.d("HOME", "File request had error: $error")
-                // TODO: Allow for retry
+                hideProcessingDialog()
+                showSnackbar(
+                    message = "$error",
+                    actionLabel = "Retry",
+                    duration = SnackbarDuration.Long,
+                    onAction = {
+                        Log.d("HOME", "Retry sync '${file.path}'")
+                        syncFile(
+                            file,
+                            fileNum,
+                            totalNumFiles,
+                            onComplete
+                        )
+                    }
+                )
             },
             { bytesSentTotal: Long, contentLength: Long ->
                 processingDialogProgress = bytesSentTotal.toFloat() / contentLength
