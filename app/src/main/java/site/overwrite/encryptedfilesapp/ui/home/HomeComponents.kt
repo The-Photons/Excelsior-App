@@ -535,7 +535,7 @@ fun DirectoryFilePreview() {
         DirectoryItem(
             RemoteFile(
                 "Test File.txt",
-                "dir1/dir2/subdir3/Test File.txt",
+                "",  // Need to be blank for testing
                 1234,
                 null
             ),

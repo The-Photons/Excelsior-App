@@ -103,7 +103,6 @@ class Cryptography {
                             break
                         }
 
-//                        Log.d("CRYPTO", "Bytes Enc: $numBytesEncrypted, Bytes Read: $numReadBytes")
                         output.write(buffer, 0, numReadBytes)
 
                         // Update the statuses
@@ -186,7 +185,6 @@ class Cryptography {
                             break
                         }
 
-//                        Log.d("CRYPTO", "Bytes Dec: $numBytesDecrypted, Bytes Read: $numReadBytes")
                         output.write(buffer, 0, numReadBytes)
 
                         // Update the statuses

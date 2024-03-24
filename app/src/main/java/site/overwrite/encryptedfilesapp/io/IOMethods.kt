@@ -21,49 +21,10 @@ import android.os.Environment
 import android.util.Log
 import java.io.File
 import java.io.IOException
-import java.math.RoundingMode
 
 const val APP_DIR_NAME = "Excelsior"
 val DOWNLOADS_DIR: File =
     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-
-enum class FileUnit(val symbol: String, val value: Long) {
-    KILOBYTE("KB", 1_000),
-    MEGABYTE("MB", 1_000_000),
-    GIGABYTE("GB", 1_000_000_000),
-    KIBIBYTE("KiB", 1_024),
-    MEBIBYTE("MiB", 1_048_576),
-    GIBIBYTE("GiB", 1_073_741_824);
-
-    companion object {
-        /**
-         * Chooses the appropriate file unit for formatting the file size.
-         *
-         * @param rawSize Raw file size.
-         * @param altUnits Use IEC 80000-13:2008 format instead of SI format (i.e., kibibytes,
-         * mebibytes, gibibytes instead of kilobytes, megabytes, gigabytes)
-         */
-        fun chooseUnit(rawSize: Long, altUnits: Boolean = false): FileUnit {
-            if (altUnits) {
-                if (rawSize >= GIBIBYTE.value) {
-                    return GIBIBYTE
-                }
-                if (rawSize >= MEBIBYTE.value) {
-                    return MEBIBYTE
-                }
-                return KIBIBYTE
-            } else {
-                if (rawSize >= GIGABYTE.value) {
-                    return GIGABYTE
-                }
-                if (rawSize >= MEGABYTE.value) {
-                    return MEGABYTE
-                }
-                return KILOBYTE
-            }
-        }
-    }
-}
 
 /**
  * Class that contains input/output operations.
@@ -83,7 +44,7 @@ class IOMethods {
          *
          * @param itemPath Path to the file/directory, with reference to the application directory.
          */
-        private fun getItemPath(itemPath: String): String {
+        fun getItemPath(itemPath: String): String {
             return "${getAppDir()}/$itemPath".trimEnd('/')
         }
 
@@ -308,30 +269,6 @@ class IOMethods {
 
             // Now sort the paths
             return paths.sorted()
-        }
-
-        /**
-         * Gets the size of the item at the specified path.
-         *
-         * @param itemPath Path to the item. Assumed to be valid.
-         * @return Size of the item.
-         */
-        fun getItemSize(itemPath: String): Long {
-            return File(getItemPath(itemPath)).length()
-        }
-
-        /**
-         * Nicely formats the file size.
-         *
-         * @param rawSize Size of the item as a long.
-         * @param precision Number of decimal places to format the file size.
-         * @return Formatted file size.
-         */
-        fun formatFileSize(rawSize: Long, precision: Int = 2): String {
-            val unit = FileUnit.chooseUnit(rawSize, altUnits = false)
-            val reducedSize = rawSize.toBigDecimal().divide(unit.value.toBigDecimal())
-            val roundedSize = reducedSize.setScale(precision, RoundingMode.HALF_EVEN)
-            return "$roundedSize ${unit.symbol}"
         }
     }
 }

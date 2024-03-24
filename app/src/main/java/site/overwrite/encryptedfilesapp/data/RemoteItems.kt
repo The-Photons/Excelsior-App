@@ -118,7 +118,7 @@ abstract class RemoteItem(
      * @return Formatted file size.
      */
     fun formattedSize(precision: Int = 2): String {
-        return IOMethods.formatFileSize(size, precision = precision)
+        return FileSizeUtils.formatFileSize(size, precision = precision)
     }
 
     /**
@@ -144,7 +144,7 @@ class RemoteFile(
     parentDir: RemoteDirectory?
 ) : RemoteItem(name, path, size, ItemType.FILE, parentDir) {
     override fun isSynced(): Boolean {
-        return IOMethods.doesFileExist(path)
+        return path.isNotEmpty() && IOMethods.doesFileExist(path)
     }
 
     companion object {
