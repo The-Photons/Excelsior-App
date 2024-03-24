@@ -439,12 +439,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 showSnackbar("Restored '${item.name}'", duration = SnackbarDuration.Short)
             },
             onDismiss = {
-                if (!IOMethods.deleteItem(item.path)) {
-                    Log.d("HOME", "Failed to delete '${item.path}' locally")
-                    showToast("Failed to delete '${item.name}' locally")
-                } else {
+                if (!item.markedForLocalDeletion) return@showSnackbar
+                if (IOMethods.deleteItem(item.path)) {
                     item.unmarkForLocalDeletion()
+                    return@showSnackbar
                 }
+
+                Log.d("HOME", "Failed to delete '${item.path}' locally")
+                showToast("Failed to delete '${item.name}' locally")
             }
         )
     }
