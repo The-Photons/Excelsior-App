@@ -50,6 +50,8 @@ import site.overwrite.encryptedfilesapp.ui.SnackbarData
 import site.overwrite.encryptedfilesapp.ui.ToastData
 
 data class HomeViewUIState(
+    // TODO: Add snackbar reports for all errors
+
     // Main fields
     val server: Server = Server(""),
     val username: String = "",
@@ -95,6 +97,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     var showLogoutDialog by mutableStateOf(false)
+    var showCreateFolderDialog by mutableStateOf(false)
 
     var showProcessingDialog by mutableStateOf(false)
         private set
@@ -425,7 +428,51 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         helper()
     }
 
-    fun deleteItem(item: RemoteItem) {
+    fun createFolderOnServer(name: String) {
+        Log.d("HOME", "Attempting to create new folder '$name' on server")
+
+        val parentDir = _uiState.value.activeDirectory.path
+        val path: String = if (parentDir.isEmpty()) {
+            name
+        } else {
+            "$parentDir/$name"
+        }
+
+        // FIXME: Fix URL encoding of paths
+
+        _uiState.value.server.doesItemExist(
+            path,
+            { exists ->
+                if (exists) {
+                    Log.d("MAIN", "Folder already exists on server; not creating")
+                    showSnackbar("Folder already exists on server")
+                    return@doesItemExist
+                }
+
+                _uiState.value.server.createFolder(
+                    path,
+                    {
+                        Log.d("MAIN", "New folder created: $path")
+                        _uiState.value.activeDirectory.addFolder(name, path)
+                        showSnackbar("Folder created")
+                    },
+                    { _, json ->
+                        val reason = json.getString("message")
+                        Log.d("MAIN", "Failed to create folder: $reason")
+                        showSnackbar("Failed to create folder: $reason")
+                    },
+                    { error ->
+                        Log.d("MAIN", "Error when making folder: $error")
+                    }
+                )
+            },
+            { error ->
+                Log.d("HOME", "Error when checking path existence: $error")
+            }
+        )
+    }
+
+    fun deleteItemLocally(item: RemoteItem) {
         item.markForLocalDeletion()
         Log.d("HOME", "Marked '${item.path}' for local deletion")
 

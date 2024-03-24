@@ -117,7 +117,11 @@ fun HomeScreen(
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        floatingActionButton = { AddItemActionButton() },
+        floatingActionButton = {
+            AddItemActionButton {
+                homeViewModel.showCreateFolderDialog = true
+            }
+        },
         floatingActionButtonPosition = FabPosition.End
     ) { innerPadding ->
         if (!homeViewModel.loggedIn) {
@@ -150,7 +154,7 @@ fun HomeScreen(
                         item = item,
                         onClick = { homeViewModel.directoryItemOnClick(item) },
                         onSyncRequest = { homeViewModel.syncItem(item) },
-                        onDeleteRequest = { homeViewModel.deleteItem(item) }
+                        onDeleteRequest = { homeViewModel.deleteItemLocally(item) }
                     )
                 }
             }
@@ -158,12 +162,15 @@ fun HomeScreen(
     }
 
     // Dialogs
-    if (homeViewModel.showLogoutDialog) {
-        LogoutDialog(
-            hideDialog = { homeViewModel.showLogoutDialog = false }
-        ) {
-            homeViewModel.logout(homeViewUIState.server, context)
-        }
+    if (homeViewModel.showCreateFolderDialog) {
+        CreateFolderDialog(
+            textFieldValidator = { true },  // TODO: Implement actual folder name check
+            onDismiss = { homeViewModel.showCreateFolderDialog = false },
+            onConfirmFolderName = {
+                homeViewModel.showCreateFolderDialog = false
+                homeViewModel.createFolderOnServer(it)
+            }
+        )
     }
 
     if (homeViewModel.showProcessingDialog) {
@@ -172,6 +179,14 @@ fun HomeScreen(
             subtitle = homeViewModel.processingDialogSubtitle,
             progress = homeViewModel.processingDialogProgress
         )
+    }
+
+    if (homeViewModel.showLogoutDialog) {
+        LogoutDialog(
+            hideDialog = { homeViewModel.showLogoutDialog = false }
+        ) {
+            homeViewModel.logout(homeViewUIState.server, context)
+        }
     }
 
     // Set up back button handling
@@ -297,7 +312,9 @@ fun HomeTopBar(
 }
 
 @Composable
-fun AddItemActionButton() {
+fun AddItemActionButton(
+    onClickCreateFolder: () -> Unit
+) {
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     FloatingActionButton(
@@ -315,14 +332,15 @@ fun AddItemActionButton() {
                 onClick = {
                     /* TODO: Add file on server */
 //                    pickFileLauncher.launch("*/*")
+                    dropdownExpanded = false
                 }
             )
             DropdownMenuItem(
                 leadingIcon = { Icon(Icons.Default.CreateNewFolder, "Create Folder") },
                 text = { Text("Create Folder") },
                 onClick = {
-                    /* TODO: Create folder on server */
-//                    showCreateFolderInputDialog = true
+                    onClickCreateFolder()
+                    dropdownExpanded = false
                 }
             )
         }
@@ -330,6 +348,36 @@ fun AddItemActionButton() {
 }
 
 // Dialogs
+@Composable
+fun CreateFolderDialog(
+    textFieldValidator: (String) -> Boolean,
+    onDismiss: () -> Unit,
+    onConfirmFolderName: (String) -> Unit,
+) {
+    Dialogs.TextInputDialog(
+        dialogTitle = "Enter Folder Name",
+        textFieldLabel = "Name",
+        textFieldPlaceholder = "Name of the folder",
+        textFieldErrorText = "Invalid folder name",
+        onConfirmation = { onConfirmFolderName(it) },
+        onDismissal = { onDismiss() },
+        textFieldValidator = { textFieldValidator(it) }
+    )
+}
+
+@Composable
+fun ProcessingDialog(
+    title: String,
+    subtitle: String = "",
+    progress: Float?
+) {
+    Dialogs.ProgressIndicatorDialog(
+        dialogTitle = title,
+        dialogSubtitle = subtitle,
+        progress = progress
+    )
+}
+
 @Composable
 fun LogoutDialog(
     hideDialog: () -> Unit,
@@ -347,19 +395,6 @@ fun LogoutDialog(
             handleLogout()
         },
         onNo = { hideDialog() }
-    )
-}
-
-@Composable
-fun ProcessingDialog(
-    title: String,
-    subtitle: String = "",
-    progress: Float?
-) {
-    Dialogs.ProgressIndicatorDialog(
-        dialogTitle = title,
-        dialogSubtitle = subtitle,
-        progress = progress
     )
 }
 
@@ -516,7 +551,15 @@ fun HomeTopBarPreview() {
 @Composable
 fun AddItemButtonPreview() {
     EncryptedFilesAppTheme {
-        AddItemActionButton()
+        AddItemActionButton({})
+    }
+}
+
+@Preview
+@Composable
+fun CreateFolderDialogPreview() {
+    EncryptedFilesAppTheme {
+        CreateFolderDialog({ false }, {}, {})
     }
 }
 

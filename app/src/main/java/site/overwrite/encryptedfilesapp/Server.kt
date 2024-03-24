@@ -225,7 +225,7 @@ class Server(val serverURL: String) {
      * @param listener Listener for the path check.
      * @param errorListener Listener for an page request that results in an error.
      */
-    fun pathExists(
+    fun doesItemExist(
         path: String,
         listener: (Boolean) -> Unit,
         errorListener: (Exception) -> Unit

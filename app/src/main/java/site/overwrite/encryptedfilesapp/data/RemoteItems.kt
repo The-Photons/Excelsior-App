@@ -38,7 +38,7 @@ abstract class RemoteItem(
     markedForLocalDeletion: Boolean = false,
     markedForServerDeletion: Boolean = false
 ) {
-    // Attributes
+    // Fields
     var name: String = name
         private set
     var path: String = path
@@ -51,7 +51,6 @@ abstract class RemoteItem(
     var markedForServerDeletion: Boolean = markedForServerDeletion
         private set
 
-    // Custom fields
     val dirPath: String
         get() {
             return IOMethods.getContainingDir(path)
@@ -94,6 +93,7 @@ abstract class RemoteItem(
         return true
     }
 
+    // Methods
     open fun markForLocalDeletion(state: Boolean = true) {
         markedForLocalDeletion = state
     }
@@ -143,6 +143,7 @@ class RemoteFile(
     size: Long,
     parentDir: RemoteDirectory?
 ) : RemoteItem(name, path, size, ItemType.FILE, parentDir) {
+    // Methods
     override fun isSynced(): Boolean {
         return path.isNotEmpty() && IOMethods.doesFileExist(path)
     }
@@ -185,6 +186,7 @@ open class RemoteDirectory(
     var files: Array<RemoteFile>,
     parentDir: RemoteDirectory?
 ) : RemoteItem(name, path, size, ItemType.DIRECTORY, parentDir) {
+    // Fields
     val items: Array<RemoteItem>
         get() {
             val items = ArrayList<RemoteItem>()
@@ -227,6 +229,7 @@ open class RemoteDirectory(
             return syncedFiles.toTypedArray()
         }
 
+    // Methods
     override fun isSynced(): Boolean {
         // If the folder is empty then we will call it synced
         if (files.isEmpty() && subdirs.isEmpty()) {
@@ -269,6 +272,23 @@ open class RemoteDirectory(
         for (folder in subdirs) {
             folder.markForServerDeletion(state)
         }
+    }
+
+    fun addFolder(directory: RemoteDirectory) {
+        val subdirList = subdirs.toMutableList()
+        subdirList.add(directory)
+        subdirs = subdirList.toTypedArray()
+    }
+
+    fun addFolder(name: String, path: String) {
+        addFolder(RemoteDirectory(
+            name,
+            path,
+            0,
+            emptyArray(),
+            emptyArray(),
+            this
+        ))
     }
 
     companion object {
