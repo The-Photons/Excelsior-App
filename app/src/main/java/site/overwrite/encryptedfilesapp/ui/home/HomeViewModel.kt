@@ -18,14 +18,18 @@
 package site.overwrite.encryptedfilesapp.ui.home
 
 import android.app.Activity
+import android.app.Application
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.core.content.FileProvider
+import androidx.lifecycle.AndroidViewModel
 import io.ktor.util.cio.writeChannel
 import io.ktor.utils.io.copyAndClose
 import kotlinx.coroutines.delay
@@ -78,7 +82,7 @@ data class HomeViewUIState(
         get() = parentDirectory == null
 }
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(HomeViewUIState())
     val uiState: StateFlow<HomeViewUIState> = _uiState.asStateFlow()
 
@@ -234,8 +238,38 @@ class HomeViewModel : ViewModel() {
             return
         }
 
-        // TODO: Implement file click
-        showToast("To be implemented", Toast.LENGTH_SHORT)
+        val file = IOMethods.getFile(item.path)
+        if (file == null) {
+            Log.d("MAIN", "File '${item.name}' not synced, so cannot open")
+            showSnackbar("File not synced")
+            return
+        }
+
+        // Get URI and MIME type of file
+        val context = getApplication<Application>().applicationContext
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            file
+        )
+        val mime = context.contentResolver.getType(uri)
+
+        // Open file with user selected app
+        val intent = Intent()
+        intent.setAction(Intent.ACTION_VIEW)
+        intent.setDataAndType(uri, mime)
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        try {
+            context.startActivity(intent)
+        } catch (error: ActivityNotFoundException) {
+            Log.d(
+                "HOME",
+                "Cannot open file, activity not found: ${error.message}"
+            )
+            showSnackbar("$error.message")
+        }
     }
 
     // CRUD methods
