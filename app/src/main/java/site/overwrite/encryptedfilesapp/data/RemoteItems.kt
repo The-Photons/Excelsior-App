@@ -274,13 +274,35 @@ open class RemoteDirectory(
         }
     }
 
-    fun addFolder(directory: RemoteDirectory) {
+    private fun addFile(file: RemoteFile) {
+        val filesList = files.toMutableList()
+        filesList.add(file)
+        files = filesList.toTypedArray()
+    }
+
+    fun addFile(
+        name: String,
+        path: String,
+        size: Long
+    ) {
+        addFile(RemoteFile(
+            name,
+            path,
+            size,
+            this
+        ))
+    }
+
+    private fun addFolder(directory: RemoteDirectory) {
         val subdirList = subdirs.toMutableList()
         subdirList.add(directory)
         subdirs = subdirList.toTypedArray()
     }
 
-    fun addFolder(name: String, path: String) {
+    fun addFolder(
+        name: String,
+        path: String
+    ) {
         addFolder(RemoteDirectory(
             name,
             path,

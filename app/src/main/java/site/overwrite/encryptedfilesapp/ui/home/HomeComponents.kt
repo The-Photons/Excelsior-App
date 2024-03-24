@@ -18,8 +18,11 @@
 package site.overwrite.encryptedfilesapp.ui.home
 
 import android.content.res.Configuration
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -118,9 +121,10 @@ fun HomeScreen(
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
-            AddItemActionButton {
-                homeViewModel.showCreateFolderDialog = true
-            }
+            AddItemActionButton(
+                onClickCreateFile = { homeViewModel.createFileOnServer(it) },
+                onClickCreateFolder = { homeViewModel.showCreateFolderDialog = true }
+            )
         },
         floatingActionButtonPosition = FabPosition.End
     ) { innerPadding ->
@@ -313,9 +317,14 @@ fun HomeTopBar(
 
 @Composable
 fun AddItemActionButton(
+    onClickCreateFile: (Uri) -> Unit,
     onClickCreateFolder: () -> Unit
 ) {
     var dropdownExpanded by remember { mutableStateOf(false) }
+
+    val pickFileLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> if (uri != null) onClickCreateFile(uri) }
 
     FloatingActionButton(
         modifier = Modifier.padding(all = 16.dp),
@@ -330,8 +339,7 @@ fun AddItemActionButton(
                 leadingIcon = { Icon(Icons.AutoMirrored.Default.NoteAdd, "Add File") },
                 text = { Text("Add File") },
                 onClick = {
-                    /* TODO: Add file on server */
-//                    pickFileLauncher.launch("*/*")
+                    pickFileLauncher.launch("*/*")
                     dropdownExpanded = false
                 }
             )
@@ -551,7 +559,7 @@ fun HomeTopBarPreview() {
 @Composable
 fun AddItemButtonPreview() {
     EncryptedFilesAppTheme {
-        AddItemActionButton({})
+        AddItemActionButton({}, {})
     }
 }
 

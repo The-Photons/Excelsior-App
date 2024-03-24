@@ -22,6 +22,7 @@ import android.app.Application
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.material3.SnackbarDuration
@@ -243,7 +244,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
         val file = IOMethods.getFile(item.path)
         if (file == null) {
-            Log.d("MAIN", "File '${item.name}' not synced, so cannot open")
+            Log.d("HOME", "File '${item.name}' not synced, so cannot open")
             showSnackbar("File not synced")
             return
         }
@@ -428,6 +429,133 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         helper()
     }
 
+    fun createFileOnServer(uri: Uri) {
+        val context = getApplication<Application>().applicationContext
+        val name = IOMethods.getFileName(uri, context.contentResolver)
+
+        Log.d("HOME", "Attempting to upload file '$name' to server")
+
+        val parentDir = _uiState.value.activeDirectory.path
+        val path: String = if (parentDir.isEmpty()) {
+            name
+        } else {
+            "$parentDir/$name"
+        }
+
+        // FIXME: Fix URL encoding of paths
+
+        _uiState.value.server.doesItemExist(
+            path,
+            { exists ->
+                if (exists) {
+                    Log.d("HOME", "File already exists on server; not creating")
+                    showSnackbar("File already exists on server")
+                    return@doesItemExist
+                }
+
+                // FIXME: Surely we can move the following long code into another file?
+
+                // Get the file size
+                val fileDescriptor = context.contentResolver.openAssetFileDescriptor(uri, "r")
+                val fileSize: Long
+                if (fileDescriptor != null) {
+                    fileSize = fileDescriptor.length
+                    fileDescriptor.close()
+                } else {
+                    fileSize = -1
+                }
+
+                // Get the input stream of the file
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val mimeType =
+                    context.contentResolver.getType(uri) ?: "application/octet-stream"
+                if (inputStream == null) {
+                    Log.d("HOME", "Failed to read file '$path'")
+                    showSnackbar("Failed to read file '$name'")
+                    return@doesItemExist
+                }
+
+                initProcessingDialog("Encrypting '$name'")
+
+                // Create a temporary file to store the encrypted content
+                val encryptedFile = IOMethods.createFile("$path.encrypted")
+                if (encryptedFile == null) {
+                    Log.d(
+                        "HOME",
+                        "Error when making file: failed to create temporary file"
+                    )
+                    showSnackbar("Failed to create temporary file for uploading")
+                    hideProcessingDialog()
+                    return@doesItemExist
+                }
+
+                // Now encrypt the original file, storing the result in the temporary file
+                Cryptography.encryptAES(
+                    inputStream,
+                    encryptedFile.outputStream(),
+                    _uiState.value.encryptionParameters.key!!,
+                    _uiState.value.encryptionParameters.iv
+                ) { numBytesEncrypted ->
+                    processingDialogProgress = if (fileSize != -1L) {
+                        numBytesEncrypted.toFloat() / fileSize
+                    } else {
+                        null
+                    }
+                }
+                Log.d("HOME", "Encrypted file; attempting upload")
+
+                // Once encrypted, send file to server
+                initProcessingDialog("Uploading '$name'")
+                _uiState.value.server.createFile(
+                    path,
+                    encryptedFile,
+                    mimeType,
+                    {
+                        Log.d("HOME", "New file uploaded to server: $path")
+
+                        /*
+                         * Note that the `fileSize` here is *not* exactly the uploaded file's size,
+                         * but since we are using AES encryption, the difference in the uploaded
+                         * file size and the file size of the unencrypted file should be small
+                         * enough to not matter when displaying.
+                         */
+                        _uiState.value.activeDirectory.addFile(name, path, fileSize)
+
+                        showSnackbar("Uploaded '$name'")
+                        IOMethods.deleteItem(encryptedFile)
+                    },
+                    { _, json ->
+                        val reason = json.getString("message")
+                        Log.d(
+                            "HOME",
+                            "Failed to create file: $reason"
+                        )
+                        showSnackbar("Failed to upload file: $reason")
+                        IOMethods.deleteItem(encryptedFile)
+                        hideProcessingDialog()
+                    },
+                    { error ->
+                        Log.d(
+                            "HOME",
+                            "Error when making file: $error"
+                        )
+                        IOMethods.deleteItem(encryptedFile)
+                        hideProcessingDialog()
+                    }
+                ) { bytesSentTotal, contentLength ->
+                    processingDialogProgress = bytesSentTotal.toFloat() / contentLength
+                    if (bytesSentTotal == contentLength) {
+                        hideProcessingDialog()
+                    }
+                }
+                inputStream.close()
+            },
+            { error ->
+                Log.d("HOME", "Error when checking path existence: $error")
+            }
+        )
+    }
+
     fun createFolderOnServer(name: String) {
         Log.d("HOME", "Attempting to create new folder '$name' on server")
 
@@ -444,7 +572,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             path,
             { exists ->
                 if (exists) {
-                    Log.d("MAIN", "Folder already exists on server; not creating")
+                    Log.d("HOME", "Folder already exists on server; not creating")
                     showSnackbar("Folder already exists on server")
                     return@doesItemExist
                 }
@@ -452,17 +580,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value.server.createFolder(
                     path,
                     {
-                        Log.d("MAIN", "New folder created: $path")
+                        Log.d("HOME", "New folder created on server: $path")
                         _uiState.value.activeDirectory.addFolder(name, path)
                         showSnackbar("Folder created")
                     },
                     { _, json ->
                         val reason = json.getString("message")
-                        Log.d("MAIN", "Failed to create folder: $reason")
+                        Log.d("HOME", "Failed to create folder: $reason")
                         showSnackbar("Failed to create folder: $reason")
                     },
                     { error ->
-                        Log.d("MAIN", "Error when making folder: $error")
+                        Log.d("HOME", "Error when making folder: $error")
                     }
                 )
             },

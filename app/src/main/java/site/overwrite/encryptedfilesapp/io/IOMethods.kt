@@ -17,7 +17,10 @@
 
 package site.overwrite.encryptedfilesapp.io
 
+import android.content.ContentResolver
+import android.net.Uri
 import android.os.Environment
+import android.provider.OpenableColumns
 import android.util.Log
 import java.io.File
 import java.io.IOException
@@ -56,6 +59,30 @@ class IOMethods {
          */
         fun getFileName(filePath: String): String {
             return filePath.split('/').last()
+        }
+
+        /**
+         * Gets the file name from a "content://" URI.
+         *
+         * @param uri A URI with the "content" scheme.
+         * @param contentResolver Content resolver that helps resolve the file.
+         * @return File name.
+         */
+        fun getFileName(
+            uri: Uri,
+            contentResolver: ContentResolver
+        ): String {
+            var result = ""
+
+            contentResolver.query(uri, null, null, null, null).use { cursor ->
+                if (cursor != null) {
+                    if (cursor.moveToFirst()) {
+                        val colIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        result = cursor.getString(colIndex)
+                    }
+                }
+            }
+            return result
         }
 
         /**
