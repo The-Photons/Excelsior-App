@@ -108,7 +108,7 @@ class HomeViewModel : ViewModel() {
         username: String,
         password: String
     ) {
-        Log.d("MAIN", "Start login process")
+        Log.d("HOME", "Start login process")
 
         // Update the UI state's version of the parameters
         _uiState.update {
@@ -157,11 +157,11 @@ class HomeViewModel : ViewModel() {
                     // Mark that we are logged in
                     loggedIn = true
                     Log.d(
-                        "MAIN",
+                        "HOME",
                         "Logged in as '$username' into ${_uiState.value.server.serverURL}"
                     )
                     Log.d(
-                        "MAIN",
+                        "HOME",
                         "Got initialization vector '$encryptionIV'," +
                                 " salt '$encryptionSalt', and encryption key (as hex string)" +
                                 " '${encryptionKey.toHexString()}'"
@@ -169,12 +169,12 @@ class HomeViewModel : ViewModel() {
                 },
                 { _, json ->
                     Log.d(
-                        "MAIN",
+                        "HOME",
                         "Failed to get encryption parameters: ${json.getString("message")}"
                     )
                 },
                 { error ->
-                    Log.d("MAIN", "Error when getting encryption parameters: $error")
+                    Log.d("HOME", "Error when getting encryption parameters: $error")
                 }
             )
         }
@@ -184,10 +184,10 @@ class HomeViewModel : ViewModel() {
         server: Server,
         context: Context
     ) {
-        Log.d("MAIN", "Start logout process")
+        Log.d("HOME", "Start logout process")
         server.handleLogout {
             loggedIn = false
-            Log.d("MAIN", "Logged out; deleting synced local files")
+            Log.d("HOME", "Logged out; deleting synced local files")
             initProcessingDialog("Deleting local files")
 
             val filesToDelete = _uiState.value.rootDirectory.syncedConstituentFiles
@@ -200,12 +200,12 @@ class HomeViewModel : ViewModel() {
             }
             processingDialogProgress = 1f
 
-            Log.d("MAIN", "Removing directories")
+            Log.d("HOME", "Removing directories")
             if (IOMethods.doesItemExist("")) {
                 IOMethods.deleteItem("")
             }
 
-            Log.d("MAIN", "Cleanup complete")
+            Log.d("HOME", "Cleanup complete")
             (context as Activity).finish()
         }
     }
@@ -253,11 +253,11 @@ class HomeViewModel : ViewModel() {
             },
             { _, json ->
                 Log.d(
-                    "MAIN",
+                    "HOME",
                     "Failed to get root folder items: ${json.getString("message")}"
                 )
             },
-            { error -> Log.d("MAIN", "Error when getting folder items: $error") }
+            { error -> Log.d("HOME", "Error when getting folder items: $error") }
         )
     }
 
@@ -282,7 +282,7 @@ class HomeViewModel : ViewModel() {
                 val encryptedFile = IOMethods.createFile("${file.path}.encrypted")
                 if (encryptedFile == null) {
                     Log.d(
-                        "MAIN",
+                        "HOME",
                         "Error when making file: failed to create temporary file"
                     )
                     showSnackbar("Failed to create temporary file")
@@ -304,7 +304,7 @@ class HomeViewModel : ViewModel() {
                 val decryptedFile = IOMethods.createFile(file.path)
                 if (decryptedFile == null) {
                     Log.d(
-                        "MAIN",
+                        "HOME",
                         "Error when making file: failed to create output file"
                     )
                     showSnackbar("Failed to create output file")
@@ -326,7 +326,7 @@ class HomeViewModel : ViewModel() {
                 onComplete()
             },
             { error ->
-                Log.d("MAIN", "File request had error: $error")
+                Log.d("HOME", "File request had error: $error")
                 // TODO: Allow for retry
             },
             { bytesSentTotal: Long, contentLength: Long ->
@@ -343,16 +343,16 @@ class HomeViewModel : ViewModel() {
 
         if (item.type == ItemType.FILE) {
             val theFile = item as RemoteFile
-            Log.d("MAIN", "Syncing file '${theFile.path}'")
+            Log.d("HOME", "Syncing file '${theFile.path}'")
             syncFile(theFile) {
-                Log.d("MAIN", "Synced file '${theFile.path}'")
+                Log.d("HOME", "Synced file '${theFile.path}'")
                 showSnackbar("File synced")
             }
             return
         }
 
         val theDirectory = item as RemoteDirectory
-        Log.d("MAIN", "Syncing directory '${theDirectory.path}'")
+        Log.d("HOME", "Syncing directory '${theDirectory.path}'")
 
         val filesToSync = theDirectory.constituentFiles
         val numFilesToSync = filesToSync.size
@@ -361,7 +361,7 @@ class HomeViewModel : ViewModel() {
         // This is kind of an ugly workaround... but it works
         fun helper() {
             if (numSyncedFiles == numFilesToSync) {
-                Log.d("MAIN", "Synced directory '${theDirectory.path}'")
+                Log.d("HOME", "Synced directory '${theDirectory.path}'")
                 showSnackbar("Directory synced")
                 return
             }
