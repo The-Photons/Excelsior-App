@@ -35,7 +35,8 @@ data class SnackbarData(
     val duration: SnackbarDuration = if (actionLabel == null) SnackbarDuration.Short else
         SnackbarDuration.Indefinite,
     val onAction: (() -> Unit)? = null,
-    val onDismiss: (() -> Unit)? = null
+    val onDismiss: (() -> Unit)? = null,
+    val snackbarFree: Boolean = true
 ) {
     val isEmpty: Boolean
         get() = message.isBlank()

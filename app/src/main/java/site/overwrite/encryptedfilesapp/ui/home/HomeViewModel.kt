@@ -413,8 +413,17 @@ class HomeViewModel : ViewModel() {
         duration: SnackbarDuration = if (actionLabel == null) SnackbarDuration.Short else
             SnackbarDuration.Indefinite,
         onAction: (() -> Unit)? = null,
-        onDismiss: (() -> Unit)? = null
+        onDismiss: (() -> Unit)? = null,
+        snackbarFree: Boolean = false
     ) {
+        // If snackbar is not free yet (and not going to be free), run the current dismiss action
+        if (!_uiState.value.snackbarData.snackbarFree && !snackbarFree) {
+            if (_uiState.value.snackbarData.onDismiss != null) {
+                _uiState.value.snackbarData.onDismiss!!()
+            }
+        }
+
+        // Then we can safely update the snackbar
         _uiState.update {
             it.copy(
                 snackbarData = SnackbarData(
@@ -423,7 +432,8 @@ class HomeViewModel : ViewModel() {
                     withDismissAction = withDismissAction,
                     duration = duration,
                     onAction = onAction,
-                    onDismiss = onDismiss
+                    onDismiss = onDismiss,
+                    snackbarFree = snackbarFree
                 )
             )
         }
@@ -433,7 +443,10 @@ class HomeViewModel : ViewModel() {
      * Clears the snackbar data.
      */
     fun clearSnackbar() {
-        showSnackbar("")
+        showSnackbar(
+            message = "",
+            snackbarFree = true
+        )
     }
 
     // Other methods
