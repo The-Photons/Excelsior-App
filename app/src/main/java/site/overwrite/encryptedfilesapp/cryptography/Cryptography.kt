@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.data
+package site.overwrite.encryptedfilesapp.cryptography
 
 import android.util.Base64
 import android.util.Log
@@ -103,7 +103,7 @@ class Cryptography {
                             break
                         }
 
-                        Log.d("CRYPTO", "Bytes Enc: $numBytesEncrypted, Bytes Read: $numReadBytes")
+//                        Log.d("CRYPTO", "Bytes Enc: $numBytesEncrypted, Bytes Read: $numReadBytes")
                         output.write(buffer, 0, numReadBytes)
 
                         // Update the statuses
@@ -167,7 +167,12 @@ class Cryptography {
             cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, ivParameterSpec)
 
             // Then process the decryption
-            val cipherInputStream = CipherInputStream(inputStream, cipher)
+            /*
+             * Apparently the cipher input stream here has a limited buffer size of 512 bytes.
+             * (See https://stackoverflow.com/a/49957428)
+             * So we need to implement our own class to remove this arbitrary limit.
+             */
+            val cipherInputStream = MyCipherInputStream(inputStream, cipher, bufferSize)
 
             val buffer = ByteArray(bufferSize)
             var numBytesDecrypted = 0  // FIXME: Shouldn't this be long?
@@ -181,7 +186,7 @@ class Cryptography {
                             break
                         }
 
-                        Log.d("CRYPTO", "Bytes Dec: $numBytesDecrypted, Bytes Read: $numReadBytes")
+//                        Log.d("CRYPTO", "Bytes Dec: $numBytesDecrypted, Bytes Read: $numReadBytes")
                         output.write(buffer, 0, numReadBytes)
 
                         // Update the statuses

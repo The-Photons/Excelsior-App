@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.data
+package site.overwrite.encryptedfilesapp.cryptography
 
 data class EncryptionParameters(
     val iv: String = "",

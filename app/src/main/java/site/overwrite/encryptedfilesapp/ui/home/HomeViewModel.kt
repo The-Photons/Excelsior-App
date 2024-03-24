@@ -35,8 +35,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import site.overwrite.encryptedfilesapp.Server
-import site.overwrite.encryptedfilesapp.data.Cryptography
-import site.overwrite.encryptedfilesapp.data.EncryptionParameters
+import site.overwrite.encryptedfilesapp.cryptography.Cryptography
+import site.overwrite.encryptedfilesapp.cryptography.EncryptionParameters
 import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
