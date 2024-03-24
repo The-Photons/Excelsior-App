@@ -18,12 +18,10 @@
 package site.overwrite.encryptedfilesapp.cryptography
 
 import android.util.Base64
-import android.util.Log
 import java.io.FileOutputStream
 import java.io.InputStream
 import javax.crypto.BadPaddingException
 import javax.crypto.Cipher
-import javax.crypto.CipherInputStream
 import javax.crypto.CipherOutputStream
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.IvParameterSpec
@@ -80,7 +78,7 @@ class Cryptography {
             key: ByteArray,
             iv: String,
             bufferSize: Int = 4096,
-            listener: (numBytesEncrypted: Int) -> Unit = { _ -> }
+            listener: (numBytesEncrypted: Long) -> Unit = { _ -> }
         ) {
             // Set up cipher
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
@@ -92,7 +90,7 @@ class Cryptography {
             val cipherOutputStream = CipherOutputStream(outputStream, cipher)
 
             val buffer = ByteArray(bufferSize)
-            var numBytesEncrypted = 0  // FIXME: Shouldn't this be long?
+            var numBytesEncrypted = 0L
             var numReadBytes: Int
             inputStream.use { input ->
                 cipherOutputStream.use { output ->
@@ -157,7 +155,7 @@ class Cryptography {
             key: ByteArray,
             iv: String,
             bufferSize: Int = 4096,
-            listener: (numBytesDecrypted: Int) -> Unit = { _ -> }
+            listener: (numBytesDecrypted: Long) -> Unit = { _ -> }
         ) {
             // Set up cipher
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
@@ -174,7 +172,7 @@ class Cryptography {
             val cipherInputStream = MyCipherInputStream(inputStream, cipher, bufferSize)
 
             val buffer = ByteArray(bufferSize)
-            var numBytesDecrypted = 0  // FIXME: Shouldn't this be long?
+            var numBytesDecrypted = 0L
             var numReadBytes: Int
             cipherInputStream.use { input ->
                 outputStream.use { output ->

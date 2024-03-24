@@ -287,7 +287,7 @@ fun HomeTopBar(
                     leadingIcon = { Icon(Icons.Default.Info, "About") },
                     text = { Text("About") },
                     onClick = {
-                        /*TODO*/
+                        /* TODO: Show about page */
                         showExtrasMenu = false
                     }
                 )
@@ -313,7 +313,7 @@ fun AddItemActionButton() {
                 leadingIcon = { Icon(Icons.AutoMirrored.Default.NoteAdd, "Add File") },
                 text = { Text("Add File") },
                 onClick = {
-                    /* TODO */
+                    /* TODO: Add file on server */
 //                    pickFileLauncher.launch("*/*")
                 }
             )
@@ -321,7 +321,7 @@ fun AddItemActionButton() {
                 leadingIcon = { Icon(Icons.Default.CreateNewFolder, "Create Folder") },
                 text = { Text("Create Folder") },
                 onClick = {
-                    /* TODO */
+                    /* TODO: Create folder on server */
 //                    showCreateFolderInputDialog = true
                 }
             )
@@ -494,7 +494,7 @@ fun DirectoryItem(
                     }
                 },
                 onYes = {
-                    /* TODO */
+                    /* TODO: Delete item from server */
                     showConfirmDeleteDialog = false
                 },
                 onNo = { showConfirmDeleteDialog = false }
