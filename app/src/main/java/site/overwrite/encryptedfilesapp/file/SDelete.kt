@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.io
+package site.overwrite.encryptedfilesapp.file
 
 import java.io.File
 

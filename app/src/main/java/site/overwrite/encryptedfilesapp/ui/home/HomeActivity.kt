@@ -29,7 +29,7 @@ import androidx.compose.ui.Modifier
 import kotlinx.coroutines.runBlocking
 import site.overwrite.encryptedfilesapp.data.DataStoreManager
 import site.overwrite.encryptedfilesapp.Server
-import site.overwrite.encryptedfilesapp.misc.serializable
+import site.overwrite.encryptedfilesapp.serializable
 import site.overwrite.encryptedfilesapp.data.Credentials
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 

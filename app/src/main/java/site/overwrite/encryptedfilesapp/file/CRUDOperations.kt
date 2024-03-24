@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 PhotonicGluon.
+ * Copyright (c) 2024 PhotonicGluon.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,113 +15,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package site.overwrite.encryptedfilesapp.io
+package site.overwrite.encryptedfilesapp.file
 
-import android.content.ContentResolver
-import android.net.Uri
-import android.os.Environment
-import android.provider.OpenableColumns
 import android.util.Log
 import java.io.File
 import java.io.IOException
 
-const val APP_DIR_NAME = "Excelsior"
-val DOWNLOADS_DIR: File =
-    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-
-/**
- * Class that contains input/output operations.
- */
-class IOMethods {
+class CRUDOperations {
     companion object {
-        // Path methods
-        /**
-         * @return The application directory that is within the downloads directory.
-         */
-        private fun getAppDir(): String {
-            return "${DOWNLOADS_DIR.path}/$APP_DIR_NAME"
-        }
-
-        /**
-         * Gets the file/directory path with reference to the application directory.
-         *
-         * @param itemPath Path to the file/directory, with reference to the application directory.
-         */
-        fun getItemPath(itemPath: String): String {
-            return "${getAppDir()}/$itemPath".trimEnd('/')
-        }
-
-        /**
-         * Gets the file name from the file path.
-         *
-         * @param filePath Path to the file.
-         * @return File name.
-         */
-        fun getFileName(filePath: String): String {
-            return filePath.split('/').last()
-        }
-
-        /**
-         * Gets the file name from a "content://" URI.
-         *
-         * @param uri A URI with the "content" scheme.
-         * @param contentResolver Content resolver that helps resolve the file.
-         * @return File name.
-         */
-        fun getFileName(
-            uri: Uri,
-            contentResolver: ContentResolver
-        ): String {
-            var result = ""
-
-            contentResolver.query(uri, null, null, null, null).use { cursor ->
-                if (cursor != null) {
-                    if (cursor.moveToFirst()) {
-                        val colIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                        result = cursor.getString(colIndex)
-                    }
-                }
-            }
-            return result
-        }
-
-        /**
-         * Gets the directory that contains the item.
-         *
-         * @param itemPath Path to the item.
-         * @return Directory that contains the item.
-         */
-        fun getContainingDir(itemPath: String): String {
-            val split = itemPath.split('/')
-            return split.subList(0, split.size - 1).joinToString("/")
-        }
-
-        // Existence methods
-        /**
-         * Checks if an item exists at the specified path.
-         *
-         * @param itemPath Path to the item to check.
-         * @return Boolean whether there is an item at the specified path.
-         */
-        fun doesItemExist(itemPath: String): Boolean {
-            return File(getItemPath(itemPath)).exists()
-        }
-
-        /**
-         * Checks if a file exists at the specified path.
-         *
-         * @param filePath Path to the file to check.
-         * @return Boolean whether there is a file at the specified path.
-         */
-        fun doesFileExist(filePath: String): Boolean {
-            val possibleFile = File(getItemPath(filePath))
-            if (possibleFile.isFile) {
-                return possibleFile.exists()
-            }
-            return false
-        }
-
-        // CRUD methods
         /**
          * Creates a directory at the specified path.
          *
@@ -133,14 +34,14 @@ class IOMethods {
          * failed.
          */
         fun createDirectory(pathToDir: String): File? {
-            val appDirectory = File(getItemPath(pathToDir))
+            val appDirectory = File(Pathing.getItemPath(pathToDir))
             if (!appDirectory.exists()) {
                 val directoryCreated = appDirectory.mkdirs()
                 if (!directoryCreated) {
                     // Failed to create the directory
                     return null
                 } else {
-                    Log.d("IO METHODS", "Created directory '$pathToDir'")
+                    Log.d("CRUD-OPERATIONS", "Created directory '$pathToDir'")
                 }
             }
 
@@ -156,22 +57,22 @@ class IOMethods {
         fun createFile(
             filePath: String
         ): File? {
-            val containingDir = createDirectory(getContainingDir(filePath))
+            val containingDir = createDirectory(Pathing.getContainingDir(filePath))
             if (containingDir != null) {
                 // Create the file within the directory
-                val file = File(getItemPath(filePath))
+                val file = File(Pathing.getItemPath(filePath))
                 try {
                     if (!file.exists()) {
                         val fileCreated = file.createNewFile()
                         if (!fileCreated) {
                             // Failed to create the file
-                            Log.d("IO METHODS", "Failed to create file")
+                            Log.d("CRUD-OPERATIONS", "Failed to create file")
                             return null
                         }
                     }
                     return file
                 } catch (e: IOException) {
-                    Log.d("IO METHODS", "Failed to create file: ${e.message}")
+                    Log.d("CRUD-OPERATIONS", "Failed to create file: ${e.message}")
                 }
             }
             return null
@@ -189,26 +90,26 @@ class IOMethods {
             fileContent: ByteArray
         ): File? {
             // Get the directory that contains the file
-            val containingDir = createDirectory(getContainingDir(filePath))
+            val containingDir = createDirectory(Pathing.getContainingDir(filePath))
             if (containingDir != null) {
                 // Create the file within the directory
-                val file = File(getItemPath(filePath))
+                val file = File(Pathing.getItemPath(filePath))
                 try {
                     if (!file.exists()) {
                         val fileCreated = file.createNewFile()
                         if (!fileCreated) {
                             // Failed to create the file
-                            Log.d("IO METHODS", "Failed to create file")
+                            Log.d("CRUD-OPERATIONS", "Failed to create file")
                             return null
                         } else {
                             // With the file created, fill it with the contents
                             file.writeBytes(fileContent)
-                            Log.d("IO METHODS", "Created file '$filePath'")
+                            Log.d("CRUD-OPERATIONS", "Created file '$filePath'")
                         }
                     }
                     return file
                 } catch (e: IOException) {
-                    Log.d("IO METHODS", "Failed to create file: ${e.message}")
+                    Log.d("CRUD-OPERATIONS", "Failed to create file: ${e.message}")
                 }
             }
             return null
@@ -221,8 +122,8 @@ class IOMethods {
          * @return The file object, or `null` if the file does not exist.
          */
         fun getFile(filePath: String): File? {
-            if (doesFileExist(filePath)) {
-                return File(getItemPath(filePath))
+            if (Pathing.doesFileExist(filePath)) {
+                return File(Pathing.getItemPath(filePath))
             }
             return null
         }
@@ -254,9 +155,9 @@ class IOMethods {
             }
 
             if (allDeleted) {
-                Log.d("IO METHODS", "Deleted '${fileOrDirectory.path}'")
+                Log.d("CRUD-OPERATIONS", "Deleted '${fileOrDirectory.path}'")
             } else {
-                Log.d("IO METHODS", "Failed to delete '${fileOrDirectory.path}'")
+                Log.d("CRUD-OPERATIONS", "Failed to delete '${fileOrDirectory.path}'")
             }
             return allDeleted
         }
@@ -270,32 +171,8 @@ class IOMethods {
          * @return Status of the deletion: `true` if the item was deleted and `false` if not.
          */
         fun deleteItem(itemPath: String): Boolean {
-            val fileOrDirectory = File(getItemPath(itemPath))
+            val fileOrDirectory = File(Pathing.getItemPath(itemPath))
             return deleteItem(fileOrDirectory)
-        }
-
-        // Other methods
-        /**
-         * Recursively list the items in the directory.
-         *
-         * @param dirPath Path to the directory.
-         * @return
-         */
-        fun traverseDir(dirPath: String): List<String> {
-            val paths = mutableListOf<String>()
-            val appDir = getAppDir()
-
-            File(getItemPath(dirPath)).walkTopDown().forEach {
-                // We only want to add files and non-empty directories
-                if (it.isFile || (it.isDirectory && (it.list()?.size ?: 0) != 0)) {
-                    paths.add(it.path.substring(appDir.length))
-                }
-            }
-            // Remove the empty app directory
-            paths.remove("")
-
-            // Now sort the paths
-            return paths.sorted()
         }
     }
 }

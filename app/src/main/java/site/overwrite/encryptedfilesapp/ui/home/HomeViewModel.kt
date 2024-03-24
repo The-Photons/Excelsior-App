@@ -46,7 +46,8 @@ import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
-import site.overwrite.encryptedfilesapp.io.IOMethods
+import site.overwrite.encryptedfilesapp.file.CRUDOperations
+import site.overwrite.encryptedfilesapp.file.Pathing
 import site.overwrite.encryptedfilesapp.ui.SnackbarData
 import site.overwrite.encryptedfilesapp.ui.ToastData
 
@@ -203,14 +204,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             var file: RemoteFile
             for (fileNum in 1..numFilesToDelete) {
                 file = filesToDelete[fileNum - 1]
-                IOMethods.deleteItem(file.path)
+                CRUDOperations.deleteItem(file.path)
                 processingDialogProgress = fileNum.toFloat() / numFilesToDelete
             }
             processingDialogProgress = 1f
 
             Log.d("HOME", "Removing directories")
-            if (IOMethods.doesItemExist("")) {
-                IOMethods.deleteItem("")
+            if (Pathing.doesItemExist("")) {
+                CRUDOperations.deleteItem("")
             }
 
             Log.d("HOME", "Cleanup complete")
@@ -242,7 +243,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val file = IOMethods.getFile(item.path)
+        val file = CRUDOperations.getFile(item.path)
         if (file == null) {
             Log.d("HOME", "File '${item.name}' not synced, so cannot open")
             showSnackbar("File not synced")
@@ -317,7 +318,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             file.path,
             { channel ->
                 // Create a temporary file to store the encrypted content
-                val encryptedFile = IOMethods.createFile("${file.path}.encrypted")
+                val encryptedFile = CRUDOperations.createFile("${file.path}.encrypted")
                 if (encryptedFile == null) {
                     Log.d(
                         "HOME",
@@ -339,7 +340,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     processingDialogSubtitle
                 )
 
-                val decryptedFile = IOMethods.createFile(file.path)
+                val decryptedFile = CRUDOperations.createFile(file.path)
                 if (decryptedFile == null) {
                     Log.d(
                         "HOME",
@@ -359,7 +360,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     processingDialogProgress = numBytesDecrypted.toFloat() / encryptedFile.length()
                 }
 
-                IOMethods.deleteItem(encryptedFile)
+                CRUDOperations.deleteItem(encryptedFile)
                 hideProcessingDialog()
                 onComplete()
             },
@@ -431,7 +432,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createFileOnServer(uri: Uri) {
         val context = getApplication<Application>().applicationContext
-        val name = IOMethods.getFileName(uri, context.contentResolver)
+        val name = Pathing.getFileName(uri, context.contentResolver)
 
         Log.d("HOME", "Attempting to upload file '$name' to server")
 
@@ -478,7 +479,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 initProcessingDialog("Encrypting '$name'")
 
                 // Create a temporary file to store the encrypted content
-                val encryptedFile = IOMethods.createFile("$path.encrypted")
+                val encryptedFile = CRUDOperations.createFile("$path.encrypted")
                 if (encryptedFile == null) {
                     Log.d(
                         "HOME",
@@ -522,7 +523,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         _uiState.value.activeDirectory.addFile(name, path, fileSize)
 
                         showSnackbar("Uploaded '$name'")
-                        IOMethods.deleteItem(encryptedFile)
+                        CRUDOperations.deleteItem(encryptedFile)
                     },
                     { _, json ->
                         val reason = json.getString("message")
@@ -531,7 +532,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             "Failed to create file: $reason"
                         )
                         showSnackbar("Failed to upload file: $reason")
-                        IOMethods.deleteItem(encryptedFile)
+                        CRUDOperations.deleteItem(encryptedFile)
                         hideProcessingDialog()
                     },
                     { error ->
@@ -539,7 +540,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             "HOME",
                             "Error when making file: $error"
                         )
-                        IOMethods.deleteItem(encryptedFile)
+                        CRUDOperations.deleteItem(encryptedFile)
                         hideProcessingDialog()
                     }
                 ) { bytesSentTotal, contentLength ->
@@ -615,7 +616,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             },
             onDismiss = {
                 if (!item.markedForLocalDeletion) return@showSnackbar
-                if (IOMethods.deleteItem(item.path)) {
+                if (CRUDOperations.deleteItem(item.path)) {
                     item.unmarkForLocalDeletion()
                     return@showSnackbar
                 }

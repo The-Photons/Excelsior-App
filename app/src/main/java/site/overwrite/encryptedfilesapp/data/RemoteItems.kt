@@ -19,7 +19,7 @@ package site.overwrite.encryptedfilesapp.data
 
 import android.util.Log
 import org.json.JSONObject
-import site.overwrite.encryptedfilesapp.io.IOMethods
+import site.overwrite.encryptedfilesapp.file.Pathing
 
 // Enums
 enum class ItemType {
@@ -53,7 +53,7 @@ abstract class RemoteItem(
 
     val dirPath: String
         get() {
-            return IOMethods.getContainingDir(path)
+            return Pathing.getContainingDir(path)
         }
 
     // Setters
@@ -145,7 +145,7 @@ class RemoteFile(
 ) : RemoteItem(name, path, size, ItemType.FILE, parentDir) {
     // Methods
     override fun isSynced(): Boolean {
-        return path.isNotEmpty() && IOMethods.doesFileExist(path)
+        return path.isNotEmpty() && Pathing.doesFileExist(path)
     }
 
     companion object {
@@ -222,7 +222,7 @@ open class RemoteDirectory(
             val allFiles = constituentFiles
             val syncedFiles = ArrayList<RemoteFile>()
             for (file in allFiles) {
-                if (IOMethods.doesFileExist(file.path)) {
+                if (Pathing.doesFileExist(file.path)) {
                     syncedFiles.add(file)
                 }
             }
@@ -285,12 +285,14 @@ open class RemoteDirectory(
         path: String,
         size: Long
     ) {
-        addFile(RemoteFile(
+        addFile(
+            RemoteFile(
             name,
             path,
             size,
             this
-        ))
+        )
+        )
     }
 
     private fun addFolder(directory: RemoteDirectory) {

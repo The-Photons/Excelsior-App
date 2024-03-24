@@ -17,7 +17,7 @@
 
 package site.overwrite.encryptedfilesapp.data
 
-import site.overwrite.encryptedfilesapp.io.IOMethods
+import site.overwrite.encryptedfilesapp.file.Pathing
 import java.io.File
 import java.math.RoundingMode
 
@@ -75,7 +75,7 @@ class FileSizeUtils {
          * @return Size of the item.
          */
         fun getItemSize(itemPath: String): Long {
-            return File(IOMethods.getItemPath(itemPath)).length()
+            return File(Pathing.getItemPath(itemPath)).length()
         }
 
 
