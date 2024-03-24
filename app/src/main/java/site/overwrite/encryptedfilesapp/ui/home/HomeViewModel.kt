@@ -51,6 +51,14 @@ data class HomeViewUIState(
     val username: String = "",
     val password: String = "",
     val encryptionParameters: EncryptionParameters = EncryptionParameters(),
+    val rootDirectory: RemoteDirectory = RemoteDirectory(
+        "",
+        "",
+        0,
+        emptyArray(),
+        emptyArray(),
+        null
+    ),
     val activeDirectory: RemoteDirectory = RemoteDirectory(
         "",
         "",
@@ -179,9 +187,25 @@ class HomeViewModel : ViewModel() {
         Log.d("MAIN", "Start logout process")
         server.handleLogout {
             loggedIn = false
-            Log.d("MAIN", "Deleting all folders")
-            IOMethods.deleteItem("")  // TODO: Use a progress bar for deletion
-            Log.d("MAIN", "Logged out")
+            Log.d("MAIN", "Logged out; deleting synced local files")
+            initProcessingDialog("Deleting local files")
+
+            val filesToDelete = _uiState.value.rootDirectory.syncedConstituentFiles
+            val numFilesToDelete = filesToDelete.size
+            var file: RemoteFile
+            for (fileNum in 1..numFilesToDelete) {
+                file = filesToDelete[fileNum - 1]
+                IOMethods.deleteItem(file.path)
+                processingDialogProgress = fileNum.toFloat() / numFilesToDelete
+            }
+            processingDialogProgress = 1f
+
+            Log.d("MAIN", "Removing directories")
+            if (IOMethods.doesItemExist("")) {
+                IOMethods.deleteItem("")
+            }
+
+            Log.d("MAIN", "Cleanup complete")
             (context as Activity).finish()
         }
     }
@@ -219,8 +243,13 @@ class HomeViewModel : ViewModel() {
         _uiState.value.server.listDir(
             "",
             { json ->
-                val rootFolder = RemoteDirectory.fromJSON(json)
-                changeActiveDirectory(rootFolder)
+                val rootDirectory = RemoteDirectory.fromJSON(json)
+                _uiState.update {
+                    it.copy(
+                        rootDirectory = rootDirectory
+                    )
+                }
+                changeActiveDirectory(rootDirectory)
             },
             { _, json ->
                 Log.d(

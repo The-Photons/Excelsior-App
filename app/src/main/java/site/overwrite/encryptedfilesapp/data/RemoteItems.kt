@@ -211,8 +211,21 @@ open class RemoteDirectory(
             }
             return files.toTypedArray()
         }
-    val constituentFileCount: Int
-        get() = constituentFiles.size
+
+    /**
+     * Synced files that belong to this directory or any subdirectory.
+     */
+    val syncedConstituentFiles: Array<RemoteFile>
+        get() {
+            val allFiles = constituentFiles
+            val syncedFiles = ArrayList<RemoteFile>()
+            for (file in allFiles) {
+                if (IOMethods.doesFileExist(file.path)) {
+                    syncedFiles.add(file)
+                }
+            }
+            return syncedFiles.toTypedArray()
+        }
 
     override fun isSynced(): Boolean {
         // If the folder is empty then we will call it synced
