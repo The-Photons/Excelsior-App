@@ -287,11 +287,11 @@ open class RemoteDirectory(
     ) {
         addFile(
             RemoteFile(
-            name,
-            path,
-            size,
-            this
-        )
+                name,
+                path,
+                size,
+                this
+            )
         )
     }
 
@@ -305,14 +305,28 @@ open class RemoteDirectory(
         name: String,
         path: String
     ) {
-        addFolder(RemoteDirectory(
-            name,
-            path,
-            0,
-            emptyArray(),
-            emptyArray(),
-            this
-        ))
+        addFolder(
+            RemoteDirectory(
+                name,
+                path,
+                0,
+                emptyArray(),
+                emptyArray(),
+                this
+            )
+        )
+    }
+
+    fun removeFile(file: RemoteFile) {
+        val filesList = files.toMutableList()
+        filesList.remove(file)
+        files = filesList.toTypedArray()
+    }
+
+    fun removeFolder(dir: RemoteDirectory) {
+        val subdirList = subdirs.toMutableList()
+        subdirList.remove(dir)
+        subdirs = subdirList.toTypedArray()
     }
 
     companion object {

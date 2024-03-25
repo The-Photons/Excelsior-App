@@ -627,6 +627,44 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    fun deleteItemFromServer(item: RemoteItem) {
+        item.markForServerDeletion()
+        Log.d("HOME", "Marked '${item.path}' for server deletion")
+
+        showSnackbar(
+            "Deleted '${item.name}' on server",
+            "Undo",
+            duration = SnackbarDuration.Short,
+            onAction = {
+                item.unmarkForServerDeletion()
+                Log.d("HOME", "Unmarked '${item.path}' for server deletion")
+                showSnackbar("Restored '${item.name}' on server", duration = SnackbarDuration.Short)
+            },
+            onDismiss = {
+                if (!item.markedForServerDeletion) return@showSnackbar
+                _uiState.value.server.deleteItem(
+                    item.path,
+                    {
+                        if (item.type == ItemType.FILE) {
+                            _uiState.value.activeDirectory.removeFile(item as RemoteFile)
+                        } else {
+                            _uiState.value.activeDirectory.removeFolder(item as RemoteDirectory)
+                        }
+                        Log.d("HOME", "Deleted '${item.path}' on server")
+                    },
+                    { _, json ->
+                        val reason = json.getString("message")
+                        Log.d("HOME", "Failed to delete '${item.path}' on server: $reason")
+                        showSnackbar("Failed to delete '${item.name}' on server: $reason")
+                    },
+                    { error ->
+                        Log.d("HOME", "Error when delete '${item.path}' on server: $error")
+                    }
+                )
+            }
+        )
+    }
+
     // Displayables methods
     /**
      * Shows a toast message to the screen.

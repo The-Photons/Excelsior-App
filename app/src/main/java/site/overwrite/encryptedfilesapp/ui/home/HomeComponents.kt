@@ -158,7 +158,8 @@ fun HomeScreen(
                         item = item,
                         onClick = { homeViewModel.directoryItemOnClick(item) },
                         onSyncRequest = { homeViewModel.syncItem(item) },
-                        onDeleteRequest = { homeViewModel.deleteItemLocally(item) }
+                        onLocalDeleteRequest = { homeViewModel.deleteItemLocally(item) },
+                        onServerDeleteRequest = { homeViewModel.deleteItemFromServer(item) }
                     )
                 }
             }
@@ -413,14 +414,16 @@ fun LogoutDialog(
  * @param item Remote item that this composable is representing.
  * @param onClick Function to run when the item is clicked.
  * @param onSyncRequest Function to run when the sync button is clicked.
- * @param onDeleteRequest Function to run when the delete button is clicked.
+ * @param onLocalDeleteRequest Function to run when the delete from device button is clicked.
+ * @param onServerDeleteRequest Function to run when the delete from server button is clicked.
  */
 @Composable
 fun DirectoryItem(
     item: RemoteItem,
     onClick: (RemoteItem) -> Unit,
     onSyncRequest: () -> Unit,
-    onDeleteRequest: () -> Unit
+    onLocalDeleteRequest: () -> Unit,
+    onServerDeleteRequest: () -> Unit
 ) {
     var isDropdownExpanded by remember { mutableStateOf(false) }
     var showConfirmDeleteDialog by remember { mutableStateOf(false) }
@@ -496,7 +499,7 @@ fun DirectoryItem(
                         text = { Text("Delete From Device") },
                         enabled = item.synced,
                         onClick = {
-                            onDeleteRequest()
+                            onLocalDeleteRequest()
                             isDropdownExpanded = false
                         }
                     )
@@ -527,8 +530,9 @@ fun DirectoryItem(
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Text(
-                            "Are you sure that you want to delete the ${item.type} '${item.name}' " +
-                                    "from the server?"
+                            "Are you sure that you want to delete the " +
+                                    "${item.type.toString().lowercase()} '${item.name}' from the " +
+                                    "server?"
                         )
                         if (item.type == ItemType.DIRECTORY) {
                             Text("This action also deletes all files within the directory.")
@@ -537,7 +541,7 @@ fun DirectoryItem(
                     }
                 },
                 onYes = {
-                    /* TODO: Delete item from server */
+                    onServerDeleteRequest()
                     showConfirmDeleteDialog = false
                 },
                 onNo = { showConfirmDeleteDialog = false }
@@ -592,6 +596,7 @@ fun DirectoryFilePreview() {
             ),
             {},
             {},
+            {},
             {}
         )
     }
@@ -610,6 +615,7 @@ fun DirectoryFolderPreview() {
                 emptyArray(),
                 null
             ),
+            {},
             {},
             {},
             {}
