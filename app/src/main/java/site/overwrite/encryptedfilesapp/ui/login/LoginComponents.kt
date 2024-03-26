@@ -67,6 +67,7 @@ import site.overwrite.encryptedfilesapp.ui.Dialogs
 const val SERVER_FIELD_LABEL = "Server URL"
 const val SERVER_FIELD_PLACEHOLDER = "https://example.com/"
 const val SERVER_FIELD_ERROR_TEXT = "Invalid URL"
+const val SERVER_FIELD_TIMEOUT_TEXT = "Timed out when connecting"
 
 const val USERNAME_FIELD_LABEL = "Username"
 const val USERNAME_FIELD_PLACEHOLDER = "Username"
@@ -109,9 +110,11 @@ fun LoginForm(
             ServerURLField(
                 value = loginViewModel.serverURL,
                 onChange = { loginViewModel.updateServerURL(it) },
-                modifier = Modifier.fillMaxWidth(),
                 isError = !loginViewModel.hasUpdatedValues &&
-                        loginUIState.credentialCheckResult == CredentialCheckResult.INVALID_URL
+                        loginUIState.credentialCheckResult == CredentialCheckResult.INVALID_URL,
+                isTimeout = !loginViewModel.hasUpdatedValues &&
+                        loginUIState.credentialCheckResult == CredentialCheckResult.TIMEOUT,
+                modifier = Modifier.fillMaxWidth()
             )
             UsernameField(
                 value = loginViewModel.username,
@@ -151,20 +154,24 @@ fun LoginForm(
  * @param value Value to use for the field.
  * @param onChange Function to run upon input change.
  * @param isError Whether the value is erroneous or not.
+ * @param isTimeout Whether there was a timeout.
  * @param modifier Modifier for the input field.
  * @param label Label to display for the input field.
  * @param placeholder Placeholder for the input field.
  * @param errorText Text to show if the value is erroneous.
+ * @param timeoutText Text to show if the connection timed out.
  */
 @Composable
 fun ServerURLField(
     value: String,
     onChange: (String) -> Unit,
     isError: Boolean,
+    isTimeout: Boolean,
     modifier: Modifier = Modifier,
     label: String = SERVER_FIELD_LABEL,
     placeholder: String = SERVER_FIELD_PLACEHOLDER,
-    errorText: String = SERVER_FIELD_ERROR_TEXT
+    errorText: String = SERVER_FIELD_ERROR_TEXT,
+    timeoutText: String = SERVER_FIELD_TIMEOUT_TEXT
 ) {
     val focusManager = LocalFocusManager.current
     val leadingIcon = @Composable {
@@ -193,6 +200,13 @@ fun ServerURLField(
                 Text(
                     modifier = Modifier.fillMaxWidth(),
                     text = errorText,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            if (isTimeout) {
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = timeoutText,
                     color = MaterialTheme.colorScheme.error
                 )
             }

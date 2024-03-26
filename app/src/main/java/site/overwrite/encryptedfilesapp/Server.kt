@@ -20,6 +20,8 @@ package site.overwrite.encryptedfilesapp
 import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.plugins.ConnectTimeoutException
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.onDownload
 import io.ktor.client.plugins.onUpload
@@ -62,6 +64,7 @@ enum class HttpMethod {
 
 enum class LoginResult {
     SUCCESS,
+    TIMEOUT,
     INVALID_USERNAME,
     INVALID_PASSWORD;
 
@@ -123,7 +126,11 @@ class Server(val serverURL: String) {
             },
             errorListener = { error ->
                 Log.d("SERVER", "Error when logging in: $error")
-                listener(LoginResult.INVALID_USERNAME)
+                if (error is ConnectTimeoutException) {
+                    listener(LoginResult.TIMEOUT)
+                } else {
+                    listener(LoginResult.INVALID_USERNAME)
+                }
             },
             postData = postData
         )
@@ -433,12 +440,13 @@ class Server(val serverURL: String) {
             downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> },
             uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> },
         ) {
-            // Todo: Handle timeout of server requests
+            // FIXME: Handle timeout of server requests
 
             // Form the full URL
             val fullURL = "$url/$page"
             scope.launch {
                 try {
+                    Log.d("SERVER", "Attempting to send $method request to '$fullURL'")
                     val response = when (method) {
                         HttpMethod.GET -> client.get(fullURL) {
                             onDownload(downloadHandler)

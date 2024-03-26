@@ -40,6 +40,7 @@ data class Credentials(
 
 enum class CredentialCheckResult {
     PENDING,
+    TIMEOUT,
     INVALID_URL,
     INVALID_USERNAME,
     INVALID_PASSWORD,

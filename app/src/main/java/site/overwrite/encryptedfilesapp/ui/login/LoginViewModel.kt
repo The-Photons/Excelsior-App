@@ -81,6 +81,11 @@ data class LoginViewUIState(
                         onResult(CredentialCheckResult.VALID)
                     }
 
+                    LoginResult.TIMEOUT -> {
+                        Log.d("LOGIN", "Connection timed out")
+                        onResult(CredentialCheckResult.TIMEOUT)
+                    }
+
                     LoginResult.INVALID_USERNAME -> {
                         Log.d("LOGIN", "Invalid username: ${credentials.username}")
                         onResult(CredentialCheckResult.INVALID_USERNAME)
@@ -158,7 +163,6 @@ class LoginViewModel : ViewModel() {
             }
 
             if (result != CredentialCheckResult.VALID) {
-                // Just clear the password field
                 password = ""
             } else {
                 // Send the credentials onwards

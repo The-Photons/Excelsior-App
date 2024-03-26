@@ -451,6 +451,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        /*
+         * FIXME: Retry sync of directories, once the snackbar disappears, fails silently (which is
+         *  bad) and does not allow for attempting of sync afterwards.
+         */
         if (item.type == ItemType.FILE) {
             val theFile = item as RemoteFile
             Log.d("HOME", "Syncing file '${theFile.path}'")
