@@ -52,8 +52,6 @@ import site.overwrite.encryptedfilesapp.ui.SnackbarData
 import site.overwrite.encryptedfilesapp.ui.ToastData
 
 data class HomeViewUIState(
-    // TODO: Add snackbar reports for all errors
-
     // Main fields
     val server: Server = Server(""),
     val username: String = "",
@@ -177,13 +175,32 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 },
                 { _, json ->
+                    val message = json.getString("message")
                     Log.d(
                         "HOME",
-                        "Failed to get encryption parameters: ${json.getString("message")}"
+                        "Failed to get encryption parameters: $message"
+                    )
+                    showSnackbar(
+                        message = "Failed to get encryption parameters: $message",
+                        actionLabel = "Retry",
+                        onAction = {
+                            Log.d("HOME", "Retry login to '${server.serverURL}'")
+                            login(server, username, password)
+                        },
+                        onDismiss = {}
                     )
                 },
                 { error ->
                     Log.d("HOME", "Error when getting encryption parameters: $error")
+                    showSnackbar(
+                        message = "Error when getting encryption parameters: ${error.message}",
+                        actionLabel = "Retry",
+                        onAction = {
+                            Log.d("HOME", "Retry login to '${server.serverURL}'")
+                            login(server, username, password)
+                        },
+                        onDismiss = {}
+                    )
                 }
             )
         }
@@ -233,7 +250,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             changeActiveDirectory(_uiState.value.parentDirectory!!)
         } else {
             Log.d("HOME", "Cannot go back to previous directory")
-            showToast("Cannot go back to previous directory")
+            showSnackbar("Cannot go back to previous directory")
         }
     }
 
@@ -271,9 +288,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         } catch (error: ActivityNotFoundException) {
             Log.d(
                 "HOME",
-                "Cannot open file, activity not found: ${error.message}"
+                "Error when opening file: $error"
             )
-            showSnackbar("$error.message")
+            showSnackbar("Error when opening file: ${error.message}")
         }
     }
 
@@ -291,12 +308,33 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 changeActiveDirectory(rootDirectory)
             },
             { _, json ->
+                val message = json.getString("message")
                 Log.d(
                     "HOME",
-                    "Failed to get root folder items: ${json.getString("message")}"
+                    "Failed to get root folder items: $message"
+                )
+                showSnackbar(
+                    message = "Failed to get root folder items: $message",
+                    actionLabel = "Retry",
+                    onAction = {
+                        Log.d("HOME", "Retrying getting root folder items")
+                        getRootFolderItems()
+                    },
+                    onDismiss = {}
                 )
             },
-            { error -> Log.d("HOME", "Error when getting folder items: $error") }
+            { error ->
+                Log.d("HOME", "Error when getting root folder items: $error")
+                showSnackbar(
+                    message = "Error when getting root folder items: ${error.message}",
+                    actionLabel = "Retry",
+                    onAction = {
+                        Log.d("HOME", "Retrying getting root folder items")
+                        getRootFolderItems()
+                    },
+                    onDismiss = {}
+                )
+            }
         )
     }
 
@@ -324,7 +362,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         "HOME",
                         "Error when making file: failed to create temporary file"
                     )
-                    showSnackbar("Failed to create temporary file")
+                    showSnackbar(
+                        message = "Failed to create temporary file",
+                        actionLabel = "Retry",
+                        duration = SnackbarDuration.Long,
+                        onAction = {
+                            Log.d("HOME", "Retrying file sync")
+                            syncFile(file, fileNum, totalNumFiles, onComplete)
+                        },
+                        onDismiss = {}
+                    )
                     hideProcessingDialog()
                     return@getFile
                 }
@@ -346,7 +393,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         "HOME",
                         "Error when making file: failed to create output file"
                     )
-                    showSnackbar("Failed to create output file")
+                    showSnackbar(
+                        message = "Failed to create output file",
+                        actionLabel = "Retry",
+                        duration = SnackbarDuration.Long,
+                        onAction = {
+                            Log.d("HOME", "Retrying file sync")
+                            syncFile(file, fileNum, totalNumFiles, onComplete)
+                        },
+                        onDismiss = {}
+                    )
                     hideProcessingDialog()
                     return@getFile
                 }
@@ -368,7 +424,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 Log.d("HOME", "File request had error: $error")
                 hideProcessingDialog()
                 showSnackbar(
-                    message = "$error",
+                    message = "File request had error: ${error.message}",
                     actionLabel = "Retry",
                     duration = SnackbarDuration.Long,
                     onAction = {
@@ -389,6 +445,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun syncItem(item: RemoteItem) {
+        // TODO: Allow this do be performed in the background
         if (item.markedForLocalDeletion) {
             showToast("Cannot sync when attempting to delete")
             return
@@ -472,7 +529,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     context.contentResolver.getType(uri) ?: "application/octet-stream"
                 if (inputStream == null) {
                     Log.d("HOME", "Failed to read file '$path'")
-                    showSnackbar("Failed to read file '$name'")
+                    showSnackbar(
+                        message = "Failed to read file '$name'",
+                        actionLabel = "Retry",
+                        duration = SnackbarDuration.Long,
+                        onAction = {
+                            Log.d("HOME", "Retrying file creation")
+                            createFileOnServer(uri)
+                        },
+                        onDismiss = {}
+                    )
                     return@doesItemExist
                 }
 
@@ -485,7 +551,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         "HOME",
                         "Error when making file: failed to create temporary file"
                     )
-                    showSnackbar("Failed to create temporary file for uploading")
+                    showSnackbar(
+                        message = "Failed to create temporary file for uploading",
+                        actionLabel = "Retry",
+                        duration = SnackbarDuration.Long,
+                        onAction = {
+                            Log.d("HOME", "Retrying file creation")
+                            createFileOnServer(uri)
+                        },
+                        onDismiss = {}
+                    )
                     hideProcessingDialog()
                     return@doesItemExist
                 }
@@ -526,22 +601,39 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         CRUDOperations.deleteItem(encryptedFile)
                     },
                     { _, json ->
-                        val reason = json.getString("message")
+                        val message = json.getString("message")
                         Log.d(
                             "HOME",
-                            "Failed to create file: $reason"
+                            "Failed to create file: $message"
                         )
-                        showSnackbar("Failed to upload file: $reason")
                         CRUDOperations.deleteItem(encryptedFile)
                         hideProcessingDialog()
+                        showSnackbar(
+                            message = "Failed to upload file: $message",
+                            actionLabel = "Retry",
+                            duration = SnackbarDuration.Long,
+                            onAction = {
+                                Log.d("HOME", "Retrying file creation")
+                                createFileOnServer(uri)
+                            },
+                            onDismiss = {}
+                        )
+
                     },
                     { error ->
-                        Log.d(
-                            "HOME",
-                            "Error when making file: $error"
-                        )
+                        Log.d("HOME", "Error when making file: $error")
                         CRUDOperations.deleteItem(encryptedFile)
                         hideProcessingDialog()
+                        showSnackbar(
+                            message = "Error when making file: ${error.message}",
+                            actionLabel = "Retry",
+                            duration = SnackbarDuration.Long,
+                            onAction = {
+                                Log.d("HOME", "Retrying file creation")
+                                createFileOnServer(uri)
+                            },
+                            onDismiss = {}
+                        )
                     }
                 ) { bytesSentTotal, contentLength ->
                     processingDialogProgress = bytesSentTotal.toFloat() / contentLength
@@ -553,6 +645,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             },
             { error ->
                 Log.d("HOME", "Error when checking path existence: $error")
+                showSnackbar(
+                    message = "Error when checking path existence: ${error.message}",
+                    actionLabel = "Retry",
+                    duration = SnackbarDuration.Long,
+                    onAction = {
+                        Log.d("HOME", "Retrying file creation")
+                        createFileOnServer(uri)
+                    },
+                    onDismiss = {}
+                )
             }
         )
     }
@@ -586,12 +688,31 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         showSnackbar("Folder created")
                     },
                     { _, json ->
-                        val reason = json.getString("message")
-                        Log.d("HOME", "Failed to create folder: $reason")
-                        showSnackbar("Failed to create folder: $reason")
+                        val message = json.getString("message")
+                        Log.d("HOME", "Failed to create folder: $message")
+                        showSnackbar(
+                            message = "Failed to create folder: $message",
+                            actionLabel = "Retry",
+                            duration = SnackbarDuration.Long,
+                            onAction = {
+                                Log.d("HOME", "Retrying creation of folder")
+                                createFolderOnServer(name)
+                            },
+                            onDismiss = {}
+                        )
                     },
                     { error ->
                         Log.d("HOME", "Error when making folder: $error")
+                        showSnackbar(
+                            message = "Error when making folder: ${error.message}",
+                            actionLabel = "Retry",
+                            duration = SnackbarDuration.Long,
+                            onAction = {
+                                Log.d("HOME", "Retrying creation of folder")
+                                createFolderOnServer(name)
+                            },
+                            onDismiss = {}
+                        )
                     }
                 )
             },
@@ -612,7 +733,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             onAction = {
                 item.unmarkForLocalDeletion()
                 Log.d("HOME", "Unmarked '${item.path}' for local deletion")
-                showSnackbar("Restored '${item.name}'", duration = SnackbarDuration.Short)
+                showSnackbar(
+                    message = "Restored '${item.name}'",
+                    duration = SnackbarDuration.Short
+                )
             },
             onDismiss = {
                 if (!item.markedForLocalDeletion) return@showSnackbar
@@ -622,7 +746,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 Log.d("HOME", "Failed to delete '${item.path}' locally")
-                showToast("Failed to delete '${item.name}' locally")
+                showSnackbar(
+                    message = "Failed to delete '${item.name}' locally",
+                    actionLabel = "Retry",
+                    duration = SnackbarDuration.Long,
+                    onAction = {
+                        Log.d("HOME", "Retrying local deletion of item")
+                        deleteItemLocally(item)
+                    },
+                    onDismiss = {}
+                )
             }
         )
     }
@@ -651,14 +784,34 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             _uiState.value.activeDirectory.removeFolder(item as RemoteDirectory)
                         }
                         Log.d("HOME", "Deleted '${item.path}' on server")
+                        showSnackbar("Deleted '${item.name}' on server")
                     },
                     { _, json ->
-                        val reason = json.getString("message")
-                        Log.d("HOME", "Failed to delete '${item.path}' on server: $reason")
-                        showSnackbar("Failed to delete '${item.name}' on server: $reason")
+                        val message = json.getString("message")
+                        Log.d("HOME", "Failed to delete '${item.path}' on server: $message")
+                        showSnackbar(
+                            message = "Failed to delete '${item.name}' on server: $message",
+                            actionLabel = "Retry",
+                            duration = SnackbarDuration.Long,
+                            onAction = {
+                                Log.d("HOME", "Retrying deletion of item on server")
+                                deleteItemFromServer(item)
+                            },
+                            onDismiss = {}
+                        )
                     },
                     { error ->
-                        Log.d("HOME", "Error when delete '${item.path}' on server: $error")
+                        Log.d("HOME", "Error when deleting '${item.path}' on server: $error")
+                        showSnackbar(
+                            message = "Error when deleting '${item.name}' on server: $error",
+                            actionLabel = "Retry",
+                            duration = SnackbarDuration.Long,
+                            onAction = {
+                                Log.d("HOME", "Retrying deletion of item on server")
+                                deleteItemFromServer(item)
+                            },
+                            onDismiss = {}
+                        )
                     }
                 )
             }
