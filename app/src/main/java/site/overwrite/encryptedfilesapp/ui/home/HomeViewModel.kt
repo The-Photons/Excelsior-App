@@ -504,8 +504,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             "$parentDir/$name"
         }
 
-        // FIXME: Fix URL encoding of paths
-
         _uiState.value.server.doesItemExist(
             path,
             { exists ->
@@ -672,8 +670,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             "$parentDir/$name"
         }
-
-        // FIXME: Fix URL encoding of paths
 
         _uiState.value.server.doesItemExist(
             path,

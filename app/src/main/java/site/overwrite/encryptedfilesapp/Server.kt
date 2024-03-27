@@ -21,7 +21,6 @@ import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.network.sockets.ConnectTimeoutException
-import io.ktor.client.plugins.ConnectTimeoutException
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.onDownload
 import io.ktor.client.plugins.onUpload
@@ -41,6 +40,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
+import java.net.URLEncoder
 
 // CONSTANTS
 const val LOGIN_PAGE = "auth/login"
@@ -206,8 +206,9 @@ class Server(val serverURL: String) {
         errorListener: (Exception) -> Unit,
     ) {
         // Properly set the page
-        val page: String = if (path != "") {
-            "$LIST_DIR_PAGE?path=$path"
+        val encodedPath = encodeString(path)
+        val page: String = if (encodedPath != "") {
+            "$LIST_DIR_PAGE?path=$encodedPath"
         } else {
             LIST_DIR_PAGE
         }
@@ -237,10 +238,11 @@ class Server(val serverURL: String) {
         listener: (Boolean) -> Unit,
         errorListener: (Exception) -> Unit
     ) {
+        val encodedPath = encodeString(path)
         sendRequest(
             url = serverURL,
             method = HttpMethod.GET,
-            page = "$PATH_EXISTS_PAGE/$path",
+            page = "$PATH_EXISTS_PAGE/$encodedPath",
             scope = scope,
             client = client,
             processJSONResponse = { json ->
@@ -267,10 +269,11 @@ class Server(val serverURL: String) {
         errorListener: (Exception) -> Unit,
         downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> }
     ) {
+        val encodedPath = encodeString(path)
         sendRequest(
             url = serverURL,
             method = HttpMethod.GET,
-            page = "$GET_FILE_PAGE/$path",
+            page = "$GET_FILE_PAGE/$encodedPath",
             scope = scope,
             client = client,
             responseIsJSON = false,
@@ -294,10 +297,11 @@ class Server(val serverURL: String) {
         failedResponse: (String, JSONObject) -> Unit,
         errorListener: (Exception) -> Unit,
     ) {
+        val encodedPath = encodeString(path)
         sendRequest(
             url = serverURL,
             method = HttpMethod.POST,
-            page = "$CREATE_FOLDER_PAGE/$path",
+            page = "$CREATE_FOLDER_PAGE/$encodedPath",
             scope = scope,
             client = client,
             processJSONResponse = processResponse,
@@ -327,10 +331,11 @@ class Server(val serverURL: String) {
         errorListener: (Exception) -> Unit,
         uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> }
     ) {
+        val encodedPath = encodeString(path)
         sendRequest(
             url = serverURL,
             method = HttpMethod.POST,
-            page = "$CREATE_FILE_PAGE/$path",
+            page = "$CREATE_FILE_PAGE/$encodedPath",
             scope = scope,
             client = client,
             processJSONResponse = processResponse,
@@ -356,10 +361,11 @@ class Server(val serverURL: String) {
         failedResponse: (String, JSONObject) -> Unit,
         errorListener: (Exception) -> Unit,
     ) {
+        val encodedPath = encodeString(path)
         sendRequest(
             url = serverURL,
             method = HttpMethod.DELETE,
-            page = "$DELETE_ITEM_PAGE/$path",
+            page = "$DELETE_ITEM_PAGE/$encodedPath",
             scope = scope,
             client = client,
             processJSONResponse = processResponse,
@@ -400,7 +406,8 @@ class Server(val serverURL: String) {
          *
          * @param url Server's URL.
          * @param method Request method.
-         * @param page   Page (and URL parameters) to send the request to.
+         * @param page Page (and URL parameters) to send the request to. Assumes that the page
+         * string is properly encoded.
          * @param scope Coroutine scope.
          * @param client HTTP client.
          * @param responseIsJSON Whether the response from the server is in JSON format.
@@ -552,14 +559,14 @@ class Server(val serverURL: String) {
         }
 
         /**
-         * Cleans up a dirty URL to be nicer for displaying.
+         * Performs URL encoding on strings.
          *
-         * @param dirtyURL Dirty URL to process.
-         * @return Cleaned URL.
+         * @param string String to URL encode.
+         * @return URL encoded string.
          */
-        fun cleanUpURL(dirtyURL: String): String {
-            // Strip any trailing slashes
-            return dirtyURL.trimEnd('/')
+        fun encodeString(string: String): String {
+            val rawEncodedString = URLEncoder.encode(string, "UTF-8")
+            return rawEncodedString.replace("+", "%20")
         }
     }
 }
