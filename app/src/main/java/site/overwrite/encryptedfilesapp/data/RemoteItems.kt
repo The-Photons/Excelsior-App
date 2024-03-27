@@ -31,7 +31,7 @@ enum class ItemType {
 abstract class RemoteItem(
     name: String,
     path: String,
-    val size: Long,
+    size: Long,
     val type: ItemType,
     var parentDir: RemoteDirectory?,
 
@@ -42,6 +42,8 @@ abstract class RemoteItem(
     var name: String = name
         private set
     var path: String = path
+        private set
+    var size: Long = size
         private set
     val synced: Boolean
         get() = !markedForLocalDeletion && isSynced()
@@ -91,6 +93,19 @@ abstract class RemoteItem(
         // TODO: Handle updating path on the server
 
         return true
+    }
+
+    /**
+     * Sets the new size of the remote item.
+     *
+     * @param newSize New size of the file.
+     */
+    fun setSize(newSize: Long) {
+        val sizeDelta = newSize - size
+        size = newSize
+        if (parentDir != null) {
+            parentDir!!.setSize(parentDir!!.size + sizeDelta)
+        }
     }
 
     // Methods
@@ -278,6 +293,7 @@ open class RemoteDirectory(
         val filesList = files.toMutableList()
         filesList.add(file)
         files = filesList.toTypedArray()
+        setSize(size + file.size)
     }
 
     fun addFile(
@@ -321,6 +337,7 @@ open class RemoteDirectory(
         val filesList = files.toMutableList()
         filesList.remove(file)
         files = filesList.toTypedArray()
+        setSize(size - file.size)
     }
 
     fun removeFolder(dir: RemoteDirectory) {

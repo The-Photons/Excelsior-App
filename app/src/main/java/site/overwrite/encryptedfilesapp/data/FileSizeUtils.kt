@@ -87,6 +87,8 @@ class FileSizeUtils {
          * @return Formatted file size.
          */
         fun formatFileSize(rawSize: Long, precision: Int = 2): String {
+            if (rawSize < 0) return "0 B"
+
             val unit = FileUnit.chooseUnit(rawSize, altUnits = false)
             val roundedSize = if (unit == FileUnit.UNIT) {
                 rawSize.toBigDecimal()

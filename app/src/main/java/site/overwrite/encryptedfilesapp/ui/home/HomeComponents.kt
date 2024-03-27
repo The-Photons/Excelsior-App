@@ -122,7 +122,7 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             AddItemActionButton(
-                onClickCreateFile = { homeViewModel.createFileOnServer(it) },  // FIXME: Update directories sizes
+                onClickCreateFile = { homeViewModel.createFileOnServer(it) },
                 onClickCreateFolder = { homeViewModel.showCreateFolderDialog = true }
             )
         },
