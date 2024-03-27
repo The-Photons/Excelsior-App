@@ -788,7 +788,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             _uiState.value.activeDirectory.removeFolder(item as RemoteDirectory)
                         }
                         Log.d("HOME", "Deleted '${item.path}' on server")
-                        showSnackbar("Deleted '${item.name}' on server")
                     },
                     { _, json ->
                         val message = json.getString("message")
