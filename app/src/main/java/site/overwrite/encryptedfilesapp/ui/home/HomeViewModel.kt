@@ -344,7 +344,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         totalNumFiles: Int? = null,
         onComplete: () -> Unit
     ) {
-        if (file.synced) return
+        if (file.synced) {
+            onComplete()
+            return
+        }
 
         val processingDialogSubtitle = if (fileNum == null) "" else "$fileNum of $totalNumFiles"
         initProcessingDialog(
@@ -451,10 +454,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        /*
-         * FIXME: Retry sync of directories, once the snackbar disappears, fails silently (which is
-         *  bad) and does not allow for attempting of sync afterwards.
-         */
         if (item.type == ItemType.FILE) {
             val theFile = item as RemoteFile
             Log.d("HOME", "Syncing file '${theFile.path}'")
@@ -473,6 +472,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         var numSyncedFiles = 0
 
         // This is kind of an ugly workaround... but it works
+        // TODO: Allow cancelling of the sync
         fun helper() {
             if (numSyncedFiles == numFilesToSync) {
                 Log.d("HOME", "Synced directory '${theDirectory.path}'")

@@ -122,7 +122,7 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             AddItemActionButton(
-                onClickCreateFile = { homeViewModel.createFileOnServer(it) },
+                onClickCreateFile = { homeViewModel.createFileOnServer(it) },  // FIXME: Update directories sizes
                 onClickCreateFolder = { homeViewModel.showCreateFolderDialog = true }
             )
         },
@@ -311,6 +311,7 @@ fun HomeTopBar(
                         showExtrasMenu = false
                     }
                 )
+                // TODO: Allow sync of current directory
             }
         }
     )
