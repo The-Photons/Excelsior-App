@@ -23,6 +23,8 @@ import android.os.Environment
 import android.provider.OpenableColumns
 import java.io.File
 
+val FOLDER_NAME_REGEX = Regex("[0-9A-Za-z+\\-_=() ]+")
+
 const val APP_DIR_NAME = "Excelsior"
 val DOWNLOADS_DIR: File =
     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -135,6 +137,19 @@ class Pathing {
 
             // Now sort the paths
             return paths.sorted()
+        }
+
+        /**
+         * Checks if the provided name is a valid folder name.
+         *
+         * The requirements for a valid folder name are adapted from the valid names that Unix
+         * folders may take.
+         *
+         * @param name Proposed name for the folder.
+         * @return A boolean whether the proposed name is valid or not.
+         */
+        fun isValidFolderName(name: String): Boolean {
+            return name.isNotBlank() && FOLDER_NAME_REGEX.matches(name)
         }
     }
 }

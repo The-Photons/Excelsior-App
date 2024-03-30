@@ -90,6 +90,7 @@ import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
+import site.overwrite.encryptedfilesapp.file.Pathing
 import site.overwrite.encryptedfilesapp.ui.Dialogs
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
@@ -169,7 +170,7 @@ fun HomeScreen(
     // Dialogs
     if (homeViewModel.showCreateFolderDialog) {
         CreateFolderDialog(
-            textFieldValidator = { true },  // TODO: Implement actual folder name check
+            textFieldValidator = { Pathing.isValidFolderName(it) },
             onDismiss = { homeViewModel.showCreateFolderDialog = false },
             onConfirmFolderName = {
                 homeViewModel.showCreateFolderDialog = false
