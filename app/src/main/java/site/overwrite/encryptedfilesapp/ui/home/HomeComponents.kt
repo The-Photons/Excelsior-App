@@ -117,7 +117,8 @@ fun HomeScreen(
                 name = topBarName,
                 hasPreviousDirectory = !homeViewUIState.atRootDirectory,
                 previousDirectoryOnClick = { homeViewModel.goToPreviousDirectory() },
-                setShowConfirmLogoutDialog = { homeViewModel.showLogoutDialog = it }
+                setShowConfirmLogoutDialog = { homeViewModel.showLogoutDialog = it },
+                onClickSyncCurrentDirectory = { homeViewModel.syncItem(homeViewUIState.activeDirectory) }
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -259,7 +260,8 @@ fun HomeTopBar(
     name: String,
     hasPreviousDirectory: Boolean,
     previousDirectoryOnClick: () -> Unit,
-    setShowConfirmLogoutDialog: (Boolean) -> Unit
+    setShowConfirmLogoutDialog: (Boolean) -> Unit,
+    onClickSyncCurrentDirectory: () -> Unit
 ) {
     var showExtrasMenu by remember { mutableStateOf(false) }
     TopAppBar(
@@ -297,10 +299,10 @@ fun HomeTopBar(
                 onDismissRequest = { showExtrasMenu = false }
             ) {
                 DropdownMenuItem(
-                    leadingIcon = { Icon(Icons.AutoMirrored.Default.Logout, "Logout") },
-                    text = { Text("Logout") },
+                    leadingIcon = { Icon(Icons.Default.Sync, "Sync") },
+                    text = { Text("Sync Directory") },
                     onClick = {
-                        setShowConfirmLogoutDialog(true)
+                        onClickSyncCurrentDirectory()
                         showExtrasMenu = false
                     }
                 )
@@ -312,7 +314,14 @@ fun HomeTopBar(
                         showExtrasMenu = false
                     }
                 )
-                // TODO: Allow sync of current directory
+                DropdownMenuItem(
+                    leadingIcon = { Icon(Icons.AutoMirrored.Default.Logout, "Logout") },
+                    text = { Text("Logout") },
+                    onClick = {
+                        setShowConfirmLogoutDialog(true)
+                        showExtrasMenu = false
+                    }
+                )
             }
         }
     )
@@ -342,6 +351,7 @@ fun AddItemActionButton(
                 leadingIcon = { Icon(Icons.AutoMirrored.Default.NoteAdd, "Add File") },
                 text = { Text("Add File") },
                 onClick = {
+                    // TODO: Allow to upload multiple files at once
                     pickFileLauncher.launch("*/*")
                     dropdownExpanded = false
                 }
@@ -518,6 +528,9 @@ fun DirectoryItem(
                             isDropdownExpanded = false
                         }
                     )
+
+                    // TODO: Add renaming of items
+                    // TODO: Add moving of items
                 }
             }
         }
@@ -557,7 +570,7 @@ fun DirectoryItem(
 @Composable
 fun HomeTopBarPreview() {
     EncryptedFilesAppTheme {
-        HomeTopBar("Testing Name", true, {}) {}
+        HomeTopBar("Testing Name", true, {}, {}, {})
     }
 }
 
