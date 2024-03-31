@@ -40,6 +40,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
+import site.overwrite.encryptedfilesapp.DEFAULT_TIMEOUT_MILLIS
+import site.overwrite.encryptedfilesapp.TIMEOUT_MILLIS_PER_KILOBYTE_TRANSFER
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.cryptography.Cryptography
 import site.overwrite.encryptedfilesapp.cryptography.EncryptionParameters
@@ -364,6 +366,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
         _uiState.value.server.getFile(
             file.path,
+            file.size * TIMEOUT_MILLIS_PER_KILOBYTE_TRANSFER + DEFAULT_TIMEOUT_MILLIS,
             { interrupted },
             { channel ->
                 // Create a temporary file to store the encrypted content
@@ -476,11 +479,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 )
-            },
-            { bytesSentTotal: Long, contentLength: Long ->
-                processingDialogProgress = bytesSentTotal.toFloat() / contentLength
             }
-        )
+        ) { bytesSentTotal: Long, contentLength: Long ->
+            processingDialogProgress = bytesSentTotal.toFloat() / contentLength
+        }
     }
 
     fun syncItem(item: RemoteItem) {
@@ -641,6 +643,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     path,
                     encryptedFile,
                     mimeType,
+                    fileSize * TIMEOUT_MILLIS_PER_KILOBYTE_TRANSFER + DEFAULT_TIMEOUT_MILLIS,
                     { interrupted },
                     {
                         Log.d("HOME", "New file uploaded to server: $path")

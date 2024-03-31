@@ -21,9 +21,11 @@ import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.onDownload
 import io.ktor.client.plugins.onUpload
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.delete
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.forms.submitForm
@@ -44,6 +46,11 @@ import java.io.File
 import java.net.URLEncoder
 
 // CONSTANTS
+// General
+const val DEFAULT_TIMEOUT_MILLIS = 5000L
+const val TIMEOUT_MILLIS_PER_KILOBYTE_TRANSFER = 250  // Completely arbitrary
+
+// Page paths
 const val LOGIN_PAGE = "auth/login"
 const val LOGOUT_PAGE = "auth/logout"
 const val GET_ENCRYPTION_PARAMS_PAGE = "auth/get-encryption-params"
@@ -85,6 +92,7 @@ class Server(val serverURL: String) {
     // Attributes
     private val client = HttpClient(CIO) {
         install(HttpCookies)
+        install(HttpTimeout)
     }
 
     private val scope = CoroutineScope(Job())
@@ -115,6 +123,7 @@ class Server(val serverURL: String) {
             page = if (actuallyLogin) LOGIN_PAGE else "$LOGIN_PAGE?actually-login=false",
             scope = scope,
             client = client,
+            timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
             processJSONResponse = {
                 Log.d("SERVER", "Login successful")
                 listener(LoginResult.SUCCESS)
@@ -151,6 +160,7 @@ class Server(val serverURL: String) {
             page = LOGOUT_PAGE,
             scope = scope,
             client = client,
+            timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
             processJSONResponse = {
                 Log.d("SERVER", "Logout successful")
                 listener(true)
@@ -186,6 +196,7 @@ class Server(val serverURL: String) {
             page = GET_ENCRYPTION_PARAMS_PAGE,
             scope = scope,
             client = client,
+            timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
             processJSONResponse = processResponse,
             failedResponse = failedResponse,
             errorListener = errorListener
@@ -221,6 +232,7 @@ class Server(val serverURL: String) {
             page = page,
             scope = scope,
             client = client,
+            timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
             processJSONResponse = processResponse,
             failedResponse = failedResponse,
             errorListener = errorListener
@@ -246,6 +258,7 @@ class Server(val serverURL: String) {
             page = "$PATH_EXISTS_PAGE/$encodedPath",
             scope = scope,
             client = client,
+            timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
             processJSONResponse = { json ->
                 listener(json.getBoolean("exists"))
             },
@@ -258,6 +271,7 @@ class Server(val serverURL: String) {
      * Gets the contents of a file.
      *
      * @param path Path to the file.
+     * @param timeoutMillis Timeout for the downloading of the file.
      * @param interruptChecker Function that checks whether the operation was cancelled or not.
      * @param processResponse Listener for a successful page request.
      * @param errorListener Listener for an page request that results in an error.
@@ -267,6 +281,7 @@ class Server(val serverURL: String) {
      */
     fun getFile(
         path: String,
+        timeoutMillis: Long?,
         interruptChecker: () -> Boolean,
         processResponse: (ByteReadChannel) -> Unit,
         errorListener: (Exception) -> Unit,
@@ -279,6 +294,7 @@ class Server(val serverURL: String) {
             page = "$GET_FILE_PAGE/$encodedPath",
             scope = scope,
             client = client,
+            timeoutMillis = timeoutMillis,
             responseIsJSON = false,
             processRawResponse = processResponse,
             errorListener = errorListener,
@@ -308,6 +324,7 @@ class Server(val serverURL: String) {
             page = "$CREATE_FOLDER_PAGE/$encodedPath",
             scope = scope,
             client = client,
+            timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
             processJSONResponse = processResponse,
             failedResponse = failedResponse,
             errorListener = errorListener
@@ -320,6 +337,7 @@ class Server(val serverURL: String) {
      * @param path Path to the file on the server.
      * @param encryptedFile Encrypted file.
      * @param mimeType MIME type of the original unencrypted file.
+     * @param timeoutMillis Timeout for uploading the file.
      * @param interruptChecker Function that checks whether the operation was cancelled or not.
      * @param processResponse Listener for a successful page request.
      * @param failedResponse Listener for a failed page request.
@@ -331,6 +349,7 @@ class Server(val serverURL: String) {
         path: String,
         encryptedFile: File,
         mimeType: String,
+        timeoutMillis: Long?,
         interruptChecker: () -> Boolean,
         processResponse: (JSONObject) -> Unit,
         failedResponse: (String, JSONObject) -> Unit,
@@ -344,6 +363,7 @@ class Server(val serverURL: String) {
             page = "$CREATE_FILE_PAGE/$encodedPath",
             scope = scope,
             client = client,
+            timeoutMillis = timeoutMillis,
             processJSONResponse = processResponse,
             failedResponse = failedResponse,
             errorListener = errorListener,
@@ -375,6 +395,7 @@ class Server(val serverURL: String) {
             page = "$DELETE_ITEM_PAGE/$encodedPath",
             scope = scope,
             client = client,
+            timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
             processJSONResponse = processResponse,
             failedResponse = failedResponse,
             errorListener = errorListener
@@ -400,6 +421,7 @@ class Server(val serverURL: String) {
             page = GET_VERSION_PAGE,
             scope = scope,
             client = client,
+            timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
             processJSONResponse = processResponse,
             failedResponse = failedResponse,
             errorListener = errorListener
@@ -417,6 +439,7 @@ class Server(val serverURL: String) {
          * string is properly encoded.
          * @param scope Coroutine scope.
          * @param client HTTP client.
+         * @param timeoutMillis Timeout of the request in milliseconds.
          * @param responseIsJSON Whether the response from the server is in JSON format.
          * @param processRawResponse Processes a raw successful response from the server. Required
          * if [responseIsJSON] is `false`.
@@ -445,6 +468,7 @@ class Server(val serverURL: String) {
             page: String,
             scope: CoroutineScope,
             client: HttpClient,
+            timeoutMillis: Long?,
             responseIsJSON: Boolean = true,
             processRawResponse: (channel: ByteReadChannel) -> Unit = { _ -> },
             processJSONResponse: (json: JSONObject) -> Unit = { _ -> },
@@ -457,8 +481,6 @@ class Server(val serverURL: String) {
             downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> },
             uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> },
         ) {
-            // FIXME: Handle timeout of server requests
-
             // Form the full URL
             val fullURL = "$url/$page"
             scope.launch {
@@ -472,6 +494,9 @@ class Server(val serverURL: String) {
                                 }
                                 downloadHandler(bytesSentTotal, contentLength)
                             }
+                            timeout {
+                                requestTimeoutMillis = timeoutMillis
+                            }
                         }
 
                         HttpMethod.POST ->
@@ -479,7 +504,7 @@ class Server(val serverURL: String) {
                                 client.submitFormWithBinaryData(
                                     url = fullURL,
                                     formData = formData {
-                                        // FIXME: Is `readBytes()` the best method?
+                                        // TODO: Is `readBytes()` the best method?
                                         append("file", postFile.readBytes(), Headers.build {
                                             append(HttpHeaders.ContentType, postFileMimeType)
                                             append(
@@ -495,6 +520,9 @@ class Server(val serverURL: String) {
                                         }
                                         uploadHandler(bytesSentTotal, contentLength)
                                     }
+                                    timeout {
+                                        requestTimeoutMillis = timeoutMillis
+                                    }
                                 }
                             } else {
                                 client.submitForm(
@@ -509,6 +537,9 @@ class Server(val serverURL: String) {
                                             cancel()
                                         }
                                         uploadHandler(bytesSentTotal, contentLength)
+                                    }
+                                    timeout {
+                                        requestTimeoutMillis = timeoutMillis
                                     }
                                 }
                             }
@@ -559,6 +590,7 @@ class Server(val serverURL: String) {
                 page = PING_PAGE,
                 scope = scope,
                 client = client,
+                timeoutMillis = DEFAULT_TIMEOUT_MILLIS,
                 processJSONResponse = { json ->
                     val response = json.get("content")
                     if (response == "pong") {
@@ -570,14 +602,14 @@ class Server(val serverURL: String) {
                     }
                 },
                 failedResponse = { _, _ ->
-                    Log.d("SERVER", "'$serverURL' is not valid"); listener(
+                    Log.d("SERVER", "Failed to connect to '$serverURL'; is not valid"); listener(
                     false
                 )
                 },
-                errorListener = { _ ->
+                errorListener = { error ->
                     Log.d(
                         "SERVER",
-                        "'$serverURL' is not valid"
+                        "Error when connecting to '$serverURL': $error"
                     ); listener(false)
                 }
             )

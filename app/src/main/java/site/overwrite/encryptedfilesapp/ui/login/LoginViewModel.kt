@@ -27,12 +27,14 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import site.overwrite.encryptedfilesapp.DEFAULT_TIMEOUT_MILLIS
 import site.overwrite.encryptedfilesapp.LoginResult
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.CredentialCheckResult
@@ -53,7 +55,11 @@ data class LoginViewUIState(
         }
 
         // Initialize the HTTP client to use
-        val client = HttpClient(CIO)
+        val client = HttpClient(CIO) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = DEFAULT_TIMEOUT_MILLIS
+            }
+        }
 
         Server.isValidURL(
             credentials.serverURL,
