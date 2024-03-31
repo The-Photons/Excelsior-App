@@ -40,7 +40,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudDone
@@ -50,6 +49,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material3.CircularProgressIndicator
@@ -124,7 +124,7 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             AddItemActionButton(
-                onClickCreateFile = { homeViewModel.createFileOnServer(it) },
+                onClickUploadFile = { homeViewModel.uploadFileToServer(it) },
                 onClickCreateFolder = { homeViewModel.showCreateFolderDialog = true }
             )
         },
@@ -328,14 +328,14 @@ fun HomeTopBar(
 
 @Composable
 fun AddItemActionButton(
-    onClickCreateFile: (Uri) -> Unit,
+    onClickUploadFile: (Uri) -> Unit,
     onClickCreateFolder: () -> Unit
 ) {
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     val pickFileLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri -> if (uri != null) onClickCreateFile(uri) }
+    ) { uri -> if (uri != null) onClickUploadFile(uri) }
 
     FloatingActionButton(
         modifier = Modifier.padding(all = 16.dp),
@@ -347,8 +347,8 @@ fun AddItemActionButton(
             onDismissRequest = { dropdownExpanded = false }
         ) {
             DropdownMenuItem(
-                leadingIcon = { Icon(Icons.AutoMirrored.Default.NoteAdd, "Add File") },
-                text = { Text("Add File") },
+                leadingIcon = { Icon(Icons.Default.UploadFile, "Upload File") },
+                text = { Text("Upload File") },
                 onClick = {
                     // TODO: Allow to upload multiple files at once
                     pickFileLauncher.launch("*/*")

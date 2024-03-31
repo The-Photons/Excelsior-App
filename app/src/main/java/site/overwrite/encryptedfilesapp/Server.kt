@@ -258,6 +258,7 @@ class Server(val serverURL: String) {
      * Gets the contents of a file.
      *
      * @param path Path to the file.
+     * @param interruptChecker Function that checks whether the operation was cancelled or not.
      * @param processResponse Listener for a successful page request.
      * @param errorListener Listener for an page request that results in an error.
      * @param downloadHandler Function that takes two parameters, the number of transmitted
@@ -314,21 +315,23 @@ class Server(val serverURL: String) {
     }
 
     /**
-     * Creates a new file on the server.
+     * Uploads a file to the server.
      *
-     * @param path Path to the new file.
+     * @param path Path to the file on the server.
      * @param encryptedFile Encrypted file.
      * @param mimeType MIME type of the original unencrypted file.
+     * @param interruptChecker Function that checks whether the operation was cancelled or not.
      * @param processResponse Listener for a successful page request.
      * @param failedResponse Listener for a failed page request.
      * @param errorListener Listener for an page request that results in an error.
      * @param uploadHandler Function that handles uploads. Takes two parameters, the number of
      * transmitted bytes (`bytesSentTotal`) and the total bytes to upload (`contentLength`).
      */
-    fun createFile(
+    fun uploadFile(
         path: String,
         encryptedFile: File,
         mimeType: String,
+        interruptChecker: () -> Boolean,
         processResponse: (JSONObject) -> Unit,
         failedResponse: (String, JSONObject) -> Unit,
         errorListener: (Exception) -> Unit,
@@ -346,6 +349,7 @@ class Server(val serverURL: String) {
             errorListener = errorListener,
             postFile = encryptedFile,
             postFileMimeType = mimeType,
+            interruptChecker = interruptChecker,
             uploadHandler = uploadHandler
         )
     }

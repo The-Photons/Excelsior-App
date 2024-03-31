@@ -526,7 +526,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         helper()
     }
 
-    fun createFileOnServer(uri: Uri) {
+    fun uploadFileToServer(uri: Uri) {
         val context = getApplication<Application>().applicationContext
         val name = Pathing.getFileName(uri, context.contentResolver)
 
@@ -572,14 +572,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         duration = SnackbarDuration.Long,
                         onAction = {
                             Log.d("HOME", "Retrying file creation")
-                            createFileOnServer(uri)
+                            uploadFileToServer(uri)
                         },
                         onDismiss = {}
                     )
                     return@doesItemExist
                 }
 
-                initProcessingDialog("Encrypting '$name'")
+                var interrupted = false
+                initProcessingDialog(
+                    "Encrypting '$name'",
+                    newOnCancel = { interrupted = true }
+                )
 
                 // Create a temporary file to store the encrypted content
                 val encryptedFile = CRUDOperations.createFile("$path.encrypted")
@@ -594,7 +598,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         duration = SnackbarDuration.Long,
                         onAction = {
                             Log.d("HOME", "Retrying file creation")
-                            createFileOnServer(uri)
+                            uploadFileToServer(uri)
                         },
                         onDismiss = {}
                     )
@@ -603,26 +607,41 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 // Now encrypt the original file, storing the result in the temporary file
-                Cryptography.encryptAES(
-                    inputStream,
-                    encryptedFile.outputStream(),
-                    _uiState.value.encryptionParameters.key!!,
-                    _uiState.value.encryptionParameters.iv
-                ) { numBytesEncrypted ->
-                    processingDialogProgress = if (fileSize != -1L) {
-                        numBytesEncrypted.toFloat() / fileSize
-                    } else {
-                        null
+                if (!Cryptography.encryptAES(
+                        inputStream,
+                        encryptedFile.outputStream(),
+                        _uiState.value.encryptionParameters.key!!,
+                        _uiState.value.encryptionParameters.iv,
+                        interruptChecker = { interrupted }
+                    ) { numBytesEncrypted ->
+                        processingDialogProgress = if (fileSize != -1L) {
+                            numBytesEncrypted.toFloat() / fileSize
+                        } else {
+                            null
+                        }
                     }
+                ) {
+                    Log.d("HOME", "File encryption cancelled")
+                    showSnackbar("File encryption cancelled")
+
+                    CRUDOperations.deleteItem(encryptedFile)
+                    hideProcessingDialog()
+                    return@doesItemExist
                 }
+
                 Log.d("HOME", "Encrypted file; attempting upload")
 
                 // Once encrypted, send file to server
-                initProcessingDialog("Uploading '$name'")
-                _uiState.value.server.createFile(
+                initProcessingDialog(
+                    "Uploading '$name'",
+                    newOnCancel = { interrupted = true }
+                )
+
+                _uiState.value.server.uploadFile(
                     path,
                     encryptedFile,
                     mimeType,
+                    { interrupted },
                     {
                         Log.d("HOME", "New file uploaded to server: $path")
 
@@ -651,23 +670,30 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             duration = SnackbarDuration.Long,
                             onAction = {
                                 Log.d("HOME", "Retrying file creation")
-                                createFileOnServer(uri)
+                                uploadFileToServer(uri)
                             },
                             onDismiss = {}
                         )
 
                     },
                     { error ->
-                        Log.d("HOME", "Error when making file: $error")
                         CRUDOperations.deleteItem(encryptedFile)
                         hideProcessingDialog()
+
+                        if (error is CancellationException) {
+                            Log.d("HOME", "File upload cancelled")
+                            showSnackbar("File upload cancelled")
+                            return@uploadFile
+                        }
+
+                        Log.d("HOME", "Error when uploading file: $error")
                         showSnackbar(
                             message = "Error when making file: ${error.message}",
                             actionLabel = "Retry",
                             duration = SnackbarDuration.Long,
                             onAction = {
                                 Log.d("HOME", "Retrying file creation")
-                                createFileOnServer(uri)
+                                uploadFileToServer(uri)
                             },
                             onDismiss = {}
                         )
@@ -687,8 +713,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     actionLabel = "Retry",
                     duration = SnackbarDuration.Long,
                     onAction = {
-                        Log.d("HOME", "Retrying file creation")
-                        createFileOnServer(uri)
+                        Log.d("HOME", "Retrying file upload")
+                        uploadFileToServer(uri)
                     },
                     onDismiss = {}
                 )

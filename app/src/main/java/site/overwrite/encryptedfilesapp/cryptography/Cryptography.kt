@@ -70,7 +70,9 @@ class Cryptography {
          * @param key AES encryption/decryption key.
          * @param iv Initialization vector used to encrypt the data.
          * @param bufferSize Encryption buffer size.
+         * @param interruptChecker Checks if the request for the encryption was interrupted.
          * @param listener Listener for changes in the number of bytes encrypted.
+         * @return A boolean whether the operation was successful (`true`) or not (`false`).
          */
         fun encryptAES(
             inputStream: InputStream,
@@ -78,8 +80,9 @@ class Cryptography {
             key: ByteArray,
             iv: String,
             bufferSize: Int = 4096,
+            interruptChecker: () -> Boolean = { false },
             listener: (numBytesEncrypted: Long) -> Unit = { _ -> }
-        ) {
+        ): Boolean {
             // Set up cipher
             val cipher = Cipher.getInstance(AES_TRANSFORMATION)
             val secretKeySpec = SecretKeySpec(key, "AES")
@@ -94,7 +97,7 @@ class Cryptography {
             var numReadBytes: Int
             inputStream.use { input ->
                 cipherOutputStream.use { output ->
-                    while (true) {
+                    while (!interruptChecker()) {
                         // Read bytes from input and decrypt them
                         numReadBytes = input.read(buffer)
                         if (numReadBytes == -1) {
@@ -109,6 +112,8 @@ class Cryptography {
                     }
                 }
             }
+
+            return !interruptChecker()
         }
 
         /**
