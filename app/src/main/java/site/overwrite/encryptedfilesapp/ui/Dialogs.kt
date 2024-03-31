@@ -21,7 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -29,11 +29,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Tablet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -263,6 +265,51 @@ class Dialogs {
             }
         }
 
+        @Composable
+        private fun ProgressBar(
+            progress: Float?,
+        ) {
+            val progressModifier = if (onCancel == null) {
+                Modifier.fillMaxWidth()
+            } else {
+                Modifier.fillMaxWidth(0.9f)
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (progress != null) {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = progressModifier,
+                        color = MaterialTheme.colorScheme.secondary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        modifier = progressModifier,
+                        color = MaterialTheme.colorScheme.secondary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
+
+            if (progress != null) {
+                Text(
+                    "${
+                        String.format(
+                            "%.02f",
+                            progress * 100
+                        )
+                    }%",
+                    modifier = Modifier.offset(y = (-8).dp),
+                    fontSize = 12.sp
+                )
+            }
+        }
+
         /**
          * Creates a new progress indicator dialog.
          *
@@ -306,29 +353,9 @@ class Dialogs {
                                 textAlign = TextAlign.Center
                             )
                         }
-                        if (progress != null) {
-                            Text(
-                                "${
-                                    String.format(
-                                        "%.02f",
-                                        progress * 100
-                                    )
-                                }%",
-                                fontSize = 12.sp
-                            )
-                            LinearProgressIndicator(
-                                progress = { progress },
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.secondary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                            )
-                        } else {
-                            LinearProgressIndicator(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.secondary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        }
+                        ProgressBar(
+                            progress = progress,
+                        )
                     }
                 }
             }
