@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import io.ktor.util.cio.writeChannel
+import io.ktor.utils.io.CancellationException
 import io.ktor.utils.io.copyAndClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,6 +85,13 @@ data class HomeViewUIState(
         get() = parentDirectory == null
 }
 
+data class ProcessingDialogData(
+    val show: Boolean = false,
+    val title: String = "",
+    val subtitle: String = "",
+    val onCancel: (() -> Unit)? = null
+)
+
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(HomeViewUIState())
     val uiState: StateFlow<HomeViewUIState> = _uiState.asStateFlow()
@@ -99,11 +107,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     var showLogoutDialog by mutableStateOf(false)
     var showCreateFolderDialog by mutableStateOf(false)
 
-    var showProcessingDialog by mutableStateOf(false)
-        private set
-    var processingDialogTitle by mutableStateOf("")
-        private set
-    var processingDialogSubtitle by mutableStateOf("")
+    var processingDialogData by mutableStateOf(ProcessingDialogData())
         private set
     var processingDialogProgress: Float? by mutableStateOf(null)
         private set
@@ -344,6 +348,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         totalNumFiles: Int? = null,
         onComplete: () -> Unit
     ) {
+        var interrupted = false
+
         if (file.synced) {
             onComplete()
             return
@@ -352,11 +358,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val processingDialogSubtitle = if (fileNum == null) "" else "$fileNum of $totalNumFiles"
         initProcessingDialog(
             "Downloading '${file.name}'",
-            processingDialogSubtitle
+            processingDialogSubtitle,
+            newOnCancel = { interrupted = true }
         )
 
         _uiState.value.server.getFile(
             file.path,
+            { interrupted },
             { channel ->
                 // Create a temporary file to store the encrypted content
                 val encryptedFile = CRUDOperations.createFile("${file.path}.encrypted")
@@ -371,7 +379,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         duration = SnackbarDuration.Long,
                         onAction = {
                             Log.d("HOME", "Retrying file sync")
-                            syncFile(file, fileNum, totalNumFiles, onComplete)
+                            syncFile(
+                                file,
+                                fileNum,
+                                totalNumFiles,
+                                onComplete
+                            )
                         },
                         onDismiss = {}
                     )
@@ -387,7 +400,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 // Decrypt the file
                 initProcessingDialog(
                     "Decrypting '${file.name}'",
-                    processingDialogSubtitle
+                    processingDialogSubtitle,
+                    newOnCancel = { interrupted = true }
                 )
 
                 val decryptedFile = CRUDOperations.createFile(file.path)
@@ -402,7 +416,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         duration = SnackbarDuration.Long,
                         onAction = {
                             Log.d("HOME", "Retrying file sync")
-                            syncFile(file, fileNum, totalNumFiles, onComplete)
+                            syncFile(
+                                file,
+                                fileNum,
+                                totalNumFiles,
+                                onComplete
+                            )
                         },
                         onDismiss = {}
                     )
@@ -410,13 +429,24 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     return@getFile
                 }
 
-                Cryptography.decryptAES(
-                    encryptedFile.inputStream(),
-                    decryptedFile.outputStream(),
-                    _uiState.value.encryptionParameters.key!!,
-                    _uiState.value.encryptionParameters.iv
-                ) { numBytesDecrypted ->
-                    processingDialogProgress = numBytesDecrypted.toFloat() / encryptedFile.length()
+                if (!Cryptography.decryptAES(
+                        encryptedFile.inputStream(),
+                        decryptedFile.outputStream(),
+                        _uiState.value.encryptionParameters.key!!,
+                        _uiState.value.encryptionParameters.iv,
+                        interruptChecker = { interrupted }
+                    ) { numBytesDecrypted ->
+                        processingDialogProgress =
+                            numBytesDecrypted.toFloat() / encryptedFile.length()
+                    }
+                ) {
+                    CRUDOperations.deleteItem(encryptedFile)
+                    CRUDOperations.deleteItem(decryptedFile)  // Don't want to leave traces
+                    hideProcessingDialog()
+
+                    Log.d("HOME", "File decryption cancelled")
+                    showSnackbar("File decryption cancelled")
+                    return@getFile
                 }
 
                 CRUDOperations.deleteItem(encryptedFile)
@@ -424,8 +454,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 onComplete()
             },
             { error ->
-                Log.d("HOME", "File request had error: $error")
                 hideProcessingDialog()
+                if (error is CancellationException) {
+                    Log.d("HOME", "File request cancelled")
+                    showSnackbar("File request cancelled")
+                    return@getFile
+                }
+
+                Log.d("HOME", "File request had error: $error")
                 showSnackbar(
                     message = "File request had error: ${error.message}",
                     actionLabel = "Retry",
@@ -472,7 +508,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         var numSyncedFiles = 0
 
         // This is kind of an ugly workaround... but it works
-        // TODO: Allow cancelling of the sync
         fun helper() {
             if (numSyncedFiles == numFilesToSync) {
                 Log.d("HOME", "Synced directory '${theDirectory.path}'")
@@ -906,14 +941,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private fun initProcessingDialog(
         newTitle: String,
         newSubtitle: String = "",
-        newProgress: Float? = 0f
+        newProgress: Float? = 0f,
+        newOnCancel: (() -> Unit)? = null
     ) {
-        if (showProcessingDialog) {
+        if (processingDialogData.show) {
             hideProcessingDialog()
         }
-        showProcessingDialog = true
-        processingDialogTitle = newTitle
-        processingDialogSubtitle = newSubtitle
+        processingDialogData = ProcessingDialogData(
+            true,
+            newTitle,
+            newSubtitle,
+            newOnCancel
+        )
         processingDialogProgress = newProgress
     }
 
@@ -921,9 +960,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
      * Hides the processing dialog.
      */
     private fun hideProcessingDialog() {
-        showProcessingDialog = false
-        processingDialogTitle = ""
-        processingDialogSubtitle = ""
+        processingDialogData = ProcessingDialogData(
+            false,
+            "",
+            "",
+            null
+        )
         processingDialogProgress = null
         runBlocking {
             delay(100)

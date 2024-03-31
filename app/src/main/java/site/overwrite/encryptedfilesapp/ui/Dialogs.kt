@@ -268,6 +268,7 @@ class Dialogs {
         @Composable
         private fun ProgressBar(
             progress: Float?,
+            onCancel: (() -> Unit)?
         ) {
             val progressModifier = if (onCancel == null) {
                 Modifier.fillMaxWidth()
@@ -296,6 +297,17 @@ class Dialogs {
                     )
                 }
 
+                if (onCancel != null) {
+                    IconButton(
+                        onClick = { onCancel() }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cancel,
+                            contentDescription = "Cancel"
+                        )
+                    }
+                }
+            }
             if (progress != null) {
                 Text(
                     "${
@@ -317,12 +329,14 @@ class Dialogs {
          * @param dialogSubtitle Subtitle of the dialog.
          * @param progress Progress to show on the progress indicator. If `null` then the progress
          * indicator will be indeterminate.
+         * @param onCancel Function to run when the cancel button is pressed.
          */
         @Composable
         fun ProgressIndicatorDialog(
             dialogTitle: String,
             dialogSubtitle: String = "",
-            progress: Float?
+            progress: Float?,
+            onCancel: (() -> Unit)? = null
         ) {
             Dialog(
                 onDismissRequest = {},
@@ -355,6 +369,7 @@ class Dialogs {
                         }
                         ProgressBar(
                             progress = progress,
+                            onCancel = onCancel
                         )
                     }
                 }
@@ -504,6 +519,7 @@ fun ProgressIndicatorDialogPreview4() {
     Dialogs.ProgressIndicatorDialog(
         dialogTitle = "Test Progress Indicator Dialog 4",
         dialogSubtitle = "Some subtitle",
-        progress = null
+        progress = 0.2222f,
+        onCancel = {}
     )
 }

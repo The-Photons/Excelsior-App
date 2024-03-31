@@ -180,11 +180,10 @@ fun HomeScreen(
         )
     }
 
-    if (homeViewModel.showProcessingDialog) {
+    if (homeViewModel.processingDialogData.show) {
         ProcessingDialog(
-            title = homeViewModel.processingDialogTitle,
-            subtitle = homeViewModel.processingDialogSubtitle,
-            progress = homeViewModel.processingDialogProgress
+            homeViewModel.processingDialogData,
+            homeViewModel.processingDialogProgress
         )
     }
 
@@ -388,14 +387,14 @@ fun CreateFolderDialog(
 
 @Composable
 fun ProcessingDialog(
-    title: String,
-    subtitle: String = "",
+    processingDialogData: ProcessingDialogData,
     progress: Float?
 ) {
     Dialogs.ProgressIndicatorDialog(
-        dialogTitle = title,
-        dialogSubtitle = subtitle,
-        progress = progress
+        dialogTitle = processingDialogData.title,
+        dialogSubtitle = processingDialogData.subtitle,
+        progress = progress,
+        onCancel = processingDialogData.onCancel
     )
 }
 

@@ -37,6 +37,7 @@ import io.ktor.http.parameters
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
@@ -265,6 +266,7 @@ class Server(val serverURL: String) {
      */
     fun getFile(
         path: String,
+        interruptChecker: () -> Boolean,
         processResponse: (ByteReadChannel) -> Unit,
         errorListener: (Exception) -> Unit,
         downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> }
@@ -279,6 +281,7 @@ class Server(val serverURL: String) {
             responseIsJSON = false,
             processRawResponse = processResponse,
             errorListener = errorListener,
+            interruptChecker = interruptChecker,
             downloadHandler = downloadHandler
         )
     }
@@ -423,6 +426,8 @@ class Server(val serverURL: String) {
          * provided and if the request is a POST request.
          * @param postFileMimeType MIME type of the file included in the POST request. Required if
          * [postFile] is provided.
+         * @param interruptChecker Checks if an interrupt was requested. Recommended to be set if
+         * using this for downloading or uploading.
          * @param downloadHandler Function that takes two parameters, the number of transmitted
          * bytes (`bytesSentTotal`) and the total bytes to download (`contentLength`), and processes
          * it.
@@ -444,6 +449,7 @@ class Server(val serverURL: String) {
             postData: HashMap<String, String>? = null,
             postFile: File? = null,
             postFileMimeType: String? = null,
+            interruptChecker: suspend () -> Boolean = { false },
             downloadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> },
             uploadHandler: suspend (bytesSentTotal: Long, contentLength: Long) -> Unit = { _, _ -> },
         ) {
@@ -456,7 +462,12 @@ class Server(val serverURL: String) {
                     Log.d("SERVER", "Attempting to send $method request to '$fullURL'")
                     val response = when (method) {
                         HttpMethod.GET -> client.get(fullURL) {
-                            onDownload(downloadHandler)
+                            onDownload { bytesSentTotal: Long, contentLength: Long ->
+                                if (interruptChecker()) {
+                                    cancel()
+                                }
+                                downloadHandler(bytesSentTotal, contentLength)
+                            }
                         }
 
                         HttpMethod.POST ->
@@ -474,7 +485,12 @@ class Server(val serverURL: String) {
                                         })
                                     }
                                 ) {
-                                    onUpload(uploadHandler)
+                                    onUpload { bytesSentTotal: Long, contentLength: Long ->
+                                        if (interruptChecker()) {
+                                            cancel()
+                                        }
+                                        uploadHandler(bytesSentTotal, contentLength)
+                                    }
                                 }
                             } else {
                                 client.submitForm(
@@ -484,7 +500,12 @@ class Server(val serverURL: String) {
                                             append(key, value)
                                         }
                                     }) {
-                                    onUpload(uploadHandler)
+                                    onUpload { bytesSentTotal: Long, contentLength: Long ->
+                                        if (interruptChecker()) {
+                                            cancel()
+                                        }
+                                        uploadHandler(bytesSentTotal, contentLength)
+                                    }
                                 }
                             }
 
