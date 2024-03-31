@@ -64,9 +64,9 @@ enum class HttpMethod {
 
 enum class LoginResult {
     SUCCESS,
-    TIMEOUT,
     INVALID_USERNAME,
-    INVALID_PASSWORD;
+    INVALID_PASSWORD,
+    TIMEOUT;
 
     companion object {
         fun codeToEnumVal(value: Int): LoginResult {
