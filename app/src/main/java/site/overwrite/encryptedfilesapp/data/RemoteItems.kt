@@ -27,6 +27,12 @@ enum class ItemType {
     DIRECTORY
 }
 
+enum class SyncStatus {
+    SYNCED,
+    NOT_SYNCED,
+    UNSYNCABLE
+}
+
 // Classes
 abstract class RemoteItem(
     name: String,
@@ -45,8 +51,16 @@ abstract class RemoteItem(
         private set
     var size: Long = size
         private set
-    val synced: Boolean
-        get() = !markedForLocalDeletion && isSynced()
+    val syncStatus: SyncStatus
+        get() {
+            if (size == 0L) {
+                return SyncStatus.UNSYNCABLE
+            }
+            if (!markedForLocalDeletion && isSynced()) {
+                return SyncStatus.SYNCED
+            }
+            return SyncStatus.NOT_SYNCED
+        }
 
     var markedForLocalDeletion: Boolean = markedForLocalDeletion
         private set
@@ -253,7 +267,7 @@ open class RemoteDirectory(
 
         // Check whether the files are synced
         for (file: RemoteFile in files) {
-            if (!file.synced) {
+            if (file.syncStatus == SyncStatus.NOT_SYNCED) {
                 return false
             }
         }

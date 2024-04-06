@@ -49,6 +49,7 @@ import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
+import site.overwrite.encryptedfilesapp.data.SyncStatus
 import site.overwrite.encryptedfilesapp.file.CRUDOperations
 import site.overwrite.encryptedfilesapp.file.Pathing
 import site.overwrite.encryptedfilesapp.ui.SnackbarData
@@ -352,7 +353,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         var interrupted = false
 
-        if (file.synced) {
+        if (file.syncStatus != SyncStatus.NOT_SYNCED) {
             onComplete()
             return
         }

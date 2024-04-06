@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -90,6 +91,7 @@ import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
 import site.overwrite.encryptedfilesapp.data.RemoteFile
 import site.overwrite.encryptedfilesapp.data.RemoteItem
+import site.overwrite.encryptedfilesapp.data.SyncStatus
 import site.overwrite.encryptedfilesapp.file.Pathing
 import site.overwrite.encryptedfilesapp.ui.Dialogs
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
@@ -482,15 +484,33 @@ fun DirectoryItem(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (item.synced) {
-                Icon(Icons.Filled.CloudDone, "Synced", modifier = Modifier.size(24.dp))
-            } else {
-                Icon(Icons.Outlined.Cloud, "Unsynced", modifier = Modifier.size(24.dp))
-            }
+            // Decide on what sync status to show
+            val syncStatusIcon: ImageVector
+            val syncStatusDesc: String
+            when (item.syncStatus) {
+                SyncStatus.SYNCED -> {
+                    syncStatusIcon = Icons.Filled.CloudDone
+                    syncStatusDesc = "Synced"
+                }
 
+                SyncStatus.NOT_SYNCED -> {
+                    syncStatusIcon = Icons.Outlined.Cloud
+                    syncStatusDesc = "Not synced"
+                }
+
+                SyncStatus.UNSYNCABLE -> {
+                    syncStatusIcon = Icons.Outlined.CloudOff
+                    syncStatusDesc = "Unsyncable"
+                }
+            }
+            Icon(syncStatusIcon, syncStatusDesc, modifier = Modifier.size(24.dp))
             Spacer(Modifier.size(10.dp))
+
+            // Show the appropriate item icon
             Icon(icon, description)
             Spacer(Modifier.size(4.dp))
+
+            // Then show the name of the item...
             Text(
                 item.name,
                 modifier = Modifier.width(200.dp),
@@ -498,8 +518,12 @@ fun DirectoryItem(
                 maxLines = 1
             )
             Spacer(Modifier.weight(1f))
+
+            // ...and its size
             Text(item.formattedSize())
             Spacer(Modifier.size(4.dp))
+
+            // Finally define the "more actions" button
             Box {
                 IconButton(
                     modifier = Modifier.size(24.dp),
@@ -514,7 +538,7 @@ fun DirectoryItem(
                     DropdownMenuItem(
                         leadingIcon = { Icon(Icons.Default.Sync, "Sync") },
                         text = { Text("Sync") },
-                        enabled = !item.synced,
+                        enabled = item.syncStatus == SyncStatus.NOT_SYNCED,
                         onClick = {
                             onSyncRequest()
                             isDropdownExpanded = false
@@ -528,7 +552,7 @@ fun DirectoryItem(
                             )
                         },
                         text = { Text("Delete From Device") },
-                        enabled = item.synced,
+                        enabled = item.syncStatus == SyncStatus.SYNCED,
                         onClick = {
                             onLocalDeleteRequest()
                             isDropdownExpanded = false
