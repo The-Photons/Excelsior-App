@@ -147,6 +147,27 @@ fun HomeScreen(
             return@Scaffold
         }
 
+        val itemsToShow: ArrayList<RemoteItem> = arrayListOf()
+        for (item in homeViewUIState.activeDirectory.items) {
+            if (!item.markedForServerDeletion) {
+                itemsToShow.add(item)
+            }
+        }
+
+        if (itemsToShow.size == 0) {
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(Icons.Default.Folder, "Folder", modifier = Modifier.size(100.dp))
+                Text("This folder is empty", fontWeight = FontWeight.Bold)
+            }
+            return@Scaffold
+        }
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -154,17 +175,16 @@ fun HomeScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            for (item in homeViewUIState.activeDirectory.items) {
-                if (!item.markedForServerDeletion) {
-                    DirectoryItem(
-                        item = item,
-                        onClick = { homeViewModel.directoryItemOnClick(item) },
-                        onSyncRequest = { homeViewModel.syncItem(item) },
-                        onLocalDeleteRequest = { homeViewModel.deleteItemLocally(item) },
-                        onServerDeleteRequest = { homeViewModel.deleteItemFromServer(item) }
-                    )
-                }
+            for (item in itemsToShow) {
+                DirectoryItem(
+                    item = item,
+                    onClick = { homeViewModel.directoryItemOnClick(item) },
+                    onSyncRequest = { homeViewModel.syncItem(item) },
+                    onLocalDeleteRequest = { homeViewModel.deleteItemLocally(item) },
+                    onServerDeleteRequest = { homeViewModel.deleteItemFromServer(item) }
+                )
             }
+            Spacer(modifier = Modifier.height(100.dp))  // Stop action button hiding last item
         }
     }
 
