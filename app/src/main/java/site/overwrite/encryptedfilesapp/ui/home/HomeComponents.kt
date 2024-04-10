@@ -85,7 +85,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import site.overwrite.encryptedfilesapp.Server
 import site.overwrite.encryptedfilesapp.data.ItemType
 import site.overwrite.encryptedfilesapp.data.RemoteDirectory
@@ -99,10 +98,10 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 // Main composable
 @Composable
 fun HomeScreen(
-    server: Server? = null,
-    username: String = "",
-    password: String = "",
-    homeViewModel: HomeViewModel = viewModel()
+    server: Server?,
+    username: String,
+    password: String,
+    homeViewModel: HomeViewModel
 ) {
     val context = LocalContext.current
     val homeViewUIState by homeViewModel.uiState.collectAsState()
@@ -221,7 +220,6 @@ fun HomeScreen(
     BackHandler {
         if (homeViewUIState.atRootDirectory) {
             homeViewModel.showLogoutDialog = true
-            // TODO: Enforce logout. Perhaps through persistent notification?
         } else {
             homeViewModel.goToPreviousDirectory()
         }

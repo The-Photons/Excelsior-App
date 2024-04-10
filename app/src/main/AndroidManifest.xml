@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
@@ -36,6 +38,15 @@
             android:name=".ui.home.HomeActivity"
             android:exported="false"
             android:theme="@style/Theme.EncryptedFilesApp" />
+        <!-- Services -->
+        <service
+            android:name=".ui.home.services.AppIsActiveService"
+            android:enabled="true"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows persistent notification when app is active"/>
+        </service>
         <!-- Providers -->
         <provider
             android:name="androidx.core.content.FileProvider"

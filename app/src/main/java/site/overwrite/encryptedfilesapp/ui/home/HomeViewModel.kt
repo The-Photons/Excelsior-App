@@ -41,8 +41,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import site.overwrite.encryptedfilesapp.DEFAULT_TIMEOUT_MILLIS
-import site.overwrite.encryptedfilesapp.TIMEOUT_MILLIS_PER_KILOBYTE_TRANSFER
 import site.overwrite.encryptedfilesapp.Server
+import site.overwrite.encryptedfilesapp.TIMEOUT_MILLIS_PER_KILOBYTE_TRANSFER
 import site.overwrite.encryptedfilesapp.cryptography.Cryptography
 import site.overwrite.encryptedfilesapp.cryptography.EncryptionParameters
 import site.overwrite.encryptedfilesapp.data.ItemType
@@ -550,8 +550,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     showSnackbar("File already exists on server")
                     return@doesItemExist
                 }
-
-                // FIXME: Surely we can move the following long code into another file?
 
                 // Get the file size
                 val fileDescriptor = context.contentResolver.openAssetFileDescriptor(uri, "r")

@@ -18,19 +18,23 @@
 package site.overwrite.encryptedfilesapp.ui.home
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.runBlocking
-import site.overwrite.encryptedfilesapp.data.DataStoreManager
 import site.overwrite.encryptedfilesapp.Server
-import site.overwrite.encryptedfilesapp.serializable
 import site.overwrite.encryptedfilesapp.data.Credentials
+import site.overwrite.encryptedfilesapp.data.DataStoreManager
+import site.overwrite.encryptedfilesapp.serializable
+import site.overwrite.encryptedfilesapp.ui.home.services.AppIsActiveService
 import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 
 class HomeActivity : ComponentActivity() {
@@ -39,6 +43,7 @@ class HomeActivity : ComponentActivity() {
 
     @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("HOME", "onCreate called")
         super.onCreate(savedInstanceState)
 
         // Prevent screen rotate
@@ -57,10 +62,14 @@ class HomeActivity : ComponentActivity() {
             dataStoreManager.setUsername(credentials.username)
         }
 
+        // Start services
+        val appIsActiveIntent = Intent(this, AppIsActiveService::class.java)
+        appIsActiveIntent.putExtra("credentials", credentials)
+        startForegroundService(appIsActiveIntent)
+
         // Then set the content
         setContent {
             EncryptedFilesAppTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -68,10 +77,20 @@ class HomeActivity : ComponentActivity() {
                     HomeScreen(
                         server = server,
                         username = username,
-                        password = password
+                        password = password,
+                        homeViewModel = viewModel()
                     )
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        Log.d("HOME", "onDestroy called")
+
+        // TODO: Can this service enforce logout?
+        stopService(Intent(this, AppIsActiveService::class.java))
+
+        super.onDestroy()
     }
 }
