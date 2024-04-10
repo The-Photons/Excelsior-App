@@ -213,12 +213,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun logout(
-        server: Server,
-        context: Context
-    ) {
+    fun logout(context: Context) {
+        if (!loggedIn) return
+
         Log.d("HOME", "Start logout process")
-        server.handleLogout {
+        _uiState.value.server.handleLogout {
             loggedIn = false
             Log.d("HOME", "Logged out; deleting synced local files")
             initProcessingDialog("Deleting local files")

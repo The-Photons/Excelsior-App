@@ -47,6 +47,8 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Shows persistent notification when app is active"/>
         </service>
+        <!-- Receivers -->
+        <receiver android:name=".ui.home.services.CloseAppReceiver" />
         <!-- Providers -->
         <provider
             android:name="androidx.core.content.FileProvider"

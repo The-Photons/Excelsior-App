@@ -40,6 +40,7 @@ import site.overwrite.encryptedfilesapp.ui.theme.EncryptedFilesAppTheme
 class HomeActivity : ComponentActivity() {
     // Properties
     private lateinit var dataStoreManager: DataStoreManager
+    private lateinit var homeViewModel: HomeViewModel
 
     @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,6 +64,7 @@ class HomeActivity : ComponentActivity() {
         }
 
         // Start services
+        // TODO: Allow return to app on press on notification
         val appIsActiveIntent = Intent(this, AppIsActiveService::class.java)
         appIsActiveIntent.putExtra("credentials", credentials)
         startForegroundService(appIsActiveIntent)
@@ -70,6 +72,8 @@ class HomeActivity : ComponentActivity() {
         // Then set the content
         setContent {
             EncryptedFilesAppTheme {
+                homeViewModel = viewModel()
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -78,18 +82,25 @@ class HomeActivity : ComponentActivity() {
                         server = server,
                         username = username,
                         password = password,
-                        homeViewModel = viewModel()
+                        homeViewModel = homeViewModel
                     )
                 }
             }
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra("close_app", false)) {
+            finish()
+        }
+    }
+
     override fun onDestroy() {
         Log.d("HOME", "onDestroy called")
 
-        // TODO: Can this service enforce logout?
         stopService(Intent(this, AppIsActiveService::class.java))
+        homeViewModel.logout(this)
 
         super.onDestroy()
     }

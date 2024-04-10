@@ -212,7 +212,7 @@ fun HomeScreen(
         LogoutDialog(
             hideDialog = { homeViewModel.showLogoutDialog = false }
         ) {
-            homeViewModel.logout(homeViewUIState.server, context)
+            homeViewModel.logout(context)
         }
     }
 
